@@ -1,10 +1,12 @@
-# PAANG ERP — Live Demo
+# PAANG ERP — Live Demos
 
-Read-only demo of **PAANG ERP**, an integrated ERP for Philippine SMEs (up to 500 employees): finance & controlling, HR & semi-monthly payroll (SSS, PhilHealth, Pag-IBIG, BIR, 13th month), sales, purchasing & inventory, production (MPS/MRP/BOM) and management dashboards — in English and Korean.
+Read-only demos with fictional sample data for **The Clean O2 Eco-Friendly Corporation**. Works on phones, tablets and PCs; nothing is saved.
 
-Sample company: **The Clean O2 Eco-Friendly Corporation** (fictional data for demonstration).
+| Edition | For | Demo |
+|---|---|---|
+| **PAANG ERP** v1.3.0 | Philippine SMEs up to 500 employees — finance & controlling, HR & semi-monthly payroll (SSS, PhilHealth, Pag-IBIG, BIR, 13th month, cash advances), sales, purchasing & inventory, production (MPS/MRP/BOM), dashboards | https://hserickim25-bit.github.io/paang-erp-demo/ |
+| **PAANG ERP Lite** v1.1.0 | Small businesses up to 50 employees (retail, wholesale, offices, small makers) — owner-friendly: sell, buy, stock, simple production, expenses, cash & bank, payroll with cash advances, one-page business report | https://hserickim25-bit.github.io/paang-erp-demo/lite/ |
 
-- Open the demo: the GitHub Pages link of this repository (Settings → Pages).
-- Works on phones, tablets and PCs. Nothing is saved — the installed version stores your own data.
+English and Korean (한국어) in both.
 
 **Developer:** Paang Corporation · **Mobile:** 0905 356 3644
