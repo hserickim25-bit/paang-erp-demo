@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ERP Small Business-50 read-only demo — developed by Paang Corporation (mobile 0905 356 3644)">
 <title>ERP Small Business-50 Demo</title>
 <style>
 [hidden]{display:none!important}
@@ -266,6 +272,8 @@ body { background: var(--paper); color: var(--ink); display: flex; flex-directio
 .demo-bar span { opacity: .9; }
 .demo-bar a { color: #fff; text-decoration: underline; }
 </style>
+</head>
+<body>
 <div class="demo-bar">Read-only demo — nothing is saved. Sample business: <a href="index.html">Store & refill line</a> · <b>Restaurant</b> · <a href="services.html">Office / services</a> · <a href="manufacturing.html">Manufacturing</a><span> · 읽기 전용 데모 · 업종 샘플: <a href="index.html">매장·리필 생산</a> · <b>음식점</b> · <a href="services.html">사무실·서비스</a> · <a href="manufacturing.html">제조업</a></span></div>
 <div id="app"><div class="empty">Loading…</div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -2578,3 +2586,5 @@ async function boot() {
 window.toast = toast; window.L = (s) => L(s);
 boot();
 </script>
+</body>
+</html>

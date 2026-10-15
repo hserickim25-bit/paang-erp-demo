@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="ERP Enterprise-500 read-only demo — developed by Paang Corporation (mobile 0905 356 3644)">
 <title>ERP Enterprise-500 Demo</title>
 <style>
 :root {
@@ -233,6 +239,8 @@ body { background: var(--paper); color: var(--ink); display: flex; flex-directio
 .demo-bar { background: var(--green); color: #fff; font-size: 12.5px; padding: 8px 16px; line-height: 1.3; }
 .demo-bar span { opacity: .85; white-space: nowrap; }
 </style>
+</head>
+<body>
 <div class="demo-bar">Read-only demo with sample data — install ERP Enterprise-500 to enter and save your own records. <span>읽기 전용 샘플 데모 · 실제 입력·저장은 설치 버전에서</span></div>
 <div id="app"><div class="empty">Loading…</div></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
@@ -2583,3 +2591,5 @@ async function boot() {
 window.printDoc = printDoc;
 boot();
 </script>
+</body>
+</html>
