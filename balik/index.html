@@ -696,7 +696,7 @@ function custHome() {
     <div class="scroll" data-scroll="c-home">
       ${act ? activeCard(act) : ''}
       <label class="row" style="height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
-        <input id="c-q" class="grow" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
+        <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile">${ic(k.icon, 24)}</span>${k.name}</button>`).join('')}</div>
       <div class="mission"><span class="eyebrow" style="color:inherit;opacity:.7">Why Balik</span><h3>Unlock your skills, support your family.</h3><p>Empower local skilled professionals with your booking.</p></div>
       <div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
@@ -721,6 +721,8 @@ function custList() {
   return `${bar(c.cat ? catName(c.cat) : 'Explore', c.cat ? 'clearCat' : null)}
     <div class="scroll" data-scroll="c-list">
       <button class="row" data-act="addrSheet" style="border:0;background:var(--surface-2);border-radius:10px;padding:9px 12px;text-align:left">${ic('pin', 16)}<span class="small grow">Distance from <b>${esc(a.label)} · ${esc(a.short)}</b></span><span class="small" style="color:var(--accent);font-weight:600">Change</span></button>
+      <label class="row" style="height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
+        <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>
       ${!c.cat ? `<div class="chips">${CATS.map(k => `<button class="chip" data-act="openCat" data-arg="${k.id}">${k.name}</button>`).join('')}</div>` : ''}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
       <span class="small muted">${items.length} results · sorted by availability, then distance</span>
@@ -1526,12 +1528,23 @@ function shell() {
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
 
 function render() {
-  const ae = document.activeElement, fid = ae && ae.id; let ss = null, se = null;
-  try { ss = ae.selectionStart; se = ae.selectionEnd; } catch (e) { }
+  // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
+  const ae = document.activeElement;
+  const keep = ae && ae.id && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file'].includes(ae.type))) ? ae : null;
+  const fid = ae && ae.id;
   const scrolls = {}; document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = el.scrollTop; });
   document.getElementById('app').innerHTML = shell();
   document.querySelectorAll('[data-scroll]').forEach(el => { if (scrolls[el.dataset.scroll] != null) { el.style.scrollBehavior = 'auto'; el.scrollTop = scrolls[el.dataset.scroll]; el.style.scrollBehavior = ''; } });
-  if (fid) { const el = document.getElementById(fid); if (el) { el.focus({ preventScroll: true }); try { if (ss != null) el.setSelectionRange(ss, se); } catch (e) { } } }
+  if (keep) {
+    const nu = document.getElementById(keep.id);
+    if (nu && nu.tagName === keep.tagName && nu.type === keep.type) {
+      [...keep.attributes].forEach(a => { if (!nu.hasAttribute(a.name)) keep.removeAttribute(a.name); });
+      [...nu.attributes].forEach(a => { if (a.name !== 'value') keep.setAttribute(a.name, a.value); });
+      if (keep.tagName === 'INPUT' && keep.value !== nu.value && document.activeElement !== keep && !keep.dataset.bind) keep.value = nu.value;
+      nu.replaceWith(keep);
+      keep.focus({ preventScroll: true });
+    } else if (nu) nu.focus({ preventScroll: true });
+  } else if (fid) { const el = document.getElementById(fid); if (el) el.focus({ preventScroll: true }); }
   save();
 }
 const STORE = 'balik-demo-v2';
@@ -1682,6 +1695,7 @@ const A = {
   goPro: () => { if (isPhone() || !wide()) S.role = 'provider'; A.startApply(); },
   resetDemo: () => { try { localStorage.removeItem(STORE); } catch (e) { } location.reload(); },
   demo: () => { S.demoOpen = !S.demoOpen; },
+  clearQ: () => { S.cust.q = ''; },
   goHome: () => { S.role = wide() ? 'both' : 'customer'; const c = S.cust; c.screen = 'home'; c.cat = null; c.q = ''; c.zoom = null; c.pay = null; c.addrSheet = false; c.help = false; S.modal = null; S.demoOpen = false; setTimeout(() => resetScroll('c-home')); },
   // provider
   provTab: t => { S.prov.apply = null; S.prov.screen = t; },
@@ -1787,7 +1801,10 @@ const onBind = (e, live) => {
   if (!live || el.tagName !== 'INPUT' || el.type !== 'text' && el.type !== 'search' && !el.inputMode && el.type !== 'number' && el.type !== 'tel') render();
   else render();
 };
-document.addEventListener('input', e => { if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
+let composing = false;
+document.addEventListener('compositionstart', () => { composing = true; });
+document.addEventListener('compositionend', e => { composing = false; if (e.target.dataset && e.target.dataset.bind) onBind(e, true); });
+document.addEventListener('input', e => { if (e.isComposing || composing) { if (e.target.dataset && e.target.dataset.bind) setPath(e.target.dataset.bind, e.target.value); return; } if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset && el.dataset.file) {
