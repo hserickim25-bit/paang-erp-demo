@@ -10,3 +10,9 @@ Read-only demos with fictional sample data for **The Clean O2 Eco-Friendly Corpo
 English and Korean (한국어) in both.
 
 **Developer:** Paang Corporation · **Mobile:** 0905 356 3644
+
+## Balik Home Care — app test build
+
+Home-service marketplace for the Philippines (customer, provider, business and admin apps). Installable on phones (Add to Home Screen).
+
+https://hserickim25-bit.github.io/paang-erp-demo/balik/
