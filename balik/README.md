@@ -10,6 +10,7 @@ A working test build of the Balik home-service platform (Philippines): customers
 
 ## What you can test
 - Sign up with **email + mobile number only** (6-digit codes for each; in this test build the codes are shown on screen instead of being sent). Government ID is optional, later, from Account.
+- Provider sign-up requires a **profile photo** (camera or upload). Photos appear on lists, profiles and booking screens; tap a photo to enlarge it. Demo photos are illustrated samples, not real people.
 - Search by distance from your saved address, traffic-light availability (green / yellow / red).
 - Request → provider gets app alert + SMS → accepts with an arrival time (10–60 min) → customer pays → Depart → check-in → "In service" → End service (or auto-end) → review with stars and photos.
 - Late-arrival alerts (admin SMS + provider alert), penalty points and referral-fee tiers (20 / 22 / 25 %, draft).
