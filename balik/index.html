@@ -75,7 +75,8 @@ p{margin:0}
 /* ---------- Prototype bar ---------- */
 .topbar{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:color-mix(in srgb,var(--surface) 88%,transparent);backdrop-filter:saturate(1.6) blur(14px);-webkit-backdrop-filter:saturate(1.6) blur(14px);border-bottom:1px solid var(--line)}
 .topbar-in{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1440px;margin:0 auto}
-.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.02em}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.02em;border:0;background:transparent;padding:4px 6px;margin:-4px -6px;border-radius:10px;color:var(--fg)}
+button.brand:hover{background:var(--surface-2)}
 .brand-mark{width:28px;height:28px;border-radius:8px;background:var(--mango);color:var(--mango-ink);display:grid;place-items:center}
 .brand small{font-weight:500;color:var(--muted);font-size:12px;letter-spacing:0}
 .seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--surface-3);overflow-x:auto;max-width:100%;scrollbar-width:none}
@@ -202,7 +203,9 @@ button.li:hover{background:var(--surface-2)}
 
 /* hero banner */
 .mission{border-radius:var(--r-lg);padding:16px;background:linear-gradient(135deg,#12355B,#2B5C93);color:#fff;display:flex;flex-direction:column;gap:6px;position:relative;overflow:hidden}
-.mission h3{font-size:17px;line-height:1.25}
+.scroll>*{flex-shrink:0}
+.mission h3{font-size:19px;line-height:1.25;color:#fff}
+.mission p{color:#fff}
 .mission p{font-size:13px;opacity:.78}
 .mission::after{content:"";position:absolute;right:-40px;top:-40px;width:160px;height:160px;border-radius:50%;border:24px solid rgba(244,183,64,.35)}
 
@@ -684,7 +687,7 @@ function custHome() {
       <label class="row" style="height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile">${ic(k.icon, 24)}</span>${k.name}</button>`).join('')}</div>
-      <div class="mission"><span class="eyebrow" style="color:inherit;opacity:.7">Why Balik</span><h3>Experienced pros, back at work.</h3><p>Most of our stylists, therapists and groomers spent years in salons and spas before life took them home. Every booking helps a household.</p></div>
+      <div class="mission"><span class="eyebrow" style="color:inherit;opacity:.7">Why Balik</span><h3>Unlock your skills, support your family.</h3><p>Empower local skilled professionals with your booking.</p></div>
       <div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
       ${near.map(entryCard).join('')}
     </div>`;
@@ -1502,7 +1505,7 @@ function shell() {
   else if (r === 'business') stage = bizPane();
   else stage = adminPane();
   return `<header class="topbar"><div class="topbar-in">
-      <div class="brand"><span class="brand-mark">${ic('refresh', 16, 2.2)}</span>Balik <small>Home Care · test build</small></div>
+      <button class="brand" data-act="goHome" aria-label="Balik home"><span class="brand-mark">${ic('refresh', 16, 2.2)}</span>Balik <small>Home Care · test build</small></button>
       <nav class="seg" aria-label="View">${wide() ? role('both', 'Customer + Provider') : ''}${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
       <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtT(now())}</span><button class="mini" data-act="skip" data-arg="10">+10 min</button><button class="mini" data-act="skip" data-arg="60">+1 h</button><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="resetDemo">Reset</button></div>
     </div></header><div class="stage">${stage}</div>${modal()}`;
@@ -1666,6 +1669,7 @@ const A = {
   goPro: () => { if (isPhone() || !wide()) S.role = 'provider'; A.startApply(); },
   resetDemo: () => { try { localStorage.removeItem(STORE); } catch (e) { } location.reload(); },
   demo: () => { S.demoOpen = !S.demoOpen; },
+  goHome: () => { S.role = wide() ? 'both' : 'customer'; const c = S.cust; c.screen = 'home'; c.cat = null; c.q = ''; c.zoom = null; c.pay = null; c.addrSheet = false; c.help = false; S.modal = null; S.demoOpen = false; setTimeout(() => resetScroll('c-home')); },
   // provider
   provTab: t => { S.prov.apply = null; S.prov.screen = t; },
   provBack: () => { S.prov.screen = 'jobs'; },
