@@ -365,6 +365,9 @@ td.num,th.num{text-align:right}
 .pu-img{width:88px;height:88px;border-radius:50%;flex-shrink:0;background:var(--surface-2);display:grid;place-items:center;color:var(--muted);overflow:hidden}
 .pu-img img{width:100%;height:100%;object-fit:cover}
 
+.formgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px}
+.seg button{min-height:32px}
+
 /* modal */
 .modal-bg{position:fixed;inset:0;z-index:80;background:rgba(8,10,16,.5);display:grid;place-items:center;padding:20px;animation:fade .15s}
 .modal{width:min(620px,100%);max-height:90vh;overflow:auto;background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg);padding:20px;display:flex;flex-direction:column;gap:14px}
@@ -476,8 +479,9 @@ const S = {
   customer: { name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', signedIn: false, emailOk: true, phoneOk: true, idOk: false, pay: 'GCash' },
   cust: { screen: 'home', cat: null, filter: 'nearest', q: '', pid: null, bizId: null, cart: [], when: 'now', slot: null, bid: null, pay: null, review: { stars: 5, tags: ['On time'], text: '', photos: [] }, addrSheet: false, signup: null, help: false },
   prov: { id: 'p1', screen: 'jobs', bid: null, eta: 30, apply: null, perf: false },
-  biz: { id: 'b1', tab: 'requests', invite: { name: '', phone: '' } },
-  admin: { tab: 'overview', sel: null },
+  biz: { id: 'b1', tab: 'requests', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
+  admin: { tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
+  fin: { remit: {}, filed: {}, issued: {}, ref: '' },
   providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], modal: null,
   settings: {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
@@ -525,7 +529,7 @@ S.businesses = [{
   owner: 'Celia Navarro', phone: '+63 917 555 0199',
   story: 'Neighborhood spa sending vetted therapists to homes, hotels and condos.',
   services: [{ name: 'Swedish massage', mins: 60, price: 700, on: true }, { name: 'Hilot (traditional)', mins: 90, price: 950, on: true }, { name: 'Aromatherapy', mins: 60, price: 850, on: true }],
-  staff: ['p5', 'p6'], invited: [{ name: 'Mylene Garcia', phone: '+63 917 555 0177', status: 'ID & TIN check', photoKey: 'mylene' }]
+  staff: ['p5', 'p6'], invited: [{ name: 'Mylene Garcia', phone: '+63 917 555 0177', stage: 'sent', sentAt: simStart - 26 * HOUR, photoKey: 'mylene' }]
 }];
 S.applications = [{ id: 'A-201', photoKey: 'lorie', name: 'Dolores "Lorie" Mendoza', cat: 'nails', years: 12, past: 'Nail technician, Cubao mall salon (2008–2020)', why: 'Stopped working to care for her husband after his stroke.', area: 'Cubao, Quezon City', idOk: true, selfie: true, tin: '511-209-334-000', cert: null, at: simStart - 3 * HOUR, status: 'pending' }];
 
@@ -564,7 +568,8 @@ function seedHistory() {
   const rows = [
     ['p2', 2, 1, 'Bea L.', 5], ['p4', 0, 1, 'Isabel R.', 5], ['p1', 0, 2, 'Jasmine T.', 5], ['p7', 0, 2, 'Kat V.', 5], ['p5', 0, 3, 'Mina S.', 5],
     ['p1', 1, 4, ME, 5], ['p3', 1, 5, 'Ramon D.', 5], ['p4', 2, 6, 'Lea G.', 5], ['p6', 0, 7, 'Pia N.', 4], ['p8', 2, 8, 'Joy A.', 5],
-    ['p2', 0, 9, ME, 5], ['p1', 2, 10, 'Ella P.', 4], ['p5', 1, 11, 'Rina K.', 5], ['p7', 1, 12, 'Dan O.', 5], ['p4', 1, 13, 'Ces Y.', 5]
+    ['p2', 0, 9, ME, 5], ['p1', 2, 10, 'Ella P.', 4], ['p5', 1, 11, 'Rina K.', 5], ['p7', 1, 12, 'Dan O.', 5], ['p4', 1, 13, 'Ces Y.', 5],
+    ['p5', 0, 16, 'Tina R.', 5], ['p6', 1, 19, 'Joel M.', 5], ['p5', 1, 23, 'Ivy C.', 4], ['p6', 0, 30, 'Mae L.', 5], ['p5', 0, 34, 'Ruth S.', 5], ['p6', 1, 41, 'Gail T.', 5]
   ];
   rows.reverse().forEach(([pid, si, daysAgo, cust, stars]) => {
     const p = prov(pid), s = p.services[si];
@@ -578,6 +583,8 @@ function seedHistory() {
     if (lateMin > S.settings.penaltyAfter) b.late = { at: b.promisedAt, penalty: true, replies: [], resolved: true };
     ['Request sent (app + SMS)', 'Accepted · ETA ' + eta + ' min', 'Customer paid', 'Departed', 'Arrived', 'Service ended', 'Customer rated ' + stars + '★'].forEach((txt, i) => logB(b, txt, [b.createdAt, b.acceptedAt, b.paidAt, b.departedAt, b.arrivedAt, b.endedAt, b.endedAt + 5 * MIN][i]));
     postLedger(b);
+    if (!b.bizId) { if (b.endedAt < simStart - 1.5 * DAY) b.ledger.paidAt = b.endedAt + 12 * HOUR; }
+    else { const bz = biz(b.bizId), end = periodEnd(bz.cycle, periodStart(bz.cycle, b.endedAt)); if (end <= simStart) b.ledger.paidAt = end; }
   });
 }
 seedHistory();
@@ -623,7 +630,7 @@ const statusPill = st => { const [c, t] = pillFor(st); return `<span class="pill
 
 /* =============== CUSTOMER APP =============== */
 function listEntries(cat, filter, q) {
-  let out = S.providers.filter(p => !cat || p.cat === cat).map(p => ({ kind: 'p', o: p, d: distTo(p) }));
+  let out = S.providers.filter(p => p.active !== false && (!cat || p.cat === cat)).map(p => ({ kind: 'p', o: p, d: distTo(p) }));
   S.businesses.filter(b => !cat || b.cat === cat).forEach(b => out.push({ kind: 'b', o: b, d: distTo(b) }));
   if (q) { const s = q.toLowerCase(); out = out.filter(e => e.o.name.toLowerCase().includes(s) || e.o.services.some(x => x.name.toLowerCase().includes(s)) || catName(e.o.cat).toLowerCase().includes(s)); }
   if (filter === 'ind') out = out.filter(e => e.kind === 'p' && e.o.type === 'individual');
@@ -633,7 +640,7 @@ function listEntries(cat, filter, q) {
   const rank = e => e.kind === 'b' ? (bizGreen(e.o) ? 0 : 1) : ({ green: 0, yellow: 1, red: 2 })[e.o.status];
   return out.sort((a, b) => rank(a) - rank(b) || a.d - b.d);
 }
-const bizGreen = b => b.staff.filter(id => prov(id).status === 'green').length;
+const bizGreen = b => b.staff.filter(id => prov(id) && prov(id).active !== false && prov(id).status === 'green').length;
 const fromPrice = o => Math.min(...o.services.filter(s => s.on && String(s.name || '').trim()).map(s => s.price));
 
 function entryCard(e) {
@@ -736,7 +743,7 @@ function ratingBlock(o) {
     <div class="col grow" style="gap:5px">${o.dist.map((v, i) => `<div class="row" style="gap:8px"><span class="tiny muted" style="width:8px">${5 - i}</span><div class="progress grow"><span style="width:${v}%;background:#E8A400"></span></div></div>`).join('')}</div></div></div>`;
 }
 function reviewsBlock(o) {
-  const all = o.reviews;
+  const all = o.reviews.filter(r => !r.hidden);
   const photos = all.flatMap(r => r.photos).slice(0, 8);
   return `${photos.length ? `<div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Photo reviews</h3><span class="small muted">${photos.length} photos</span></div>
     <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${photos.slice(0, 4).map(c => c.startsWith('data:') ? `<span class="photo" style="height:72px;background-image:url(${c})"></span>` : photo(c, 72)).join('')}</div></div>` : ''}
@@ -786,7 +793,7 @@ function custBiz() {
       <div class="card"><p class="small">${esc(b.story)} The spa assigns the nearest therapist on stand-by, and you see their name and arrival time before you pay.</p></div>
       ${ratingBlock(b)}
       <div class="col" style="gap:8px"><h3 style="font-size:15px">Therapists</h3><div class="list">${b.staff.map(id => { const p = prov(id); return `<button class="li" data-act="openProvider" data-arg="${p.id}">${zav(p, 44, true)}<div class="col grow"><b>${esc(p.name)}</b>${statusLine(p)}</div><span class="small muted num">${fmtKm(distTo(p))}</span>${ic('chev', 16)}</button>`; }).join('')}</div></div>
-      <div class="col" style="gap:8px"><h3 style="font-size:15px">Menu</h3><div class="list">${b.services.map((s, i) => { const on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min</span></div><b class="num">${peso(s.price)}</b><button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}">${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div></div>
+      <div class="col" style="gap:8px"><h3 style="font-size:15px">Menu</h3><div class="list">${b.services.map((s, i) => { if (!s.on || !String(s.name || '').trim()) return ''; const on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min</span></div><b class="num">${peso(s.price)}</b><button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}">${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div></div>
     </div>`;
   const f = `<div class="row between"><div class="col"><span class="small muted">${sel.length ? sel.length + ' service' + (sel.length > 1 ? 's' : '') : 'Add a service'}</span><b class="num" style="font-size:18px">${peso(total)}</b></div>
     <button class="btn primary" data-act="goBook" ${!sel.length || !g ? 'disabled' : ''}>${g ? 'Continue' : 'No one on stand-by'}</button></div>`;
@@ -1204,7 +1211,7 @@ function provEarnings() {
       <span class="small muted">${staff ? esc(payee.name) + "'s" : 'Your'} ${new Date(n).getFullYear()} remittances: <b class="num">${peso(ytd)}</b> of the ${peso(thr)} threshold. Under BIR RR 16-2023, Balik withholds 1% of half the gross once yearly remittances pass ${peso(thr)}.</span>
       <span class="small">You still file and pay your own income tax. The amount withheld is credited against it using BIR Form 2307.</span>
       <button class="btn secondary sm" data-act="open2307" data-arg="${staff ? 'b:' + payee.id : 'p:' + me.id}">${ic('doc', 16)} View BIR Form 2307 · Q${quarterOf(n)}</button></div>
-    <div class="col" style="gap:8px"><h3 style="font-size:15px">Payouts</h3><div class="list">${myLedger(me).slice(0, 8).map(b => `<div class="li"><div class="col grow"><b class="small">${esc(b.services[0].name)} · ${b.id}</b><span class="tiny muted">${fmtD(b.endedAt)} · fee ${peso(b.ledger.fee, 2)} · tax ${peso(b.ledger.wht, 2)}</span></div><div class="col" style="align-items:flex-end"><b class="num small">${peso(b.ledger.net, 2)}</b><span class="tiny ${sameDay(b.endedAt, n) ? 'muted' : ''}" style="color:${sameDay(b.endedAt, n) ? '' : 'var(--good)'}">${staff ? 'To business' : sameDay(b.endedAt, n) ? 'Processing' : 'Paid · GCash'}</span></div></div>`).join('') || '<div class="empty">No payouts yet.</div>'}</div></div>
+    <div class="col" style="gap:8px"><h3 style="font-size:15px">Payouts</h3><div class="list">${myLedger(me).slice(0, 8).map(b => `<div class="li"><div class="col grow"><b class="small">${esc(b.services[0].name)} · ${b.id}</b><span class="tiny muted">${fmtD(b.endedAt)} · fee ${peso(b.ledger.fee, 2)} · tax ${peso(b.ledger.wht, 2)}</span></div><div class="col" style="align-items:flex-end"><b class="num small">${peso(b.ledger.net, 2)}</b><span class="tiny ${b.ledger.paidAt ? '' : 'muted'}" style="color:${b.ledger.paidAt ? 'var(--good)' : ''}">${staff ? (b.ledger.paidAt ? 'Paid to business' : 'To business · next cycle') : b.ledger.paidAt ? 'Paid · GCash ' + fmtD(b.ledger.paidAt) : 'Processing'}</span></div></div>`).join('') || '<div class="empty">No payouts yet.</div>'}</div></div>
   </div>`;
 }
 function provAccount() {
@@ -1288,57 +1295,97 @@ function bizPane() {
   if (tab === 'staff') main = bizStaff(b);
   if (tab === 'settle') main = bizSettle(b);
   if (tab === 'profile') main = bizProfile(b);
-  return `<div class="web" data-pane="business"><aside class="side"><div class="org"><span class="avatar" style="width:34px;height:34px;border-radius:10px;background:hsl(${b.hue} 50% 90%);color:hsl(${b.hue} 50% 28%)">${ic('building', 18)}</span><div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
+  return `<div class="web" data-pane="business"><aside class="side"><div class="org"><span class="bizlogo" style="width:36px;height:36px;border-radius:10px;font-size:19px">B</span><div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
     ${nav('requests', 'Requests', 'bell', q.length)}${nav('staff', 'Staff', 'users')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Business profile', 'building')}</aside>
     <main class="main">${main}</main>${toastsFor('business', true)}</div>`;
 }
 function bizRequests(b, q) {
   const active = S.bookings.filter(x => x.bizId === b.id && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status));
-  return `<div class="page-h"><div><h1>Requests</h1><p>Customers who book the spa land here. Assign the nearest therapist on stand-by; they get an app alert and SMS and send the customer an arrival time.</p></div></div>
-    ${q.length ? q.map(r => { const staff = b.staff.map(id => prov(id)).map(p => ({ p, d: haversine(p, r) })).sort((x, y) => ({ green: 0, yellow: 1, red: 2 }[x.p.status] - { green: 0, yellow: 1, red: 2 }[y.p.status]) || x.d - y.d);
-      return `<div class="panel"><div class="panel-h"><div class="col"><h3>${esc(r.services.map(s => s.name).join(' + '))} · ${peso(r.gross)}</h3><span class="small muted">${r.id} · ${esc(r.address)} · ${r.when === 'later' ? fmtT(r.slotAt) : 'As soon as possible'}</span></div><span class="pill accent">Needs assignment</span></div>
+  const done = S.bookings.filter(x => x.bizId === b.id && ['ended', 'reviewed', 'declined', 'cancelled', 'no_response', 'expired'].includes(x.status)).slice(0, 8);
+  const roster = b.staff.map(id => prov(id)).filter(p => p && p.active !== false);
+  return `<div class="page-h"><div><h1>Requests</h1><p>Customers who book the spa land here. Assign the nearest therapist on stand-by; they get an app alert and SMS and send the customer an arrival time. If no one can go, decline so the customer can book elsewhere right away.</p></div></div>
+    ${q.length ? q.map(r => { const staff = roster.map(p => ({ p, d: haversine(p, r) })).sort((x, y) => ({ green: 0, yellow: 1, red: 2 }[x.p.status] - { green: 0, yellow: 1, red: 2 }[y.p.status]) || x.d - y.d);
+      return `<div class="panel"><div class="panel-h"><div class="col"><h3>${esc(r.services.map(s => s.name).join(' + '))} · ${peso(r.gross)}</h3><span class="small muted">${r.id} · ${esc(r.customer)} · ${esc(r.address)} · ${r.when === 'later' ? fmtT(r.slotAt) : 'As soon as possible'}</span></div><div class="row" style="gap:8px"><span class="pill accent">Needs assignment</span><button class="btn danger xs" data-act="bizDecline" data-arg="${r.id}">Decline</button></div></div>
       <div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Status</th><th class="num">Distance</th><th class="num">This week</th><th></th></tr></thead><tbody>
-      ${staff.map(({ p, d }) => `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<b>${esc(p.name)}</b></div></td><td>${statusLine(p)}</td><td class="num">${fmtKm(d)}</td><td class="num">${weekTotal(p).toFixed(1)} h</td><td class="num"><button class="btn ${p.status === 'green' ? 'primary' : 'secondary'} xs" data-act="assign" data-arg="${r.id}:${p.id}" ${p.status === 'red' ? 'disabled' : ''}>Assign</button></td></tr>`).join('')}
+      ${staff.map(({ p, d }) => `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<b>${esc(p.name)}</b></div></td><td>${statusLine(p)}</td><td class="num">${fmtKm(d)}</td><td class="num">${weekTotal(p).toFixed(1)} h</td><td class="num"><button class="btn ${p.status === 'green' ? 'primary' : 'secondary'} xs" data-act="assign" data-arg="${r.id}:${p.id}" ${p.status === 'red' ? 'disabled' : ''}>Assign</button></td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">No active staff. Invite therapists in Staff.</div></td></tr>'}
       </tbody></table></div></div>`; }).join('') : `<div class="panel"><div class="empty">No requests waiting. New spa bookings appear here with an alert.</div></div>`}
-    <div class="panel"><div class="panel-h"><h3>Staff jobs in progress</h3></div>${active.length ? `<div class="tablewrap"><table><thead><tr><th>Job</th><th>Therapist</th><th>Status</th><th>Arrive by</th><th class="num">Value</th></tr></thead><tbody>${active.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(prov(x.pid).name)}</td><td>${statusPill(x.status)}${x.late && !x.arrivedAt ? ' <span class="pill bad">Late</span>' : ''}</td><td class="mono">${x.promisedAt ? fmtT(x.promisedAt) : '—'}</td><td class="num">${peso(x.gross)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nothing in progress.</div>'}</div>`;
+    <div class="panel"><div class="panel-h"><h3>Staff jobs in progress</h3></div>${active.length ? `<div class="tablewrap"><table><thead><tr><th>Job</th><th>Therapist</th><th>Status</th><th>Arrive by</th><th class="num">Value</th></tr></thead><tbody>${active.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(prov(x.pid).name)}</td><td>${statusPill(x.status)}${x.late && !x.arrivedAt ? ' <span class="pill bad">Late</span>' : ''}</td><td class="mono">${x.promisedAt ? fmtT(x.promisedAt) : '—'}</td><td class="num">${peso(x.gross)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nothing in progress.</div>'}</div>
+    <div class="panel"><div class="panel-h"><h3>Recent requests</h3></div>${done.length ? `<div class="tablewrap"><table><thead><tr><th>Job</th><th>Customer</th><th>Therapist</th><th>Status</th><th class="num">Value</th><th class="num">Rating</th></tr></thead><tbody>${done.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(x.customer)}</td><td>${x.pid ? esc(prov(x.pid).name) : '—'}</td><td>${statusPill(x.status)}</td><td class="num">${peso(x.gross)}</td><td class="num">${x.review ? starsH(x.review.stars) : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No past requests yet.</div>'}</div>`;
 }
 function bizStaff(b) {
-  const inv = S.biz.invite;
-  return `<div class="page-h"><div><h1>Staff</h1><p>Each therapist verifies their own ID and TIN and appears to customers as "${esc(b.name)} · staff". Their stand-by hours and penalties count toward the spa's record.</p></div></div>
-    <div class="panel"><div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Now</th><th class="num">Green this week</th><th class="num">Days ≥ ${S.settings.dayTarget} h</th><th class="num">Points</th><th class="num">Rating</th><th class="num">Jobs</th></tr></thead><tbody>
-    ${b.staff.map(id => { const p = prov(id), r = records(p); return `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${esc(p.area)}</span></div></div></td><td>${statusLine(p)}</td><td class="num">${weekTotal(p).toFixed(1)} / ${S.settings.weeklyTarget}</td><td class="num">${daysMet(p)} / ${S.settings.minDays}</td><td class="num">${p.points ? `<span class="pill bad">${p.points}</span>` : '0'}</td><td class="num">${p.rating}</td><td class="num">${r.jobs}</td></tr>`; }).join('')}
-    ${b.invited.map(v => `<tr><td><div class="row">${avatar(v.name, 40, 30)}<div class="col"><b>${esc(v.name)}</b><span class="tiny muted num">${esc(v.phone)}</span></div></div></td><td colspan="6"><span class="pill warn">Invited · ${esc(v.status)}</span></td></tr>`).join('')}
+  const inv = S.biz.invite, cf = S.biz.confirm;
+  const phoneOk = inv.phone.replace(/\D/g, '').length >= 10;
+  const staffRows = b.staff.map(id => prov(id)).filter(Boolean).map(p => { const r = records(p); const i = S.providers.indexOf(p); return `<tr style="${p.active === false ? 'opacity:.5' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${esc(p.phone)} · ${esc(p.area)}</span></div></div></td><td>${p.active === false ? '<span class="pill bad">Suspended by Balik</span>' : statusLine(p)}</td><td class="num">${weekTotal(p).toFixed(1)} / ${S.settings.weeklyTarget}</td><td class="num">${p.points ? `<span class="pill bad">${p.points}</span>` : '0'}</td><td class="num">${p.rating} · ${r.jobs} jobs</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="bizEditStaff" data-arg="${p.id}">Edit</button>${cf === 'rm:' + p.id ? `<button class="btn danger xs" data-act="bizRemoveStaff" data-arg="${p.id}">Confirm remove</button><button class="btn ghost xs" data-act="bizConfirm" data-arg="">Keep</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="bizConfirm" data-arg="rm:${p.id}">Remove</button>`}</div></td></tr>`; }).join('');
+  const invRows = b.invited.map((v, k) => `<tr><td><div class="row">${avatar(v.name, 40, 34)}<div class="col"><b>${esc(v.name)}</b><span class="tiny muted num">${esc(v.phone)}</span></div></div></td><td colspan="4"><span class="pill ${v.stage === 'review' ? 'accent' : 'warn'}">${v.stage === 'review' ? 'Signed up · awaiting Balik approval' : 'Invite sent · waiting for ID & TIN'}</span>${v.sentAt ? ` <span class="tiny muted">sent ${fmtD(v.sentAt)} ${fmtT(v.sentAt)}</span>` : ''}</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap">${v.stage === 'review' ? '' : `<button class="btn secondary xs" data-act="bizResend" data-arg="${k}">Resend SMS</button><button class="btn ghost xs" data-act="bizSimSignup" data-arg="${k}" title="Demo: pretend the therapist finished sign-up">Demo: staff signs up</button>`}<button class="btn ghost xs" style="color:var(--bad)" data-act="bizCancelInvite" data-arg="${k}">Cancel</button></div></td></tr>`).join('');
+  const ed = S.biz.editStaff ? prov(S.biz.editStaff) : null, ei = ed ? S.providers.indexOf(ed) : -1;
+  return `<div class="page-h"><div><h1>Staff</h1><p>Each therapist verifies their own ID and TIN, then Balik approves them. They appear to customers as "${esc(b.name)} · staff", and their stand-by hours and penalties count toward the spa's record.</p></div></div>
+    <div class="panel"><div class="panel-h"><h3>Team · ${b.staff.length} active, ${b.invited.length} invited</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Now</th><th class="num">Green this week</th><th class="num">Points</th><th class="num">Rating · jobs</th><th>Actions</th></tr></thead><tbody>
+    ${staffRows}${invRows}${!staffRows && !invRows ? '<tr><td colspan="6"><div class="empty">No staff yet. Invite your first therapist below.</div></td></tr>' : ''}
     </tbody></table></div></div>
+    ${ed ? `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><h3>Edit ${esc(ed.name)}</h3><button class="btn secondary xs" data-act="bizEditStaff" data-arg="">Done</button></div><div class="panel-b">
+      <div class="formgrid">
+        <label class="field">Mobile<input id="bs-phone" class="input" data-bind="providers.${ei}.phone" value="${esc(ed.phone)}"></label>
+        <label class="field">Base area<input id="bs-area" class="input" data-bind="providers.${ei}.area" value="${esc(ed.area)}"></label>
+        <label class="field">Years of experience<input id="bs-years" class="input num" type="number" min="0" data-bind="providers.${ei}.years" value="${ed.years}"></label>
+        <label class="field">Status today<select id="bs-status" class="select" data-bind="providers.${ei}.status"><option value="green" ${ed.status === 'green' ? 'selected' : ''}>Stand by (green)</option><option value="yellow" ${ed.status === 'yellow' ? 'selected' : ''}>Away (yellow)</option><option value="red" ${ed.status === 'red' ? 'selected' : ''}>Off today (red)</option></select></label>
+      </div>
+      <label class="field">Background shown to customers<textarea id="bs-story" class="textarea" data-bind="providers.${ei}.story">${esc(ed.story)}</textarea></label>
+      <span class="small muted">Changes save automatically. ID, TIN and photo can only be changed by the therapist, then re-checked by Balik.</span></div></div>` : ''}
     <div class="panel"><div class="panel-h"><h3>Invite a therapist</h3></div><div class="panel-b"><div class="row" style="flex-wrap:wrap;align-items:flex-end">
-      <label class="field grow" style="min-width:180px">Name<input id="bi-name" class="input" data-bind="biz.invite.name" value="${esc(inv.name)}" placeholder="Full name"></label>
-      <label class="field grow" style="min-width:180px">Mobile<input id="bi-phone" class="input" data-bind="biz.invite.phone" value="${esc(inv.phone)}" placeholder="+63 9XX XXX XXXX"></label>
-      <button class="btn primary" data-act="invite" ${!(inv.name && inv.phone) ? 'disabled' : ''}>Send invite</button></div>
-      <span class="small muted">They get an SMS link to verify their ID and TIN. They can start once Balik approves them.</span></div></div>`;
+      <label class="field grow" style="min-width:180px">Name<input id="bi-name" class="input" autocomplete="off" data-bind="biz.invite.name" value="${esc(inv.name)}" placeholder="Full name"></label>
+      <label class="field grow" style="min-width:180px">Mobile<input id="bi-phone" class="input" inputmode="tel" data-bind="biz.invite.phone" value="${esc(inv.phone)}" placeholder="+63 9XX XXX XXXX"></label>
+      <button class="btn primary" data-act="invite" ${!(inv.name.trim() && phoneOk) ? 'disabled' : ''}>Send invite</button></div>
+      <span class="small muted">They get an SMS link to add their photo, ID and TIN. Once they finish, Balik reviews them (Admin › Providers) and they join your team.</span></div></div>`;
 }
-function periodStart(cycle) { const d = new Date(now()); d.setHours(0, 0, 0, 0); if (cycle === 'weekly') d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); else if (cycle === 'monthly') d.setDate(1); else d.setDate(d.getDate() <= 15 ? 1 : 16); return d.getTime(); }
+function periodStart(cycle, ref) { const d = new Date(ref || now()); d.setHours(0, 0, 0, 0); if (cycle === 'weekly') d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); else if (cycle === 'monthly') d.setDate(1); else d.setDate(d.getDate() <= 15 ? 1 : 16); return d.getTime(); }
+function periodEnd(cycle, start) { const s = new Date(start); return cycle === 'weekly' ? start + 7 * DAY : cycle === 'monthly' ? new Date(s.getFullYear(), s.getMonth() + 1, 1).getTime() : (s.getDate() === 1 ? new Date(s.getFullYear(), s.getMonth(), 16).getTime() : new Date(s.getFullYear(), s.getMonth() + 1, 1).getTime()); }
+function bizPeriods(b, count = 4) {
+  const out = []; let start = periodStart(b.cycle);
+  for (let k = 0; k < count; k++) {
+    const end = periodEnd(b.cycle, start);
+    const rows = S.bookings.filter(x => x.bizId === b.id && x.ledger && x.endedAt >= start && x.endedAt < end);
+    const sum = key => rows.reduce((a, x) => a + (key === 'gross' ? x.gross : x.ledger[key]), 0);
+    out.push({ start, end, rows, gross: sum('gross'), fee: sum('fee'), wht: sum('wht'), net: sum('net'), current: k === 0, paid: k > 0 || rows.every(x => x.ledger.paidAt) && rows.length > 0 });
+    start = periodStart(b.cycle, start - DAY);
+  }
+  return out;
+}
 function bizSettle(b) {
-  const start = periodStart(b.cycle);
-  const rows = S.bookings.filter(x => x.bizId === b.id && x.ledger && x.endedAt >= start);
-  const sum = k => rows.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0);
-  const next = b.cycle === 'weekly' ? start + 7 * DAY : b.cycle === 'monthly' ? new Date(new Date(start).getFullYear(), new Date(start).getMonth() + 1, 1).getTime() : (new Date(start).getDate() === 1 ? start + 15 * DAY : new Date(new Date(start).getFullYear(), new Date(start).getMonth() + 1, 1).getTime());
+  const per = bizPeriods(b), cur = per[0];
   const cyc = c => `<button data-act="setCycle" data-arg="${c}" aria-pressed="${b.cycle === c}">${{ weekly: 'Weekly', biweekly: 'Twice a month', monthly: 'Monthly' }[c]}</button>`;
   return `<div class="page-h"><div><h1>Settlement</h1><p>Staff job payouts are paid to the business account, not to staff, on the cycle you choose. Balik deducts only its referral fee and any tax withheld.</p></div><div class="seg">${cyc('weekly')}${cyc('biweekly')}${cyc('monthly')}</div></div>
-    <div class="kpis"><div class="kpi accent"><span class="l">Net to ${esc(b.bank)} · ${fmtD(next)}</span><span class="v">${peso(sum('net'), 2)}</span></div>
-      <div class="kpi"><span class="l">Customer payments</span><span class="v">${peso(sum('gross'), 2)}</span></div>
-      <div class="kpi"><span class="l">Referral fees</span><span class="v">${peso(sum('fee'), 2)}</span></div>
-      <div class="kpi"><span class="l">Tax withheld (RR 16-2023)</span><span class="v">${peso(sum('wht'), 2)}</span></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>This period by therapist · since ${fmtD(start)}</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Tax withheld</th><th class="num">Net</th></tr></thead><tbody>
-      ${b.staff.map(id => { const p = prov(id), r = rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${r.length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
+    <div class="kpis"><div class="kpi accent"><span class="l">Next payout to ${esc(b.bank)} · ${fmtD(cur.end)}</span><span class="v">${peso(cur.net, 2)}</span></div>
+      <div class="kpi"><span class="l">Customer payments</span><span class="v">${peso(cur.gross, 2)}</span></div>
+      <div class="kpi"><span class="l">Referral fees</span><span class="v">${peso(cur.fee, 2)}</span></div>
+      <div class="kpi"><span class="l">Tax withheld (RR 16-2023)</span><span class="v">${peso(cur.wht, 2)}</span></div></div>
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>This period by therapist · ${fmtD(cur.start)} – ${fmtD(cur.end - DAY)}</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Tax withheld</th><th class="num">Net</th></tr></thead><tbody>
+      ${b.staff.map(id => { const p = prov(id), r = cur.rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${r.length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
       </tbody></table></div></div>
       <div class="narrow panel"><div class="panel-h"><h3>Taxes</h3></div><div class="panel-b"><div class="row between"><span class="small">Year-to-date remittances</span><b class="num">${peso(b.ytd)}</b></div><div class="progress"><span style="width:${Math.min(100, b.ytd / S.settings.whtThreshold * 100)}%;background:var(--warn-dot)"></span></div>
-        <p class="small muted">Above ${peso(S.settings.whtThreshold)}, so Balik withholds 1% of half the gross on every payout. The business files its own returns and claims the credit with Form 2307.</p>
-        <button class="btn secondary sm" data-act="open2307" data-arg="b:${b.id}">${ic('doc', 16)} BIR Form 2307 · Q${quarterOf(now())}</button></div></div></div>`;
+        <p class="small muted">${b.ytd > S.settings.whtThreshold ? `Above ${peso(S.settings.whtThreshold)}, so Balik withholds 1% of half the gross on every payout.` : `Below ${peso(S.settings.whtThreshold)}, so nothing is withheld yet.`} The business files its own returns and claims the credit with Form 2307.</p>
+        <button class="btn secondary sm" data-act="open2307" data-arg="b:${b.id}">${ic('doc', 16)} BIR Form 2307 · Q${quarterOf(now())}</button></div></div></div>
+    <div class="panel"><div class="panel-h"><h3>Statements</h3><span class="small muted">Payout account: ${esc(b.bank)} · change it in Business profile</span></div><div class="tablewrap"><table><thead><tr><th>Period</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th><th>Status</th><th></th></tr></thead><tbody>
+      ${per.map((p, k) => `<tr><td>${fmtD(p.start)} – ${fmtD(p.end - DAY)}</td><td class="num">${p.rows.length}</td><td class="num">${peso(p.gross, 2)}</td><td class="num">${peso(p.fee, 2)}</td><td class="num">${peso(p.wht, 2)}</td><td class="num"><b>${peso(p.net, 2)}</b></td><td>${p.current ? `<span class="pill accent">Scheduled ${fmtD(p.end)}</span>` : p.rows.length ? `<span class="pill good">Paid ${fmtD(p.end)}</span>` : '<span class="pill">No jobs</span>'}</td><td><button class="btn secondary xs" data-act="bizStmt" data-arg="${k}" ${p.rows.length ? '' : 'disabled'}>View</button></td></tr>`).join('')}
+    </tbody></table></div></div>`;
 }
 function bizProfile(b) {
-  return `<div class="page-h"><div><h1>Business profile</h1><p>Customers see your name, rating, menu and the distance from this address.</p></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-b">
-      ${[['Business name', b.name], ['Owner', b.owner + ' · ID verified'], ['Address', b.area], ['DTI registration', b.dti], ['Business TIN', b.tin], ["Mayor's permit", b.permit], ['Settlement account', b.bank]].map(([k, v]) => `<div class="row between" style="border-bottom:1px solid var(--line);padding-bottom:10px"><span class="small muted">${k}</span><b class="small">${esc(v)}</b></div>`).join('')}
-    </div></div><div class="narrow panel"><div class="panel-h"><h3>Menu</h3></div><div class="tablewrap"><table><tbody>${b.services.map(s => `<tr><td>${esc(s.name)}<br><span class="tiny muted">${s.mins} min</span></td><td class="num">${peso(s.price)}</td></tr>`).join('')}</tbody></table></div></div></div>`;
+  const bi = S.businesses.indexOf(b);
+  const f = (label, key, extra = '') => `<label class="field">${label}<input id="bp-${key}" class="input" data-bind="businesses.${bi}.${key}" value="${esc(b[key])}" ${extra}></label>`;
+  return `<div class="page-h"><div><h1>Business profile</h1><p>Customers see your name, rating, description, menu and the distance from your address. Changes save automatically.</p></div><span class="pill good">${ic('check', 14)} Saved</span></div>
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Details</h3></div><div class="panel-b">
+      <div class="formgrid">${f('Business name', 'name', 'maxlength="60"')}${f('Owner / authorized person', 'owner')}${f('Contact mobile', 'phone', 'inputmode="tel"')}${f('Address', 'area')}</div>
+      <label class="field">Description shown to customers<textarea id="bp-story" class="textarea" data-bind="businesses.${bi}.story">${esc(b.story)}</textarea></label>
+      <div class="divider"></div><span class="eyebrow">Registration & payout</span>
+      <div class="formgrid">${f('DTI / SEC registration', 'dti')}${f('Business TIN', 'tin')}${f("Mayor's permit", 'permit')}${f('Settlement account', 'bank')}</div>
+      <span class="small muted">Registration numbers are re-checked by Balik when changed. Payouts go to the settlement account.</span>
+    </div></div>
+    <div class="narrow panel"><div class="panel-h"><h3>Menu & prices</h3><button class="btn secondary xs" data-act="bizAddSvc">${ic('plus', 14)} Add</button></div><div class="panel-b">
+      ${b.services.map((s, j) => { const named = String(s.name || '').trim(); return `<div class="card tight" style="${named ? '' : 'border-color:var(--accent)'}"><div class="row between"><label class="check" style="align-items:center"><input type="checkbox" id="bm-on-${j}" data-bind="businesses.${bi}.services.${j}.on" ${s.on && named ? 'checked' : ''} ${named ? '' : 'disabled'}>Active</label>${b.services.length > 1 ? `<button class="iconbtn" style="width:30px;height:30px" data-act="bizRemoveSvc" data-arg="${j}" aria-label="Remove ${esc(s.name || 'service')}">${ic('x', 15)}</button>` : ''}</div>
+        <label class="field">Service name<input id="bm-n-${j}" class="input" maxlength="40" data-bind="businesses.${bi}.services.${j}.name" value="${esc(s.name)}" placeholder="e.g. Hot stone massage"></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="field">Price (₱)<input id="bm-p-${j}" class="input num" type="number" min="0" step="10" data-bind="businesses.${bi}.services.${j}.price" value="${s.price}"></label><label class="field">Minutes<input id="bm-m-${j}" class="input num" type="number" min="10" step="5" data-bind="businesses.${bi}.services.${j}.mins" value="${s.mins}"></label></div></div>`; }).join('')}
+    </div></div></div>`;
 }
 
 /* =============== ADMIN CONSOLE =============== */
@@ -1347,11 +1394,141 @@ function adminPane() {
   const openLate = S.bookings.filter(b => b.late && !b.late.resolved).length;
   const apps = S.applications.filter(a => a.status === 'pending').length;
   const nav = (id, l, icn, n, cls = 'bad') => `<button data-act="adminTab" data-arg="${id}" ${t === id ? 'aria-current="page"' : ''}>${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill ${cls}" style="height:20px">${n}</span>` : ''}</button>`;
-  const m = { overview: admOverview, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, finance: admFinance, settings: admSettings }[t]();
+  const m = { overview: admOverview, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, finance: admFinance, settings: admSettings }[t]();
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${ic('refresh', 16, 2.2)}</span><div class="col"><b>Balik Operations</b><span class="tiny muted">Admin console</span></div></div>
     ${nav('overview', 'Overview', 'grid')}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('jobs', 'Requests & jobs', 'list')}<div class="sep"></div>
-    ${nav('providers', 'Providers', 'users', apps, 'accent')}${nav('finance', 'Finance & tax', 'receipt')}${nav('settings', 'Rules & settings', 'gear')}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
+    ${nav('providers', 'Providers', 'users', apps, 'accent')}${nav('customers', 'Customers & reviews', 'user')}${nav('finance', 'Finance & tax', 'receipt')}${nav('settings', 'Rules & settings', 'gear')}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
 }
+function admLive() {
+  const groups = [['green', 'On stand-by'], ['yellow', 'Away'], ['red', 'Off today']];
+  const active = S.providers.filter(p => p.active !== false);
+  return `<div class="page-h"><div><h1>Live status</h1><p>Every provider's light as customers see it, with any job in progress. You can change a provider's light on their behalf, for example when they call support.</p></div></div>
+    ${groups.map(([k, l]) => { const ps = active.filter(p => p.status === k); return `<div class="col" style="gap:10px"><div class="row">${tlMini(k)}<b>${l}</b><span class="muted small">${ps.length}</span></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px">${ps.map(p => { const j = S.bookings.find(b => b.pid === p.id && ['offered', 'paid', 'departed', 'arrived'].includes(b.status)); return `<div class="card tight"><div class="row">${avatar(p.name, p.hue, 38)}<div class="col grow"><b class="small">${esc(p.name)}</b><span class="tiny muted">${catName(p.cat)} · ${esc(p.area)}</span></div></div>${statusLine(p)}${j ? `<span class="small">${statusPill(j.status)} <button class="btn ghost xs" data-act="admOpenJob" data-arg="${j.id}">${j.id}</button></span>` : ''}<span class="tiny muted">${weekTotal(p).toFixed(1)} h green this week</span>
+      <div class="row" style="gap:6px"><span class="tiny muted">Set:</span>${[['green', 'Green'], ['yellow', 'Away 1 h'], ['red', 'Off']].filter(([s]) => s !== p.status).map(([s, lab]) => `<button class="btn secondary xs" data-act="admSetStatus" data-arg="${p.id}:${s}">${tlMini(s)} ${lab}</button>`).join('')}</div></div>`; }).join('') || '<span class="small muted">None</span>'}</div></div>`; }).join('')}
+    ${S.providers.some(p => p.active === false) ? `<div class="col" style="gap:10px"><div class="row"><span class="pill bad">Suspended</span></div><div class="row" style="flex-wrap:wrap;gap:8px">${S.providers.filter(p => p.active === false).map(p => `<span class="pill">${esc(p.name)}</span>`).join('')}</div></div>` : ''}`;
+}
+function jobMatches(b) {
+  const f = S.admin.jobFilter || 'all', q = (S.admin.jobQ || '').trim().toLowerCase();
+  const groups = { open: ['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'], done: ['ended', 'reviewed'], failed: ['declined', 'no_response', 'expired', 'cancelled'] };
+  if (f !== 'all' && f !== 'late' && !groups[f].includes(b.status)) return false;
+  if (f === 'late' && !b.late) return false;
+  if (!q) return true;
+  const p = b.pid ? prov(b.pid) : null;
+  return [b.id, b.customer, p ? p.name : '', b.bizId ? biz(b.bizId).name : '', b.services.map(s => s.name).join(' ')].join(' ').toLowerCase().includes(q);
+}
+function admJobs() {
+  const list = S.bookings.filter(jobMatches);
+  const sel = S.admin.sel ? bk(S.admin.sel) : list[0];
+  const open = sel && ['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'].includes(sel.status);
+  const fb = (id, l) => `<button data-act="admJobFilter" data-arg="${id}" aria-pressed="${(S.admin.jobFilter || 'all') === id}">${l}</button>`;
+  return `<div class="page-h"><div><h1>Requests & jobs</h1><p>Request, app alert and SMS, arrival time, payment, departure, arrival, service window and review — every time stamp is kept for disputes and fee decisions.</p></div></div>
+    <div class="row" style="flex-wrap:wrap;gap:10px"><div class="seg">${fb('all', 'All')}${fb('open', 'In progress')}${fb('done', 'Completed')}${fb('failed', 'Cancelled / failed')}${fb('late', 'Late')}</div>
+      <label class="row grow" style="min-width:220px;max-width:380px;height:40px;padding:0 12px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface)">${ic('search', 16)}<input id="adm-jq" class="grow" type="search" data-bind="admin.jobQ" value="${esc(S.admin.jobQ || '')}" placeholder="Search job, customer, provider, service" style="border:0;background:transparent;outline:none;height:100%;color:var(--fg)"></label><span class="small muted">${list.length} jobs</span></div>
+    <div class="split"><div class="wide panel"><div class="tablewrap"><table><thead><tr><th>Job</th><th>Customer</th><th>Provider</th><th>Status</th><th class="num">ETA</th><th>Paid</th><th>Arrival vs promise</th><th class="num">Value</th></tr></thead><tbody>
+      ${list.slice(0, 60).map(b => { const p = b.pid ? prov(b.pid) : null; const diff = b.arrivedAt && b.promisedAt ? Math.round((b.arrivedAt - b.promisedAt) / MIN) : null; return `<tr class="click ${sel && sel.id === b.id ? 'sel' : ''}" data-act="admSel" data-arg="${b.id}"><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td>${p ? esc(p.name) : esc(biz(b.bizId).name)}</td><td>${statusPill(b.status)}${b.refunded ? ' <span class="pill bad">Refunded</span>' : ''}</td><td class="num mono">${b.eta ? b.eta + 'm' : '—'}</td><td class="mono">${b.paidAt ? fmtT(b.paidAt) : '—'}</td><td>${diff == null ? '—' : diff <= 0 ? '<span style="color:var(--good)">On time</span>' : `<span style="color:${diff > S.settings.penaltyAfter ? 'var(--bad)' : 'var(--warn)'}">+${diff} min</span>`}</td><td class="num">${peso(b.gross)}</td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No jobs match.</div></td></tr>'}
+    </tbody></table></div></div>
+    <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
+      <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
+      ${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Referral fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div><span class="tiny muted">${sel.ledger.paidAt ? 'Paid out ' + fmtD(sel.ledger.paidAt) : 'Not yet paid out'}</span>` : ''}
+      <div class="divider"></div>
+      <label class="field">Message to customer (app alert)<textarea id="adm-msg" class="textarea" style="min-height:64px" data-bind="admin.msg" placeholder="e.g. Your provider is 10 minutes away.">${esc(S.admin.msg || '')}</textarea></label>
+      <button class="btn secondary sm" data-act="admMsg" data-arg="${sel.id}" ${(S.admin.msg || '').trim() ? '' : 'disabled'}>${ic('send', 14)} Send to customer</button>
+      <label class="field">Internal note<input id="adm-note" class="input" data-bind="admin.note" value="${esc(S.admin.note || '')}" placeholder="Visible to Balik staff only"></label>
+      <button class="btn secondary sm" data-act="admNote" data-arg="${sel.id}" ${(S.admin.note || '').trim() ? '' : 'disabled'}>Add note to timeline</button>
+      ${open ? (S.admin.confirm === 'cancel:' + sel.id ? `<div class="row" style="gap:6px"><button class="btn danger sm grow" data-act="admCancelJob" data-arg="${sel.id}">Confirm cancel ${sel.paidAt ? '& refund ' + peso(sel.gross) : ''}</button><button class="btn ghost sm" data-act="admConfirm" data-arg="">Keep</button></div>` : `<button class="btn danger sm" data-act="admConfirm" data-arg="cancel:${sel.id}">Cancel job${sel.paidAt ? ' & refund' : ''}</button>`) : ''}
+      ${sel.ledger && !sel.refunded ? (S.admin.confirm === 'refund:' + sel.id ? `<div class="row" style="gap:6px"><button class="btn danger sm grow" data-act="admRefundDone" data-arg="${sel.id}">Confirm refund ${peso(sel.gross)}</button><button class="btn ghost sm" data-act="admConfirm" data-arg="">Keep</button></div>` : `<button class="btn ghost sm" style="color:var(--bad)" data-act="admConfirm" data-arg="refund:${sel.id}">Refund completed job (dispute)</button>`) : ''}` : ''}</div></div></div>`;
+}
+function admProviders() {
+  const apps = S.applications;
+  const q = (S.admin.provQ || '').trim().toLowerCase();
+  const list = S.providers.map((p, i) => ({ p, i })).filter(({ p }) => !q || [p.name, catName(p.cat), p.area, p.biz ? biz(p.biz).name : 'individual'].join(' ').toLowerCase().includes(q));
+  const ed = S.admin.provEdit ? prov(S.admin.provEdit) : null, ei = ed ? S.providers.indexOf(ed) : -1;
+  return `<div class="page-h"><div><h1>Providers</h1><p>Applications, stand-by hours, penalties and job records. Referral fee follows penalty points unless you set a tier after reviewing the record.</p></div></div>
+    <div class="panel"><div class="panel-h"><h3>Applications</h3><span class="small muted">Certificates optional · photo, experience and identity required</span></div>
+    ${apps.length ? `<div class="tablewrap"><table><thead><tr><th>Photo</th><th>Applicant</th><th>Experience</th><th>Checks</th><th>Note</th><th></th></tr></thead><tbody>${apps.map(a => `<tr><td>${(a.photo || PHOTOS[a.photoKey]) ? `<button class="zoomav" data-act="zoom" data-arg="${a.id}" aria-label="Enlarge applicant photo" style="width:48px;height:48px"><span class="avatar ph" style="width:48px;height:48px"><img src="${a.photo || PHOTOS[a.photoKey]}" alt=""></span></button>` : '<span class="pill warn">No photo</span>'}</td><td><b>${esc(a.name)}</b><br><span class="tiny muted">${catName(a.cat)} · ${esc(a.area)}${a.staffOf ? ' · staff of ' + esc(biz(a.staffOf).name) : ''}</span></td><td>${a.years} yrs<br><span class="tiny muted">${esc(a.past)}</span></td><td><span class="pill ${a.idOk ? 'good' : 'warn'}">ID</span> <span class="pill ${a.selfie ? 'good' : 'warn'}">Selfie</span> <span class="pill ${a.tin ? 'good' : 'warn'}">TIN</span> ${a.cert ? '<span class="pill accent">Cert</span>' : ''}</td><td class="small" style="max-width:240px">${esc(a.why || '—')}</td><td>${a.status === 'pending' ? `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn primary xs" data-act="approve" data-arg="${a.id}">Approve</button><button class="btn secondary xs" data-act="askInfo" data-arg="${a.id}">Ask for info</button><button class="btn ghost xs" style="color:var(--bad)" data-act="reject" data-arg="${a.id}">Decline</button></div>${a.asked ? '<span class="tiny muted">Info requested by SMS</span>' : ''}` : `<span class="pill ${a.status === 'approved' ? 'good' : 'bad'}">${a.status}</span>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No applications.</div>'}</div>
+    ${ed ? `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><div class="row">${avatar(ed.name, ed.hue, 40)}<h3>Edit ${esc(ed.name)}</h3></div><button class="btn secondary xs" data-act="admEditProv" data-arg="">Done</button></div><div class="panel-b">
+      <div class="formgrid">
+        <label class="field">Name<input id="ap-e-name" class="input" data-bind="providers.${ei}.name" value="${esc(ed.name)}"></label>
+        <label class="field">Mobile<input id="ap-e-phone" class="input" data-bind="providers.${ei}.phone" value="${esc(ed.phone)}"></label>
+        <label class="field">Category<select id="ap-e-cat" class="select" data-bind="providers.${ei}.cat">${CATS.map(c => `<option value="${c.id}" ${ed.cat === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></label>
+        <label class="field">Base area<input id="ap-e-area" class="input" data-bind="providers.${ei}.area" value="${esc(ed.area)}"></label>
+        <label class="field">TIN<input id="ap-e-tin" class="input num" data-bind="providers.${ei}.tin" value="${esc(ed.tin)}"></label>
+        <label class="field">Years of experience<input id="ap-e-years" class="input num" type="number" min="0" data-bind="providers.${ei}.years" value="${ed.years}"></label>
+        <label class="field">Penalty points<input id="ap-e-points" class="input num" type="number" min="0" data-bind="providers.${ei}.points" value="${ed.points}"></label>
+        <label class="field">Certificate (optional)<input id="ap-e-cert" class="input" data-bind="providers.${ei}.cert" value="${esc(ed.cert || '')}" placeholder="e.g. TESDA NC II"></label>
+      </div>
+      <label class="check"><input type="checkbox" id="ap-e-ret" data-bind="providers.${ei}.returning" ${ed.returning ? 'checked' : ''}>Show "Returning pro" badge</label>
+      <span class="small muted">Changes save automatically and show in every app.</span></div></div>` : ''}
+    <div class="panel"><div class="panel-h"><h3>All providers · this week</h3><label class="row" style="min-width:220px;height:36px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface)">${ic('search', 15)}<input id="adm-pq" class="grow" type="search" data-bind="admin.provQ" value="${esc(S.admin.provQ || '')}" placeholder="Search name, category, area" style="border:0;background:transparent;outline:none;height:100%;color:var(--fg)"></label></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Now</th><th class="num">Green h</th><th class="num">Late ${S.settings.penaltyAfter}+</th><th class="num">Jobs · on-time</th><th class="num">Points</th><th>Referral fee</th><th>Actions</th></tr></thead><tbody>
+    ${list.map(({ p, i }) => { const r = records(p); const below = weekTotal(p) < S.settings.weeklyTarget; const off = p.active === false; return `<tr style="${off ? 'opacity:.55' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${p.biz ? esc(biz(p.biz).name) : 'Individual'} · ${catName(p.cat)}${p.returning ? ' · returning' : ''}</span></div></div></td><td>${off ? '<span class="pill bad">Suspended</span>' : tlMini(p.status)}</td><td class="num" style="${below ? 'color:var(--warn)' : ''}">${weekTotal(p).toFixed(1)}</td><td class="num">${r.late}</td><td class="num">${r.jobs} · ${pct(r.onTime)}</td><td class="num">${p.points ? `<span class="pill bad">${p.points}</span>` : 0}</td>
+      <td><select id="tier-${p.id}" class="select" style="height:32px;font-size:13px;width:140px" data-bind="providers.${i}.tierOverride" data-type="tier"><option value="" ${p.tierOverride == null ? 'selected' : ''}>Auto · ${S.settings.tiers[p.points <= 0 ? 0 : p.points <= 2 ? 1 : 2].rate}%</option>${S.settings.tiers.map((t, k) => `<option value="${k}" ${p.tierOverride === k ? 'selected' : ''}>${t.label} · ${t.rate}%</option>`).join('')}</select></td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admEditProv" data-arg="${p.id}">Edit</button>${p.points ? `<button class="btn ghost xs" data-act="admResetPts" data-arg="${p.id}">Reset points</button>` : ''}${off ? `<button class="btn primary xs" data-act="admSuspend" data-arg="${p.id}">Reactivate</button>` : (S.admin.confirm === 'susp:' + p.id ? `<button class="btn danger xs" data-act="admSuspend" data-arg="${p.id}">Confirm suspend</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="susp:${p.id}">Suspend</button>`)}</div></td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No providers match.</div></td></tr>'}
+    </tbody></table></div></div>
+    <div class="row"><button class="btn secondary sm" data-act="weekClose">Run weekly stand-by check now</button><span class="small muted">Adds a point to anyone under ${S.settings.weeklyTarget} h or ${S.settings.minDays} qualifying days.</span></div>`;
+}
+function customerRows() {
+  const map = {};
+  S.bookings.forEach(b => {
+    const key = b.cid === 'me' ? 'me' : b.customer;
+    const o = map[key] || (map[key] = { key, name: b.cid === 'me' ? S.customer.name : b.customer, jobs: 0, spent: 0, last: 0, me: b.cid === 'me' });
+    o.jobs++; if (b.paidAt && !b.refunded && !['cancelled'].includes(b.status)) o.spent += b.gross; o.last = Math.max(o.last, b.createdAt);
+  });
+  if (!map.me) map.me = { key: 'me', name: S.customer.name, jobs: 0, spent: 0, last: 0, me: true };
+  return Object.values(map).sort((a, b) => b.last - a.last);
+}
+function admCustomers() {
+  const flags = S.admin.custFlags || {};
+  const rows = customerRows();
+  const reviews = [];
+  S.providers.forEach(p => p.reviews.forEach((r, k) => reviews.push({ p, r, k })));
+  return `<div class="page-h"><div><h1>Customers & reviews</h1><p>Customers sign up with a verified email and mobile number; government ID is optional. Suspended customers cannot send new requests. Hidden reviews disappear from provider profiles.</p></div></div>
+    <div class="panel"><div class="panel-h"><h3>Customers · ${rows.length}</h3></div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Verification</th><th class="num">Bookings</th><th class="num">Spent</th><th>Last booking</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+    ${rows.map(c => { const susp = c.me ? !!S.customer.suspended : !!(flags[c.key] && flags[c.key].suspended); return `<tr style="${susp ? 'background:var(--bad-soft)' : ''}"><td><b>${esc(c.name)}</b>${c.me ? `<br><span class="tiny muted">${esc(S.customer.email)} · ${esc(S.customer.phone)}</span>` : ''}</td>
+      <td>${c.me ? `<span class="pill good">Email</span> <span class="pill good">Phone</span> ${S.customer.idOk ? '<span class="pill good">ID</span>' : '<span class="pill outline">No ID</span>'}` : '<span class="pill good">Email</span> <span class="pill good">Phone</span>'}</td>
+      <td class="num">${c.jobs}</td><td class="num">${peso(c.spent)}</td><td class="mono small">${c.last ? fmtD(c.last) : '—'}</td><td>${susp ? '<span class="pill bad">Suspended</span>' : '<span class="pill good">Active</span>'}</td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admCustJobs" data-arg="${esc(c.name)}">Bookings</button><button class="btn ${susp ? 'primary' : 'ghost'} xs" style="${susp ? '' : 'color:var(--bad)'}" data-act="admCustSusp" data-arg="${esc(c.key)}">${susp ? 'Reactivate' : 'Suspend'}</button>${c.me && !S.customer.idOk ? `<button class="btn ghost xs" data-act="admCustId">Mark ID verified</button>` : ''}</div></td></tr>`; }).join('')}
+    </tbody></table></div></div>
+    <div class="panel"><div class="panel-h"><h3>Review moderation · ${reviews.length}</h3><span class="small muted">Photo reviews appear on provider profiles</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>By</th><th>Rating</th><th>Review</th><th>Photos</th><th>Status</th><th></th></tr></thead><tbody>
+    ${reviews.map(({ p, r, k }) => `<tr style="${r.hidden ? 'opacity:.55' : ''}"><td>${esc(p.name)}</td><td>${esc(r.by)}<br><span class="tiny muted">${esc(r.ago)}</span></td><td>${starsH(r.stars)}</td><td class="small" style="max-width:280px">${esc(r.text || '—')}</td><td>${r.photos.length}</td><td>${r.hidden ? '<span class="pill bad">Hidden</span>' : '<span class="pill good">Visible</span>'}</td><td><button class="btn ${r.hidden ? 'secondary' : 'ghost'} xs" data-act="admReview" data-arg="${p.id}:${k}">${r.hidden ? 'Show' : 'Hide'}</button></td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+function admFinance() {
+  const n = now(), q = quarterOf(n), y = new Date(n).getFullYear();
+  const F = S.fin || (S.fin = { remit: {}, filed: {}, issued: {}, ref: '' });
+  const monthKey = y + '-' + String(new Date(n).getMonth() + 1).padStart(2, '0'), qKey = y + '-Q' + q;
+  const month = S.bookings.filter(b => b.ledger && sameMonth(b.endedAt, n));
+  const s = k => month.reduce((a, b) => a + (k === 'gross' ? b.gross : b.ledger[k]), 0);
+  const unpaid = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded);
+  const unpaidInd = unpaid.filter(b => !b.bizId), unpaidBiz = unpaid.filter(b => b.bizId);
+  const payees = {};
+  S.bookings.filter(b => b.ledger && quarterOf(b.endedAt) === q && new Date(b.endedAt).getFullYear() === y).forEach(b => {
+    const key = b.bizId ? 'b:' + b.bizId : 'p:' + b.pid; const o = payees[key] || (payees[key] = { key, name: b.ledger.payeeName, tin: b.ledger.payeeTin, gross: 0, wht: 0, ytd: payeeOf(b).ytd }); o.gross += b.gross; o.wht += b.ledger.wht;
+  });
+  const withWht = Object.values(payees).filter(o => o.wht > 0);
+  const issued = F.issued[qKey] || {};
+  const rec = (done, label, form, act, arg) => `<div class="card tight" style="${done ? 'border-color:var(--good-dot)' : ''}"><div class="row between"><div class="col"><b class="small">${label}</b><span class="tiny muted">${form}</span></div>${done ? `<span class="pill good">${ic('check', 13)} ${fmtD(done.at)}</span>` : `<button class="btn primary xs" data-act="${act}" data-arg="${arg}" ${(F.ref || '').trim() ? '' : 'disabled'}>Record</button>`}</div>${done ? `<span class="tiny muted">Ref. ${esc(done.ref)}</span>` : ''}</div>`;
+  return `<div class="page-h"><div><h1>Finance & tax</h1><p>Balik earns only the referral fee. As an e-marketplace operator under BIR RR 16-2023, it withholds 1% of half the gross remittance once a payee's yearly remittances pass ${peso(S.settings.whtThreshold)}, remits it to BIR and issues Form 2307 to each payee.</p></div></div>
+    <div class="kpis"><div class="kpi"><span class="l">Customer payments · month</span><span class="v">${peso(s('gross'))}</span></div><div class="kpi accent"><span class="l">Referral fee revenue</span><span class="v">${peso(s('fee'), 2)}</span></div><div class="kpi"><span class="l">Tax withheld · ${monthKey}</span><span class="v">${peso(s('wht'), 2)}</span></div><div class="kpi"><span class="l">Waiting to be paid out</span><span class="v">${peso(unpaid.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div></div>
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Payout batches</h3></div><div class="panel-b">
+      <div class="row between"><div class="col"><b>Individual providers · daily to GCash or bank</b><span class="small muted">${unpaidInd.length} jobs · ${peso(unpaidInd.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div><button class="btn primary sm" data-act="runPayout" data-arg="ind" ${unpaidInd.length ? '' : 'disabled'}>Run payout</button></div>
+      <div class="divider"></div>
+      ${S.businesses.map(bz => { const r = unpaidBiz.filter(b => b.bizId === bz.id); return `<div class="row between"><div class="col"><b>${esc(bz.name)} · ${({ weekly: 'weekly', biweekly: 'twice a month', monthly: 'monthly' })[bz.cycle]} to ${esc(bz.bank)}</b><span class="small muted">${r.length} jobs · ${peso(r.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div><button class="btn secondary sm" data-act="runPayout" data-arg="${bz.id}" ${r.length ? '' : 'disabled'}>Run payout</button></div>`; }).join('')}
+      <span class="tiny muted">Payouts go through the payment partner's disbursement service. Each job shows "Paid out" in the job detail once included.</span></div></div>
+    <div class="narrow panel"><div class="panel-h"><h3>BIR filings</h3></div><div class="panel-b">
+      <label class="field">Reference / confirmation no.<input id="fin-ref" class="input" data-bind="fin.ref" value="${esc(F.ref || '')}" placeholder="e.g. eFPS ref. 2026-10-123456"></label>
+      ${rec(F.remit[monthKey], 'Remit tax withheld · ' + monthKey, 'BIR Form 0619-E · ' + peso(s('wht'), 2), 'finRemit', monthKey)}
+      ${rec(F.filed[qKey], 'Quarterly return · Q' + q + ' ' + y, 'BIR Form 1601-EQ with payee list (QAP)', 'finFile', qKey)}
+      <div class="card tight"><div class="row between"><div class="col"><b class="small">Form 2307 · Q${q} ${y}</b><span class="tiny muted">${Object.keys(issued).length} of ${withWht.length} payees issued</span></div><button class="btn primary xs" data-act="finIssueAll" ${withWht.length && Object.keys(issued).length < withWht.length ? '' : 'disabled'}>Issue all</button></div></div>
+      <p class="tiny muted">Confirm forms and deadlines with a Philippine tax adviser before launch.</p></div></div></div>
+    <div class="panel"><div class="panel-h"><h3>Withholding by payee · Q${q} ${y}</h3></div><div class="tablewrap"><table><thead><tr><th>Payee</th><th>TIN</th><th class="num">YTD remittance</th><th class="num">Q${q} gross</th><th class="num">Withheld</th><th>2307</th></tr></thead><tbody>
+      ${Object.values(payees).sort((a, b) => b.ytd - a.ytd).map(o => `<tr><td><b>${esc(o.name)}</b></td><td class="mono small">${esc(o.tin)}</td><td class="num">${peso(o.ytd)}${o.ytd > S.settings.whtThreshold ? ' <span class="pill warn" style="height:20px">Over</span>' : ''}</td><td class="num">${peso(o.gross)}</td><td class="num">${peso(o.wht, 2)}</td><td><div class="row" style="gap:6px"><button class="btn secondary xs" data-act="open2307" data-arg="${o.key}">View</button>${o.wht > 0 ? (issued[o.key] ? `<span class="pill good">Issued ${fmtD(issued[o.key])}</span>` : `<button class="btn ghost xs" data-act="finIssue" data-arg="${o.key}">Issue</button>`) : '<span class="tiny muted">Not needed</span>'}</div></td></tr>`).join('')}
+    </tbody></table></div></div>
+    <div class="panel"><div class="panel-h"><h3>Ledger · this month</h3></div><div class="tablewrap"><table><thead><tr><th>Job</th><th>Ended</th><th>Payee</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th><th>Payout</th></tr></thead><tbody>
+      ${month.map(b => `<tr><td class="mono">${b.id}</td><td class="mono">${fmtD(b.endedAt)}</td><td>${esc(b.ledger.payeeName)}</td><td class="num">${peso(b.gross, 2)}</td><td class="num">${peso(b.ledger.fee, 2)}</td><td class="num">${peso(b.ledger.wht, 2)}</td><td class="num">${peso(b.ledger.net, 2)}</td><td>${b.refunded ? '<span class="pill bad">Refunded</span>' : b.ledger.paidAt ? `<span class="pill good">Paid ${fmtD(b.ledger.paidAt)}</span>` : '<span class="pill warn">Pending</span>'}</td></tr>`).join('')}
+    </tbody></table></div></div>`;
+}
+
 function admOverview() {
   const n = now();
   const month = S.bookings.filter(b => b.ledger && sameMonth(b.endedAt, n));
@@ -1377,12 +1554,6 @@ function admOverview() {
       <span class="tiny muted">R = returning professional</span></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>Admin SMS feed</h3></div><div class="panel-b">${S.sms.slice(0, 6).map(s => `<div class="col" style="gap:2px;border-bottom:1px solid var(--line);padding-bottom:8px"><span class="tiny muted num">${fmtT(s.at)} · to ${esc(s.to)}</span><span class="small" style="${s.kind === 'late' ? 'color:var(--bad)' : ''}">${esc(s.text)}</span></div>`).join('') || '<div class="empty">No SMS yet.</div>'}</div></div></div>`;
 }
-function admLive() {
-  const groups = [['green', 'On stand-by'], ['yellow', 'Away'], ['red', 'Off today']];
-  return `<div class="page-h"><div><h1>Live status</h1><p>Every provider's light as customers see it, with any job in progress.</p></div></div>
-    ${groups.map(([k, l]) => { const ps = S.providers.filter(p => p.status === k); return `<div class="col" style="gap:10px"><div class="row"><span class="dot ${k}"></span><b>${l}</b><span class="muted small">${ps.length}</span></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px">${ps.map(p => { const st = statusOf(p); const j = S.bookings.find(b => b.pid === p.id && ['offered', 'paid', 'departed', 'arrived'].includes(b.status)); return `<div class="card tight"><div class="row">${avatar(p.name, p.hue, 34)}<div class="col grow"><b class="small">${esc(p.name)}</b><span class="tiny muted">${catName(p.cat)} · ${esc(p.area)}</span></div></div>${statusLine(p)}${j ? `<span class="small">${statusPill(j.status)} ${j.id}</span>` : ''}<span class="tiny muted">${weekTotal(p).toFixed(1)} h green this week</span></div>`; }).join('') || '<span class="small muted">None</span>'}</div></div>`; }).join('')}`;
-}
 function admLate() {
   const list = S.bookings.filter(b => b.late).sort((a, b) => (a.late.resolved - b.late.resolved) || b.late.at - a.late.at);
   const lateSms = S.sms.filter(s => s.kind === 'late');
@@ -1391,48 +1562,6 @@ function admLate() {
     <div class="panel"><div class="tablewrap"><table><thead><tr><th>Job</th><th>Provider</th><th>Promised</th><th class="num">Over by</th><th>Provider alert</th><th>Provider reply</th><th>Actions</th></tr></thead><tbody>
     ${list.map(b => { const p = prov(b.pid); const over = Math.round(((b.arrivedAt || now()) - b.promisedAt) / MIN); return `<tr style="${!b.late.resolved ? 'background:var(--bad-soft)' : ''}"><td class="mono">${b.id}</td><td>${esc(p.name)}${p.biz ? `<br><span class="tiny muted">${esc(biz(p.biz).name)}</span>` : ''}</td><td class="mono">${fmtT(b.promisedAt)}</td><td class="num"><b style="color:${over > S.settings.penaltyAfter ? 'var(--bad)' : ''}">${over} min</b>${b.late.penalty ? '<br><span class="pill bad" style="height:20px">Penalty</span>' : ''}</td><td>Delivered${b.late.seen ? ' · seen' : ''}</td><td>${b.late.replies.length ? b.late.replies.map(x => '+' + x + ' min').join(', ') : b.arrivedAt ? 'Checked in ' + fmtT(b.arrivedAt) : b.status === 'cancelled' ? 'Cancelled' : '<span style="color:var(--bad)">No reply</span>'}</td>
       <td>${b.late.resolved ? '<span class="pill good">Resolved</span>' : `<div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn secondary xs" data-act="admCall" data-arg="${b.id}">Call provider</button><button class="btn secondary xs" data-act="admNotify" data-arg="${b.id}">Notify customer</button><button class="btn primary xs" data-act="admReassign" data-arg="${b.id}">Reassign nearest</button><button class="btn danger xs" data-act="admRefund" data-arg="${b.id}">Cancel & refund</button></div>`}</td></tr>`; }).join('') || '<tr><td colspan="7"><div class="empty">No late arrivals. Use "+10 min" in the top bar during a job to trigger one.</div></td></tr>'}
-    </tbody></table></div></div>`;
-}
-function admJobs() {
-  const sel = S.admin.sel ? bk(S.admin.sel) : S.bookings[0];
-  return `<div class="page-h"><div><h1>Requests & jobs</h1><p>Request, app alert and SMS, arrival time, payment, departure, arrival, service window and review — every time stamp is kept for disputes and fee decisions.</p></div></div>
-    <div class="split"><div class="wide panel"><div class="tablewrap"><table><thead><tr><th>Job</th><th>Provider</th><th>Status</th><th class="num">ETA</th><th>Paid</th><th>Departed</th><th>Arrival vs promise</th><th class="num">Value</th></tr></thead><tbody>
-      ${S.bookings.slice(0, 30).map(b => { const p = b.pid ? prov(b.pid) : null; const diff = b.arrivedAt && b.promisedAt ? Math.round((b.arrivedAt - b.promisedAt) / MIN) : null; return `<tr class="click ${sel && sel.id === b.id ? 'sel' : ''}" data-act="admSel" data-arg="${b.id}"><td class="mono">${b.id}</td><td>${p ? esc(p.name) : esc(biz(b.bizId).name)}</td><td>${statusPill(b.status)}</td><td class="num mono">${b.eta ? b.eta + 'm' : '—'}</td><td class="mono">${b.paidAt ? fmtT(b.paidAt) : '—'}</td><td class="mono">${b.departedAt ? fmtT(b.departedAt) : '—'}</td><td>${diff == null ? '—' : diff <= 0 ? '<span style="color:var(--good)">On time</span>' : `<span style="color:${diff > S.settings.penaltyAfter ? 'var(--bad)' : 'var(--warn)'}">+${diff} min</span>`}</td><td class="num">${peso(b.gross)}</td></tr>`; }).join('')}
-    </tbody></table></div></div>
-    <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))}</span><ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Referral fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div>` : ''}` : ''}</div></div></div>`;
-}
-function admProviders() {
-  const apps = S.applications;
-  return `<div class="page-h"><div><h1>Providers</h1><p>Applications, stand-by hours, penalties and job records. Referral fee follows penalty points unless you set a tier after reviewing the record.</p></div></div>
-    <div class="panel"><div class="panel-h"><h3>Applications</h3><span class="small muted">Certificates optional · experience and identity required</span></div>
-    ${apps.length ? `<div class="tablewrap"><table><thead><tr><th>Photo</th><th>Applicant</th><th>Experience</th><th>Checks</th><th>Note</th><th></th></tr></thead><tbody>${apps.map(a => `<tr><td>${(a.photo || PHOTOS[a.photoKey]) ? `<button class="zoomav" data-act="zoom" data-arg="${a.id}" aria-label="Enlarge applicant photo" style="width:48px;height:48px"><span class="avatar ph" style="width:48px;height:48px"><img src="${a.photo || PHOTOS[a.photoKey]}" alt=""></span></button>` : '<span class="pill warn">No photo</span>'}</td><td><b>${esc(a.name)}</b><br><span class="tiny muted">${catName(a.cat)} · ${esc(a.area)}</span></td><td>${a.years} yrs<br><span class="tiny muted">${esc(a.past)}</span></td><td><span class="pill ${a.idOk ? 'good' : 'warn'}">ID</span> <span class="pill ${a.selfie ? 'good' : 'warn'}">Selfie</span> <span class="pill ${a.tin ? 'good' : 'warn'}">TIN</span> ${a.cert ? '<span class="pill accent">Cert</span>' : ''}</td><td class="small" style="max-width:240px">${esc(a.why || '—')}</td><td>${a.status === 'pending' ? `<div class="row" style="gap:6px"><button class="btn primary xs" data-act="approve" data-arg="${a.id}">Approve</button><button class="btn secondary xs" data-act="reject" data-arg="${a.id}">Decline</button></div>` : `<span class="pill ${a.status === 'approved' ? 'good' : 'bad'}">${a.status}</span>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No applications.</div>'}</div>
-    <div class="panel"><div class="panel-h"><h3>Stand-by, penalties & records · this week</h3></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Now</th><th class="num">Green h</th><th class="num">Days ≥ ${S.settings.dayTarget} h</th><th class="num">Late ${S.settings.penaltyAfter}+ min</th><th class="num">Jobs · service h</th><th class="num">On-time</th><th class="num">Points</th><th>Referral fee</th></tr></thead><tbody>
-    ${S.providers.map((p, i) => { const r = records(p); const below = weekTotal(p) < S.settings.weeklyTarget; return `<tr><td><b>${esc(p.name)}</b><br><span class="tiny muted">${p.biz ? esc(biz(p.biz).name) : 'Individual'}${p.returning ? ' · returning' : ''}</span></td><td><span class="dot ${p.status}"></span></td><td class="num" style="${below ? 'color:var(--warn)' : ''}">${weekTotal(p).toFixed(1)}</td><td class="num">${daysMet(p)}</td><td class="num">${r.late}</td><td class="num">${r.jobs} · ${r.hrs.toFixed(1)}</td><td class="num">${pct(r.onTime)}</td><td class="num">${p.points ? `<span class="pill bad">${p.points}</span>` : 0}</td>
-      <td><select id="tier-${p.id}" class="select" style="height:32px;font-size:13px;width:150px" data-bind="providers.${i}.tierOverride" data-type="tier"><option value="" ${p.tierOverride == null ? 'selected' : ''}>Auto · ${S.settings.tiers[p.points <= 0 ? 0 : p.points <= 2 ? 1 : 2].rate}%</option>${S.settings.tiers.map((t, k) => `<option value="${k}" ${p.tierOverride === k ? 'selected' : ''}>${t.label} · ${t.rate}%</option>`).join('')}</select></td></tr>`; }).join('')}
-    </tbody></table></div></div>
-    <div class="row"><button class="btn secondary sm" data-act="weekClose">Run weekly stand-by check now</button><span class="small muted">Adds a point to anyone under ${S.settings.weeklyTarget} h or ${S.settings.minDays} qualifying days.</span></div>`;
-}
-function admFinance() {
-  const n = now(), q = quarterOf(n);
-  const month = S.bookings.filter(b => b.ledger && sameMonth(b.endedAt, n));
-  const s = k => month.reduce((a, b) => a + (k === 'gross' ? b.gross : b.ledger[k]), 0);
-  const payees = {};
-  S.bookings.filter(b => b.ledger && quarterOf(b.endedAt) === q && new Date(b.endedAt).getFullYear() === new Date(n).getFullYear()).forEach(b => {
-    const key = b.bizId ? 'b:' + b.bizId : 'p:' + b.pid; const o = payees[key] || (payees[key] = { key, name: b.ledger.payeeName, tin: b.ledger.payeeTin, gross: 0, wht: 0, ytd: payeeOf(b).ytd }); o.gross += b.gross; o.wht += b.ledger.wht;
-  });
-  return `<div class="page-h"><div><h1>Finance & tax</h1><p>Balik earns only the referral fee. As an e-marketplace operator under BIR RR 16-2023, it withholds 1% of half the gross remittance once a payee's yearly remittances pass ${peso(S.settings.whtThreshold)}, remits it to BIR and issues Form 2307 to each payee.</p></div></div>
-    <div class="kpis"><div class="kpi"><span class="l">Customer payments · month</span><span class="v">${peso(s('gross'))}</span></div><div class="kpi accent"><span class="l">Referral fee revenue</span><span class="v">${peso(s('fee'), 2)}</span></div><div class="kpi"><span class="l">Tax withheld · to remit</span><span class="v">${peso(s('wht'), 2)}</span></div><div class="kpi"><span class="l">Paid out to providers</span><span class="v">${peso(s('net'), 2)}</span></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Withholding by payee · Q${q} ${new Date(n).getFullYear()}</h3></div><div class="tablewrap"><table><thead><tr><th>Payee</th><th>TIN</th><th class="num">YTD remittance</th><th class="num">Q${q} gross</th><th class="num">Withheld</th><th></th></tr></thead><tbody>
-      ${Object.values(payees).sort((a, b) => b.ytd - a.ytd).map(o => `<tr><td><b>${esc(o.name)}</b></td><td class="mono small">${esc(o.tin)}</td><td class="num">${peso(o.ytd)}${o.ytd > S.settings.whtThreshold ? ' <span class="pill warn" style="height:20px">Over</span>' : ''}</td><td class="num">${peso(o.gross)}</td><td class="num">${peso(o.wht, 2)}</td><td><button class="btn secondary xs" data-act="open2307" data-arg="${o.key}">2307</button></td></tr>`).join('')}
-    </tbody></table></div></div>
-    <div class="narrow panel"><div class="panel-h"><h3>Filing checklist</h3></div><div class="panel-b">
-      <div class="row" style="align-items:flex-start">${ic('check', 18)}<p class="small"><b>Monthly:</b> remit tax withheld with BIR Form 0619-E.</p></div>
-      <div class="row" style="align-items:flex-start">${ic('check', 18)}<p class="small"><b>Quarterly:</b> file BIR Form 1601-EQ with the payee list.</p></div>
-      <div class="row" style="align-items:flex-start">${ic('check', 18)}<p class="small"><b>Each quarter:</b> issue BIR Form 2307 to every payee with tax withheld.</p></div>
-      <div class="row" style="align-items:flex-start">${ic('check', 18)}<p class="small"><b>Onboarding:</b> collect each payee's BIR certificate of registration or TIN, and any sworn declaration for the ${peso(S.settings.whtThreshold)} exemption.</p></div>
-      <p class="tiny muted">Confirm forms and deadlines with a Philippine tax adviser before launch.</p></div></div></div>
-    <div class="panel"><div class="panel-h"><h3>Ledger · this month</h3></div><div class="tablewrap"><table><thead><tr><th>Job</th><th>Ended</th><th>Payee</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th></tr></thead><tbody>
-      ${month.map(b => `<tr><td class="mono">${b.id}</td><td class="mono">${fmtD(b.endedAt)}</td><td>${esc(b.ledger.payeeName)}</td><td class="num">${peso(b.gross, 2)}</td><td class="num">${peso(b.ledger.fee, 2)}</td><td class="num">${peso(b.ledger.wht, 2)}</td><td class="num">${peso(b.ledger.net, 2)}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function admSettings() {
@@ -1459,6 +1588,16 @@ function admSettings() {
 function modal() {
   const m = S.modal; if (!m) return '';
   if (m.kind === 'photo') return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Photo of ${esc(m.name)}" style="width:min(460px,100%)"><div class="row between"><b>${esc(m.name)}</b><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div><img src="${m.src}" alt="" style="width:100%;border-radius:14px"></div></div>`;
+  if (m.kind === 'stmt') {
+    const b = biz(S.biz.id), p = bizPeriods(b)[m.k];
+    return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Settlement statement" style="width:min(720px,100%)">
+      <div class="row between"><h2 style="font-size:18px">Settlement statement · ${fmtD(p.start)} – ${fmtD(p.end - DAY)}</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
+      <div class="row between small"><span>${esc(b.name)} · TIN ${esc(b.tin)}</span><span>${p.current ? 'Scheduled ' : 'Paid '}${fmtD(p.end)} to ${esc(b.bank)}</span></div>
+      <div class="tablewrap"><table><thead><tr><th>Job</th><th>Date</th><th>Therapist</th><th>Service</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th></tr></thead><tbody>
+      ${p.rows.map(x => `<tr><td class="mono">${x.id}</td><td class="mono">${fmtD(x.endedAt)}</td><td>${esc(prov(x.pid) ? prov(x.pid).name : '')}</td><td>${esc(x.services.map(s => s.name).join(' + '))}</td><td class="num">${peso(x.gross, 2)}</td><td class="num">${peso(x.ledger.fee, 2)}</td><td class="num">${peso(x.ledger.wht, 2)}</td><td class="num">${peso(x.ledger.net, 2)}</td></tr>`).join('')}
+      <tr><td colspan="4"><b>Total</b></td><td class="num"><b>${peso(p.gross, 2)}</b></td><td class="num"><b>${peso(p.fee, 2)}</b></td><td class="num"><b>${peso(p.wht, 2)}</b></td><td class="num"><b>${peso(p.net, 2)}</b></td></tr></tbody></table></div>
+      <p class="tiny muted">Tax withheld is credited to the business with BIR Form 2307 each quarter.</p></div></div>`;
+  }
   if (m.kind === '2307') {
     const [t, id] = m.key.split(':'); const n = now(), q = quarterOf(n), y = new Date(n).getFullYear();
     const rows = S.bookings.filter(b => b.ledger && quarterOf(b.endedAt) === q && new Date(b.endedAt).getFullYear() === y && (t === 'b' ? b.bizId === id : (b.pid === id && !b.bizId)));
@@ -1547,7 +1686,7 @@ function render() {
   } else if (fid) { const el = document.getElementById(fid); if (el) el.focus({ preventScroll: true }); }
   save();
 }
-const STORE = 'balik-demo-v2';
+const STORE = 'balik-demo-v3';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -1575,6 +1714,7 @@ function setPath(path, val) { const ks = path.split('.'); let o = S; for (let i 
 function getPath(path) { return path.split('.').reduce((o, k) => o && o[k], S); }
 
 function sendRequest() {
+  if (S.customer.suspended) { toast('customer', 'Account on hold', 'Please contact Balik support to reactivate your account.'); return; }
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
   const b = newBooking({ pid: isBiz ? null : src.id, bizId: isBiz ? src.id : (src.biz || null), services: svcs.map(s => ({ ...s })), gross, mins, status: isBiz ? 'business_queue' : 'requested', when: c.when, slotAt: c.when === 'later' ? c.slot : null, respondBy: now() + S.settings.respond * MIN });
   logB(b, 'Customer sent request (no charge)');
@@ -1744,7 +1884,50 @@ const A = {
     notifyProviderOfRequest(b, p); S.prov.id = pid; S.prov.screen = 'jobs';
     if (b.cid === 'me') { pushAlert('customer', 'Therapist assigned', `${p.name} from ${biz(b.bizId).name} will send an arrival time.`, b.id); toast('customer', 'Therapist assigned', p.name + ' will reply with an arrival time.'); }
     toast('business', 'Assigned to ' + p.name, 'They got an app alert and SMS.'); },
-  invite: () => { const b = biz(S.biz.id), v = S.biz.invite; b.invited.push({ name: v.name, phone: v.phone, status: 'Invite sent' }); sendSms(v.phone, `Balik: ${b.name} invited you. Verify your ID and TIN: balik.ph/join`); toast('business', 'Invite sent', 'SMS sent to ' + v.phone); S.biz.invite = { name: '', phone: '' }; },
+  invite: () => { const b = biz(S.biz.id), v = S.biz.invite; b.invited.push({ name: v.name.trim(), phone: v.phone.trim(), stage: 'sent', sentAt: now() }); sendSms(v.phone, `Balik: ${b.name} invited you to join their team. Add your photo, ID and TIN: balik.ph/join`); toast('business', 'Invite sent', 'SMS sent to ' + v.phone); S.biz.invite = { name: '', phone: '' }; },
+  bizConfirm: k => { S.biz.confirm = k || ''; },
+  bizEditStaff: id => { S.biz.editStaff = id || null; },
+  bizRemoveStaff: id => { const b = biz(S.biz.id), p = prov(id); b.staff = b.staff.filter(x => x !== id); p.active = false; p.status = 'red'; p.biz = null; S.biz.confirm = ''; if (S.biz.editStaff === id) S.biz.editStaff = null; toast('business', 'Removed ' + p.name, 'They no longer appear under ' + b.name + '.'); },
+  bizResend: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; v.sentAt = now(); sendSms(v.phone, `Balik: reminder — ${b.name} invited you. balik.ph/join`); toast('business', 'Invite re-sent', v.phone); },
+  bizCancelInvite: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; if (v.appId) { const a = S.applications.find(x => x.id === v.appId); if (a && a.status === 'pending') a.status = 'withdrawn'; } b.invited.splice(Number(k), 1); toast('business', 'Invite cancelled', v.name); },
+  bizSimSignup: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; const id = 'A-' + (300 + S.applications.length);
+    S.applications.unshift({ id, staffOf: b.id, photo: v.photo || null, photoKey: v.photoKey || 'sample', name: v.name, cat: b.cat, years: 5, past: 'Therapist, invited by ' + b.name, why: 'Invited by ' + b.name + ' to join as staff.', area: b.area, idOk: true, selfie: true, tin: '6' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/(\d{2})(\d{3})(\d{3})/, '$1-$2-$3') + '-000', cert: null, at: now(), status: 'pending' });
+    v.stage = 'review'; v.appId = id; toast('business', v.name + ' finished sign-up', 'Waiting for Balik approval.'); toast('admin', 'New staff application', v.name + ' · ' + b.name); },
+  bizDecline: id => { const r = bk(id); r.status = 'declined'; logB(r, biz(r.bizId).name + ' declined: no therapist available');
+    if (r.cid === 'me') { pushAlert('customer', biz(r.bizId).name + " can't take this one", 'You were not charged. See other providers nearby.', r.id, 'bad'); toast('customer', 'Spa unavailable', 'You were not charged. Try someone nearby.'); }
+    toast('business', 'Request declined', r.id); },
+  bizStmt: k => { S.modal = { kind: 'stmt', k: Number(k) }; },
+  bizAddSvc: () => { const b = biz(S.biz.id); b.services.push({ name: '', mins: 60, price: 700, on: false }); const j = b.services.length - 1; setTimeout(() => { const el = document.getElementById('bm-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
+  bizRemoveSvc: j => { const b = biz(S.biz.id); if (b.services.length > 1) b.services.splice(Number(j), 1); },
+  admSetStatus: arg => { const [id, st] = arg.split(':'); const p = prov(id); p.status = st; p.backAt = st === 'yellow' ? now() + HOUR : null; pushAlert('provider:' + id, 'Status changed by Balik support', 'Your light is now ' + ({ green: 'green (stand by)', yellow: 'yellow (away 1 h)', red: 'red (off today)' })[st] + '.', null); toast('admin', p.name + ' set to ' + st, 'The provider was notified.'); },
+  admOpenJob: id => { S.admin.tab = 'jobs'; S.admin.sel = id; S.admin.jobFilter = 'all'; S.admin.jobQ = ''; },
+  admJobFilter: f => { S.admin.jobFilter = f; S.admin.sel = null; },
+  admConfirm: k => { S.admin.confirm = k || ''; },
+  admMsg: id => { const b = bk(id), m = S.admin.msg.trim(); logB(b, 'Balik → customer: ' + m); if (b.cid === 'me') { pushAlert('customer', 'Message from Balik', m, b.id); toast('customer', 'Message from Balik', m); } S.admin.msg = ''; toast('admin', 'Sent to ' + b.customer, m.slice(0, 60)); },
+  admNote: id => { const b = bk(id); logB(b, 'Note: ' + S.admin.note.trim()); S.admin.note = ''; },
+  admCancelJob: id => { const b = bk(id), p = b.pid ? prov(b.pid) : null; const paid = !!b.paidAt; S.admin.sel = id; b.status = 'cancelled'; b.refunded = paid; if (b.late) b.late.resolved = true; if (p && ['paid', 'departed', 'arrived'].includes(S.bookings.find(x => x.id === id).status)) p.status = 'green'; if (p) p.status = p.status === 'red' ? 'red' : 'green';
+    logB(b, 'Cancelled by Balik' + (paid ? ' · full refund ' + peso(b.gross) : ''));
+    if (b.cid === 'me') { pushAlert('customer', 'Booking cancelled by Balik', paid ? peso(b.gross) + ' is being refunded.' : 'You were not charged.', b.id, 'bad'); toast('customer', 'Booking cancelled', paid ? 'Full refund on the way.' : 'You were not charged.'); }
+    if (p) pushAlert('provider:' + p.id, 'Job cancelled by Balik', b.id, b.id, 'bad'); S.admin.confirm = ''; toast('admin', 'Cancelled ' + b.id, paid ? 'Refund issued.' : ''); },
+  admRefundDone: id => { const b = bk(id); S.admin.sel = id; b.refunded = true; logB(b, 'Refunded after dispute · ' + peso(b.gross)); if (b.cid === 'me') { pushAlert('customer', 'Refund issued', peso(b.gross) + ' for ' + b.id + '.', b.id); } S.admin.confirm = ''; toast('admin', 'Refund issued', b.id + ' · ' + peso(b.gross)); },
+  admEditProv: id => { S.admin.provEdit = id || null; },
+  admResetPts: id => { const p = prov(id); p.points = 0; pushAlert('provider:' + id, 'Penalty points reset', 'Balik reset your penalty points to 0.', null, 'good'); toast('admin', 'Points reset', p.name); },
+  admSuspend: id => { const p = prov(id); if (p.active === false) { p.active = true; toast('admin', 'Reactivated ' + p.name, 'They appear to customers again.'); pushAlert('provider:' + id, 'Account reactivated', 'You can take requests again.', null, 'good'); }
+    else { p.active = false; p.status = 'red'; toast('admin', 'Suspended ' + p.name, 'Hidden from customers.'); pushAlert('provider:' + id, 'Account suspended', 'Contact Balik support.', null, 'bad'); } S.admin.confirm = ''; },
+  admCustJobs: name => { S.admin.tab = 'jobs'; S.admin.jobFilter = 'all'; S.admin.jobQ = name; S.admin.sel = null; },
+  admCustSusp: key => { if (key === 'me') { S.customer.suspended = !S.customer.suspended; toast('admin', S.customer.suspended ? 'Customer suspended' : 'Customer reactivated', S.customer.name); if (S.customer.suspended) pushAlert('customer', 'Account on hold', 'Please contact Balik support.', null, 'bad'); }
+    else { const f = S.admin.custFlags || (S.admin.custFlags = {}); f[key] = { suspended: !(f[key] && f[key].suspended) }; toast('admin', f[key].suspended ? 'Customer suspended' : 'Customer reactivated', key); } },
+  admCustId: () => { S.customer.idOk = true; toast('admin', 'ID marked verified', S.customer.name); },
+  admReview: arg => { const [pid, k] = arg.split(':'); const r = prov(pid).reviews[Number(k)]; r.hidden = !r.hidden; toast('admin', r.hidden ? 'Review hidden' : 'Review visible', prov(pid).name); },
+  askInfo: id => { const a = S.applications.find(x => x.id === id); a.asked = true; sendSms(a.name, 'Balik: please send a clearer ID photo and your past employer contact.'); toast('admin', 'Info requested', a.name); },
+  runPayout: who => { const t = now(); const rows = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded && (who === 'ind' ? !b.bizId : b.bizId === who)); rows.forEach(b => { b.ledger.paidAt = t; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName); });
+    const tot = rows.reduce((a, b) => a + b.ledger.net, 0); toast('admin', 'Payout batch sent', rows.length + ' jobs · ' + peso(tot, 2));
+    if (who !== 'ind') toast('business', 'Payout received', peso(tot, 2) + ' to ' + biz(who).bank); else { const me = prov(S.prov.id); if (rows.some(b => b.pid === me.id)) toast('provider', 'Payout sent', 'Check Earnings.'); } },
+  finRemit: k => { S.fin.remit[k] = { at: now(), ref: S.fin.ref.trim() }; S.fin.ref = ''; toast('admin', '0619-E recorded', k); },
+  finFile: k => { S.fin.filed[k] = { at: now(), ref: S.fin.ref.trim() }; S.fin.ref = ''; toast('admin', '1601-EQ recorded', k); },
+  finIssue: key => { const n = now(); const qk = new Date(n).getFullYear() + '-Q' + quarterOf(n); (S.fin.issued[qk] = S.fin.issued[qk] || {})[key] = n; toast('admin', 'Form 2307 issued', key); },
+  finIssueAll: () => { const n = now(), q = quarterOf(n), y = new Date(n).getFullYear(), qk = y + '-Q' + q; const iss = S.fin.issued[qk] = S.fin.issued[qk] || {}; let c = 0;
+    S.bookings.filter(b => b.ledger && b.ledger.wht > 0 && quarterOf(b.endedAt) === q && new Date(b.endedAt).getFullYear() === y).forEach(b => { const key = b.bizId ? 'b:' + b.bizId : 'p:' + b.pid; if (!iss[key]) { iss[key] = n; c++; } }); toast('admin', 'Form 2307 issued', c + ' payees'); },
   setCycle: c => { biz(S.biz.id).cycle = c; },
   // admin
   adminTab: t => { S.admin.tab = t; },
@@ -1760,11 +1943,12 @@ const A = {
     if (b.cid === 'me') { S.cust.bid = nb.id; S.cust.screen = 'request'; pushAlert('customer', 'We found someone closer', `${alt.name} was asked to take over. Your first payment is refunded.`, nb.id); toast('customer', 'Reassigned to ' + alt.name, 'Your first payment is refunded.'); }
     S.prov.id = alt.id; S.prov.screen = 'jobs'; toast('admin', 'Reassigned to ' + alt.name, fmtKm(haversine(alt, b)) + ' from the customer'); },
   admRefund: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; } p.status = 'green'; logB(b, 'Admin cancelled and refunded'); if (b.cid === 'me') { pushAlert('customer', 'Booking cancelled · full refund', peso(b.gross) + ' is being refunded.', b.id, 'bad'); toast('customer', 'Full refund on the way', peso(b.gross)); } toast('admin', 'Refunded', b.id); },
-  approve: id => { const a = S.applications.find(x => x.id === id); a.status = 'approved'; const nid = 'p' + (S.providers.length + 1);
+  approve: id => { const a = S.applications.find(x => x.id === id); a.status = 'approved'; const nid = 'p' + (S.providers.length + 1); const sb = a.staffOf ? biz(a.staffOf) : null;
     const base = { cubao: [14.6196, 121.0536] }; const ll = base.cubao;
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Balik.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
-    toast('admin', 'Approved ' + a.name, 'They can switch to stand-by now.'); },
-  reject: id => { S.applications.find(x => x.id === id).status = 'declined'; },
+    if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by Balik.'); }
+    toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
+  reject: id => { const a = S.applications.find(x => x.id === id); a.status = 'declined'; if (a.staffOf) { const sb = biz(a.staffOf); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' was not approved', 'Contact Balik support for details.'); } },
   weekClose: () => { let n = 0; S.providers.forEach(p => { if (weekTotal(p) < S.settings.weeklyTarget || daysMet(p) < S.settings.minDays) { p.points++; n++; p.history.push({ at: now(), text: 'Weekly stand-by below target' }); pushAlert('provider:' + p.id, 'Weekly stand-by below target', `${weekTotal(p).toFixed(1)} of ${S.settings.weeklyTarget} h · 1 penalty point added.`, null, 'bad'); } }); toast('admin', 'Weekly check done', n + ' provider(s) received a point.'); }
 };
 
