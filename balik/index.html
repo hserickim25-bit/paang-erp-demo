@@ -191,6 +191,13 @@ button.li:hover{background:var(--surface-2)}
 .pcard .name{font-weight:600;font-size:15px}
 .pcard .right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .status-line{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
+.tl{display:inline-flex;flex-direction:column;gap:2px;padding:3px;border-radius:5px;background:#1B1F27;flex-shrink:0;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tl i{width:7px;height:7px;border-radius:50%;background:#3A404C;display:block}
+.tl i.on.r{background:#F05A5E;box-shadow:0 0 6px #F05A5E}
+.tl i.on.y{background:#F2B300;box-shadow:0 0 6px #F2B300}
+.tl i.on.g{background:#2FCB7A;box-shadow:0 0 6px #2FCB7A}
+.tl.m{gap:3px;padding:4px;border-radius:7px}.tl.m i{width:10px;height:10px}
+.status-line{gap:8px}.status-line.big{font-size:14px}
 .status-line.green{color:var(--good)} .status-line.yellow{color:var(--warn)} .status-line.red{color:var(--bad)}
 .ret{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:6px}
 
@@ -602,7 +609,8 @@ function statusOf(p) {
   if (p.status === 'yellow') return { cls: 'yellow', text: 'Back at ' + fmtT(p.backAt) };
   return { cls: 'red', text: 'Not available today' };
 }
-const statusLine = p => { const s = statusOf(p); return `<span class="status-line ${s.cls}"><span class="dot ${s.cls}"></span>${esc(s.text)}</span>`; };
+const tlMini = (cls, big) => `<span class="tl ${big ? 'm' : ''}" role="img" aria-label="${({ green: 'Green light: available', yellow: 'Yellow light: away', red: 'Red light: not available' })[cls]}"><i class="r ${cls === 'red' ? 'on' : ''}"></i><i class="y ${cls === 'yellow' ? 'on' : ''}"></i><i class="g ${cls === 'green' ? 'on' : ''}"></i></span>`;
+const statusLine = (p, big) => { const s = statusOf(p); return `<span class="status-line ${s.cls} ${big ? 'big' : ''}">${tlMini(s.cls, big)}${esc(s.text)}</span>`; };
 const pillFor = st => ({
   requested: ['accent', 'Waiting for reply'], business_queue: ['accent', 'Assigning staff'], offered: ['warn', 'Arrival time sent'], paid: ['accent', 'Paid · not departed'],
   departed: ['accent', 'On the way'], arrived: ['good', 'In service'], ended: ['good', 'Ended'], reviewed: ['', 'Completed'], declined: ['bad', 'Not available'],
@@ -634,7 +642,7 @@ function entryCard(e) {
       <span class="meta"><span class="name ellipsis">${esc(o.name)}</span>
         <span class="small muted">Business · ${o.staff.length} verified therapists</span>
         <span class="small">${starsH(o.rating)} <b>${o.rating}</b> <span class="muted">(${o.count})</span></span>
-        <span class="status-line ${g ? 'green' : 'yellow'}"><span class="dot ${g ? 'green' : 'yellow'}"></span>${g ? g + ' on stand-by' : 'No one on stand-by'}</span></span>
+        <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g ? g + ' on stand-by' : 'No one on stand-by'}</span></span>
       <span class="right"><b class="num">${fmtKm(e.d)}</b><span class="small muted">from ${peso(fromPrice(o))}</span></span></button>`;
   }
   const b = o.biz ? biz(o.biz) : null;
@@ -741,7 +749,7 @@ function custProfile() {
         ${zav(p, 108)}<span class="tiny muted">Tap the photo to enlarge</span>
         <h2 style="font-size:21px">${esc(p.name)}</h2>
         <span class="small muted">${b ? 'Staff of ' + esc(b.name) : catName(p.cat) + ' · Individual'} · ${fmtKm(d)} from ${esc(addr().label)}</span>
-        <span class="row" style="gap:8px;justify-content:center">${statusLine(p)}</span>
+        <span class="row" style="gap:8px;justify-content:center">${statusLine(p, true)}</span>
         ${st.busy ? `<span class="pill good">In service ${fmtT(st.job.arrivedAt)} – ${fmtT(st.job.endAt)} · free after</span>` : ''}
         <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px">
           <span class="pill good">${ic('shield', 14)} ID verified</span><span class="pill good">TIN registered</span><span class="pill">${p.years} yrs experience</span>
@@ -768,7 +776,7 @@ function custBiz() {
       <div class="card" style="align-items:center;text-align:center;gap:8px;padding:20px 14px">
         <span class="avatar" style="width:76px;height:76px;border-radius:22px;background:hsl(${b.hue} 50% 90%);color:hsl(${b.hue} 50% 28%)">${ic('building', 34)}</span>
         <h2 style="font-size:21px">${esc(b.name)}</h2><span class="small muted">Business · ${esc(b.area)} · ${fmtKm(distTo(b))}</span>
-        <span class="status-line ${g ? 'green' : 'yellow'}"><span class="dot ${g ? 'green' : 'yellow'}"></span>${g} of ${b.staff.length} therapists on stand-by</span>
+        <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g} of ${b.staff.length} therapists on stand-by</span>
         <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px"><span class="pill good">${ic('shield', 14)} DTI registered</span><span class="pill good">Staff ID-verified</span></div></div>
       <div class="card"><p class="small">${esc(b.story)} The spa assigns the nearest therapist on stand-by, and you see their name and arrival time before you pay.</p></div>
       ${ratingBlock(b)}
@@ -975,7 +983,7 @@ function custOverlays() {
     o += `<div class="lightbox" data-act="closeZoom" role="dialog" aria-label="Photo of ${esc(p.name)}"><div class="lb-in" data-stop="1">
       <button class="iconbtn lb-x" data-act="closeZoom" aria-label="Close">${ic('x', 20)}</button>
       <img src="${photoOf(p)}" alt="Photo of ${esc(p.name)}">
-      <div class="lb-cap"><div class="row between"><b style="font-size:17px">${esc(p.name)}</b>${statusLine(p)}</div>
+      <div class="lb-cap"><div class="row between"><b style="font-size:17px">${esc(p.name)}</b>${statusLine(p, true)}</div>
         <span class="small muted">${b ? esc(b.name) + ' · staff' : catName(p.cat)} · ${p.years} yrs experience · ${starsH(p.rating)} ${p.rating}</span>
         <div class="row" style="flex-wrap:wrap;gap:6px"><span class="pill good">${ic('shield', 13)} ID verified</span><span class="pill good">Photo matched to ID</span>${p.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
         <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="openProvider" data-arg="${p.id}">View profile & book</button><button class="btn secondary sm" data-act="closeZoom">Close</button></div></div>
