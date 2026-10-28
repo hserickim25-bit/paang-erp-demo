@@ -349,6 +349,8 @@ td.num,th.num{text-align:right}
 .avatar.ph img{width:100%;height:100%;object-fit:cover;display:block}
 .zoomav{position:relative;border:0;padding:0;background:none;border-radius:50%;cursor:zoom-in;flex-shrink:0;display:inline-block}
 .zbadge{position:absolute;right:-2px;bottom:-2px;width:24px;height:24px;border-radius:50%;background:var(--surface);color:var(--fg);display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.bizlogo{position:relative;width:68px;height:68px;border-radius:16px;flex-shrink:0;display:grid;place-items:center;background:linear-gradient(135deg,#12355B,#2B5C93);color:#F4B740;font-weight:800;font-size:34px;letter-spacing:-.02em;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08)}
+.bizbadge{position:absolute;right:-4px;bottom:-4px;width:20px;height:20px;border-radius:50%;background:var(--surface);color:#12355B;display:grid;place-items:center;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .listph{position:relative;width:68px;height:68px;border-radius:16px;overflow:visible;flex-shrink:0;cursor:zoom-in}
 .listph img{width:100%;height:100%;object-fit:cover;border-radius:16px;display:block}
 .listph .zbadge{width:20px;height:20px;right:-4px;bottom:-4px}
@@ -639,7 +641,7 @@ function entryCard(e) {
   if (e.kind === 'b') {
     const g = bizGreen(o);
     return `<button class="pcard" data-act="openBiz" data-arg="${o.id}">
-      <span class="avatar" style="width:52px;height:52px;border-radius:14px;background:hsl(${o.hue} 50% 90%);color:hsl(${o.hue} 50% 28%)">${ic('building', 24)}</span>
+      <span class="bizlogo" aria-label="Business">B<span class="bizbadge">${ic('building', 11, 2.2)}</span></span>
       <span class="meta"><span class="name ellipsis">${esc(o.name)}</span>
         <span class="small muted">Business · ${o.staff.length} verified therapists</span>
         <span class="small">${starsH(o.rating)} <b>${o.rating}</b> <span class="muted">(${o.count})</span></span>
@@ -775,7 +777,7 @@ function custBiz() {
   const h = `${bar(esc(b.name), 'back')}
     <div class="scroll" data-scroll="c-biz">
       <div class="card" style="align-items:center;text-align:center;gap:8px;padding:20px 14px">
-        <span class="avatar" style="width:76px;height:76px;border-radius:22px;background:hsl(${b.hue} 50% 90%);color:hsl(${b.hue} 50% 28%)">${ic('building', 34)}</span>
+        <span class="bizlogo" style="width:96px;height:96px;border-radius:24px;font-size:48px" aria-label="Business">B<span class="bizbadge" style="width:26px;height:26px">${ic('building', 14, 2.2)}</span></span>
         <h2 style="font-size:21px">${esc(b.name)}</h2><span class="small muted">Business · ${esc(b.area)} · ${fmtKm(distTo(b))}</span>
         <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g} of ${b.staff.length} therapists on stand-by</span>
         <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px"><span class="pill good">${ic('shield', 14)} DTI registered</span><span class="pill good">Staff ID-verified</span></div></div>
