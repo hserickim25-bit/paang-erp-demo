@@ -198,6 +198,11 @@ button.li:hover{background:var(--surface-2)}
 .tl i.on.r{background:radial-gradient(circle at 35% 35%,#FF9A9C,#F05A5E 60%);box-shadow:0 0 8px 1px #F05A5E}
 .tl i.on.y{background:radial-gradient(circle at 35% 35%,#FFE38A,#F2B300 60%);box-shadow:0 0 8px 1px #F2B300}
 .tl i.on.g{background:radial-gradient(circle at 35% 35%,#8BF0BB,#2FCB7A 60%);box-shadow:0 0 8px 1px #2FCB7A}
+.chatlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface-2);border-radius:12px;min-height:0}
+.bub{max-width:80%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.bub span{font-size:14px;white-space:pre-wrap;word-break:break-word}.bub i{font-style:normal;font-size:10.5px;color:var(--muted);align-self:flex-end}
+.bub.me{align-self:flex-end;background:var(--accent);color:#fff;border-color:transparent;border-radius:14px 14px 4px 14px}.bub.me i{color:rgba(255,255,255,.75)}
+.callscreen{position:absolute;inset:0;z-index:60;background:linear-gradient(180deg,#0E2440,#12355B 55%,#1C4C7A);color:#fff;display:flex;flex-direction:column;justify-content:space-between;align-items:center;padding:24px;animation:fade .2s}
+.callbtn{width:68px;height:68px;border-radius:50%;border:0;display:grid;place-items:center;color:#fff;cursor:pointer;box-shadow:0 8px 20px rgba(0,0,0,.35)}.callbtn.ok{background:#22B573}.callbtn.end{background:#E5484D}.callbtn.end svg{transform:rotate(135deg)}.callbtn.mute{background:rgba(255,255,255,.16)}.callbtn.mute.on{background:#fff;color:#12355B}
 .lmap{height:230px;border-radius:12px;overflow:hidden;background:var(--surface-2);position:relative;z-index:0}
 .mk{background:none;border:0}.mkp{width:46px;height:46px;border-radius:50%;border:3px solid #F4B740;box-shadow:0 3px 10px rgba(0,0,0,.35);overflow:hidden;display:grid;place-items:center;background:#12355B;color:#fff;font-weight:700}.mkp img{width:100%;height:100%;object-fit:cover}
 .livedot{width:9px;height:9px;border-radius:50%;background:var(--line-2);display:inline-block}.livedot.on{background:#2FCB7A;box-shadow:0 0 0 0 rgba(47,203,122,.6);animation:pulse 1.6s infinite}
@@ -438,6 +443,9 @@ const P = {
   plus: '<path d="M12 5v14M5 12h14"/>',
   check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
   x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  chat: '<path d="M4 5.5h16v10.5H9l-5 4z"/><path d="M8 9.5h8M8 12.5h5"/>',
+  mic: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"/>',
+  micoff: '<path d="M9 9V6a3 3 0 0 1 5.8-1M15 10v1a3 3 0 0 1-4.6 2.5M5.5 11a6.5 6.5 0 0 0 10.6 5M18.5 11a6.5 6.5 0 0 1-.6 2.6M12 17.5V21M4 4l16 16"/>',
   camera: '<rect x="3" y="7" width="18" height="13" rx="2.5"/><circle cx="12" cy="13.5" r="3.5"/><path d="M9 7l1.5-2.5h3L15 7"/>',
   phone: '<path d="M5 4h3.5l2 5-2.5 1.5a11 11 0 0 0 5.5 5.5L15 13.5l5 2V19a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/>',
   alert: '<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.5h.01"/>',
@@ -919,7 +927,7 @@ function custBook() {
       <div class="col" style="gap:8px"><span class="eyebrow">Where</span>
         <button class="card tight" data-act="addrSheet" style="text-align:left;flex-direction:row;align-items:center">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}</b><span class="small muted">${esc(a.line)}</span></div><span class="small" style="color:var(--accent);font-weight:600">Change</span></button></div>
       <div class="col" style="gap:8px"><span class="eyebrow">Payment method · charged later</span><div class="list">${pm('GCash')}${pm('Maya')}${pm('Card')}</div></div>
-      <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row" style="align-items:flex-start">${ic('shield', 18)}<p class="small">No direct chat or calls. Every update reaches you as an alert, and our team can step in at any time.</p></div></div>
+      <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row" style="align-items:flex-start">${ic('shield', 18)}<p class="small">No contact before payment. Once you pay, you can message or call your provider in the app until the service ends.</p></div></div>
     </div>`;
   const dis = c.when === 'later' && !c.slot;
   const f = `<button class="btn primary block" data-act="sendRequest" ${dis ? 'disabled' : ''}>${ic('send', 18)} Send request</button><span class="tiny muted" style="text-align:center">No charge now. You pay after you accept the arrival time.</span>`;
@@ -991,9 +999,9 @@ function custTrack() {
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
       ${['paid', 'departed', 'arrived'].includes(b.status) ? liveMap(b, p, 'c') : ''}
       ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Arrival check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Check-in photo taken by ${esc(first)} at arrival" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;background:#0E1520"></div>` : ''}
-      <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div><span class="pill">No direct chat</span></div></div>
+      <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>
       ${b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : ''}
-      ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted">Need to reach ${esc(first)}? Tap Help and our team relays it.</p></div>` : ''}
+      ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted">Something wrong? Tap Help and our team steps in.</p></div>` : ''}
       <div class="row between small"><span class="muted">Total paid · ${esc(S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
     </div>`;
 }
@@ -1089,6 +1097,8 @@ function custSignup() {
 }
 function custOverlays() {
   const c = S.cust; let o = '';
+  const cs = callScreen('customer'); if (cs) return cs;
+  if (c.chat) o += chatSheet('customer');
   if (c.zoom && prov(c.zoom)) {
     const p = prov(c.zoom), b = p.biz ? biz(p.biz) : null;
     o += `<div class="lightbox" data-act="closeZoom" role="dialog" aria-label="Photo of ${esc(p.name)}"><div class="lb-in" data-stop="1">
@@ -1192,7 +1202,7 @@ function provRequest() {
     </div>
     ${b.when === 'later' ? `<div class="card tight"><b>Requested for ${fmtT(b.slotAt)}</b><span class="small muted">Accepting promises arrival at that time.</span></div>` :
     `<div class="col" style="gap:8px"><span class="eyebrow">Accept with arrival time</span><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">${[10, 20, 30, 40, 50, 60].map(m => `<button class="chip" style="height:46px;padding:0;font-family:var(--mono);font-weight:600" data-act="setEta" data-arg="${m}" aria-pressed="${S.prov.eta === m}">${m}</button>`).join('')}</div><span class="small muted">Minutes after the customer pays. They see this time before paying. Arriving more than ${S.settings.penaltyAfter} min after it costs 1 reward credit, and cancelling after you accept costs ${Math.abs(CR().rules.acceptCancel)}.</span></div>`}
-    <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Your answer goes to the customer instantly. There is no chat between you and the customer.</p></div>
+    <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Your answer goes to the customer instantly. After the customer pays you can message or call them in the app until the service ends.</p></div>
   </div>`;
   const f = `<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:10px"><button class="btn danger" data-act="declineReq" data-arg="${b.id}">Not available</button><button class="btn primary" data-act="acceptReq" data-arg="${b.id}">Accept${b.when === 'later' ? '' : ' · ' + S.prov.eta + ' min'}</button></div>`;
   return [h, f];
@@ -1213,6 +1223,7 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack')}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
+    ${canTalk(b) ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
     ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Your check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Your check-in photo" style="width:100%;border-radius:10px;max-height:220px;object-fit:contain;background:#0E1520"></div>` : ''}
@@ -1390,6 +1401,8 @@ function provApply() {
   return `${bar('Become a provider', 'apBack')}<div class="scroll" data-scroll="p-ap">${steps}${body}</div><div class="footer-bar">${cta}</div>`;
 }
 function provOverlays() {
+  const cs = callScreen('provider'); if (cs) return cs;
+  if (S.prov.chat) { const ch = chatSheet('provider'); if (ch) return ch; }
   if (S.prov.cam) return camSheet();
   const me = prov(S.prov.id);
   const late = S.bookings.find(b => b.pid === me.id && b.late && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && !b.late.dismissed);
@@ -1552,6 +1565,7 @@ function admJobs() {
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
+      ${(sel.chat || []).length ? `<details style="margin-top:8px"><summary class="small" style="cursor:pointer">In-app messages · ${sel.chat.length}</summary><div class="col" style="gap:4px;margin-top:6px">${sel.chat.map(m => `<span class="small"><b>${m.from === 'c' ? 'Customer' : 'Provider'}</b> <span class="tiny muted">${fmtT(m.at)}</span> ${esc(m.text)}</span>`).join('')}</div></details>` : ''}
       <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
       ${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Platform fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div><span class="tiny muted">${sel.ledger.paidAt ? 'Paid out ' + fmtD(sel.ledger.paidAt) : 'Not yet paid out'}</span>` : ''}
       <div class="divider"></div>
@@ -1991,6 +2005,129 @@ function normalizeCredits() {
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
   S.providers.forEach(p => { if (p.credits == null || isNaN(p.credits)) p.credits = S.settings.credit.start; p.credits = Math.max(S.settings.credit.min, Math.min(S.settings.credit.max, Math.round(p.credits))); if (!p.creditLog) p.creditLog = []; if (!p.creditWeeks) p.creditWeeks = []; if (p.tierOverride != null && p.tierOverride >= S.settings.credit.bands.length) p.tierOverride = null; });
 }
+/* =============== In-app messages and voice calls (open after payment, closed when the service ends) =============== */
+const TALK_OPEN = ['paid', 'departed', 'arrived'];
+const canTalk = b => !!(b && TALK_OPEN.includes(b.status) && b.pid);
+const CALLS = {};          // role -> { bid, id, pc, stream, audio, caller, answered }
+const ICE = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+const myRoleKey = role => role === 'customer' ? 'c' : 'p';
+const otherName = (b, role) => role === 'customer' ? prov(b.pid).name.split(' ')[0] : (b.customer || 'Customer').split(' ')[0];
+const unreadChat = (b, role) => { const k = myRoleKey(role); const seen = (b.chatSeen || {})[k] || 0; return (b.chat || []).filter((m, i) => i >= seen && m.from !== k).length; };
+function talkButtons(b, role) {
+  if (!canTalk(b)) return '';
+  const n = unreadChat(b, role);
+  return `<div class="row" style="gap:8px"><button class="btn secondary sm grow" data-act="chatOpen" data-arg="${role}:${b.id}" style="position:relative">${ic('chat', 17)} Message${n ? `<span class="badge" style="position:static;margin-left:4px">${n}</span>` : ''}</button><button class="btn primary sm grow" data-act="callStart" data-arg="${role}:${b.id}">${ic('phone', 17)} Call</button></div>`;
+}
+function chatSheet(role) {
+  const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat);
+  if (!b || !canTalk(b)) { st.chat = null; return ''; }
+  const k = myRoleKey(role), who = otherName(b, role);
+  const quick = role === 'customer' ? ['Please call me when you arrive', 'Gate code is at the guard desk', 'I may be a few minutes late', 'Thank you!'] : ["I'm on my way", "I'm outside", "I'll be 5 minutes late", 'Which unit / gate?'];
+  return `<div class="overlay" data-ov="chat-${k}" data-act="chatClose" data-arg="${role}"><div class="sheet" data-stop="1" style="height:86%;max-height:86%;gap:10px">
+    <div class="row between"><div class="col" style="gap:2px"><b style="font-size:17px">${esc(who)}</b><span class="tiny muted">${b.id} · in-app messages · closes when the service ends</span></div>
+      <div class="row" style="gap:6px"><button class="iconbtn" data-act="callStart" data-arg="${role}:${b.id}" aria-label="Call ${esc(who)}">${ic('phone', 20)}</button><button class="iconbtn" data-act="chatClose" data-arg="${role}" aria-label="Close">${ic('x', 20)}</button></div></div>
+    <div class="chatlog" data-scroll="chat-${k}">${(b.chat || []).length ? b.chat.map(m => `<div class="bub ${m.from === k ? 'me' : ''}"><span>${esc(m.text)}</span><i>${fmtT(m.at)}</i></div>`).join('') : `<div class="empty" style="margin:auto">Say hello to ${esc(who)}. Phone numbers stay private.</div>`}</div>
+    <div class="row" style="gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px">${quick.map(q => `<button class="chip" style="flex-shrink:0" data-act="chatQuick" data-arg="${role}|${esc(q)}">${esc(q)}</button>`).join('')}</div>
+    <div class="row" style="gap:8px"><input id="chat-in-${k}" class="input grow" data-bind="${role === 'customer' ? 'cust' : 'prov'}.chatDraft" data-enter="chatSend" data-enter-arg="${role}" value="${esc(st.chatDraft || '')}" placeholder="Write a message" autocomplete="off"><button class="btn primary sm" data-act="chatSend" data-arg="${role}" ${(st.chatDraft || '').trim() ? '' : 'disabled'}>Send</button></div>
+  </div></div>`;
+}
+function sendChat(role, text) {
+  const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat); text = String(text || '').trim().slice(0, 500);
+  if (!b || !canTalk(b) || !text) return;
+  const k = myRoleKey(role); b.chat = b.chat || []; b.chat.push({ from: k, text, at: now() });
+  b.chatSeen = b.chatSeen || {}; b.chatSeen[k] = b.chat.length;
+  if (role === 'customer') { pushAlert('provider:' + b.pid, 'Message from ' + otherName(b, 'provider'), text, b.id); if (S.role === 'both') toast('provider', 'Message from ' + otherName(b, 'provider'), text); }
+  else { pushAlert('customer', 'Message from ' + otherName(b, 'customer'), text, b.id); if (S.role === 'both') toast('customer', 'Message from ' + otherName(b, 'customer'), text); }
+  st.chatDraft = '';
+  setTimeout(() => { const el = document.querySelector(`[data-scroll="chat-${k}"]`); if (el) el.scrollTop = el.scrollHeight; }, 30);
+}
+/* voice: WebRTC audio, signalling through the shared booking record */
+const waitIce = pc => new Promise(ok => { if (pc.iceGatheringState === 'complete') return ok(); const t = setTimeout(ok, 2500); pc.addEventListener('icegatheringstatechange', () => { if (pc.iceGatheringState === 'complete') { clearTimeout(t); ok(); } }); });
+function newPeer(role) {
+  const pc = new RTCPeerConnection({ iceServers: ICE });
+  const audio = new Audio(); audio.autoplay = true; audio.playsInline = true;
+  pc.ontrack = e => { const c = CALLS[role]; if (c && c.sameDevice) return; audio.srcObject = e.streams[0]; audio.play().catch(() => { }); };
+  pc.onconnectionstatechange = () => { const c = CALLS[role]; if (c) { c.conn = pc.connectionState; render(); } };
+  return { pc, audio };
+}
+async function getMic() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error('This browser cannot use the microphone here.');
+  return navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+}
+function endCallLocal(role) { const c = CALLS[role]; if (!c) return; try { c.stream && c.stream.getTracks().forEach(t => t.stop()); } catch (e) { } try { c.pc && c.pc.close(); } catch (e) { } try { c.audio && (c.audio.srcObject = null); } catch (e) { } delete CALLS[role]; stopRing(); }
+function finishCall(b, why) {
+  if (!b || !b.call || b.call.state === 'ended') return;
+  const dur = b.call.startedAt ? Math.round((Date.now() - b.call.startedAt) / 1000) : 0;
+  b.call.state = 'ended'; b.call.endedAt = Date.now(); b.call.why = why;
+  logB(b, dur ? `In-app voice call · ${Math.floor(dur / 60)}:${String(dur % 60).padStart(2, '0')}` : `In-app call ${why === 'declined' ? 'declined' : why === 'missed' ? 'not answered' : 'cancelled'}`);
+  b.calls = (b.calls || []).concat([{ at: now(), by: b.call.from, dur, why }]);
+}
+async function startCall(role, bid) {
+  const b = bk(bid); if (!canTalk(b)) return;
+  if (b.call && ['ringing', 'active'].includes(b.call.state)) { toast(role, 'Call in progress', 'Wait for the current call to end.'); return; }
+  let stream; try { stream = await getMic(); } catch (e) { toast(role, 'Microphone needed', 'Allow microphone access to make in-app calls.'); render(); return; }
+  const { pc, audio } = newPeer(role); stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  const id = 'call' + Date.now().toString(36);
+  CALLS[role] = { bid, id, pc, stream, audio, caller: true, answered: false };
+  const offer = await pc.createOffer(); await pc.setLocalDescription(offer); await waitIce(pc);
+  const k = myRoleKey(role);
+  b.call = { id, from: k, dev: DEVICE, state: 'ringing', offer: JSON.stringify(pc.localDescription), answer: null, at: Date.now() };
+  if (role === 'customer') pushAlert('provider:' + b.pid, 'Incoming call', otherName(b, 'provider') + ' is calling you in BalikHome', b.id); else pushAlert('customer', 'Incoming call', otherName(b, 'customer') + ' is calling you in BalikHome', b.id);
+  render();
+}
+async function acceptCall(role, bid) {
+  const b = bk(bid); if (!b || !b.call || b.call.state !== 'ringing') return;
+  let stream; try { stream = await getMic(); } catch (e) { toast(role, 'Microphone needed', 'Allow microphone access to answer in-app calls.'); return; }
+  const { pc, audio } = newPeer(role); stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  CALLS[role] = { bid, id: b.call.id, pc, stream, audio, caller: false, answered: true, sameDevice: b.call.dev === DEVICE };
+  if (CALLS[role].sameDevice) { const other = role === 'customer' ? 'provider' : 'customer'; if (CALLS[other]) CALLS[other].sameDevice = true; }
+  await pc.setRemoteDescription(JSON.parse(b.call.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce(pc);
+  b.call.answer = JSON.stringify(pc.localDescription); b.call.state = 'active'; b.call.startedAt = Date.now();
+  stopRing(); render();
+}
+// Keep every pane's call state in step with the shared booking record (runs after each render)
+function callSync() {
+  let ch = false; const fin = (b, w) => { finishCall(b, w); ch = true; };
+  ['customer', 'provider'].forEach(role => {
+    const c = CALLS[role];
+    if (c) {
+      const b = bk(c.bid);
+      if (!b || !b.call || b.call.id !== c.id || b.call.state === 'ended' || !canTalk(b)) { endCallLocal(role); return; }
+      if (c.caller && !c.answered && b.call.answer) { c.answered = true; c.pc.setRemoteDescription(JSON.parse(b.call.answer)).catch(() => { }); }
+    }
+  });
+  // ring for incoming calls shown on this device; end calls when the job closes; time out unanswered calls
+  let ringing = false;
+  S.bookings.forEach(b => {
+    if (!b.call || b.call.state === 'ended') return;
+    if (!canTalk(b)) { fin(b, 'closed'); return; }
+    if (b.call.state === 'ringing' && Date.now() - b.call.at > 45000 && b.call.dev === DEVICE) { fin(b, 'missed'); return; }
+    if (b.call.state === 'ringing' && b.call.dev !== DEVICE) {
+      const meC = document.querySelector('[data-pane="customer"]') && b.cid === (S.customer.cid || 'me') && b.call.from === 'p';
+      const meP = document.querySelector('[data-pane="provider"]') && b.pid === S.prov.id && b.call.from === 'c';
+      if (meC || meP) ringing = true;
+    }
+  });
+  ringing ? startRing() : stopRing();
+  return ch;
+}
+let ringT = null, ringCtx = null;
+function startRing() { if (ringT) return; const beep = () => { try { ringCtx = ringCtx || new (window.AudioContext || window.webkitAudioContext)(); const o = ringCtx.createOscillator(), g = ringCtx.createGain(); o.frequency.value = 660; g.gain.value = 0.06; o.connect(g); g.connect(ringCtx.destination); o.start(); o.stop(ringCtx.currentTime + 0.35); } catch (e) { } try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) { } }; beep(); ringT = setInterval(beep, 1600); }
+function stopRing() { if (ringT) { clearInterval(ringT); ringT = null; } }
+function callScreen(role) {
+  const k = myRoleKey(role);
+  const b = S.bookings.find(x => x.call && ['ringing', 'active'].includes(x.call.state) && canTalk(x) && (role === 'customer' ? x.cid === (S.customer.cid || 'me') : x.pid === S.prov.id));
+  if (!b) return '';
+  const mine = b.call.from === k, c = CALLS[role], who = otherName(b, role);
+  const pic = role === 'customer' ? zav(prov(b.pid), 96) : avatar(b.customer, 220, 96);
+  let status, actions;
+  if (b.call.state === 'ringing' && mine) { status = 'Calling…'; actions = `<button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="Cancel call">${ic('phone', 28)}</button>`; }
+  else if (b.call.state === 'ringing') { status = 'Incoming BalikHome call'; actions = `<button class="callbtn end" data-act="callDecline" data-arg="${role}:${b.id}" aria-label="Decline">${ic('phone', 28)}</button><button class="callbtn ok" data-act="callAccept" data-arg="${role}:${b.id}" aria-label="Answer">${ic('phone', 28)}</button>`; }
+  else if (!c) { status = 'On a call on another device'; actions = `<button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="End call">${ic('phone', 28)}</button>`; }
+  else { status = `<span data-calltime="${b.call.startedAt}">${mmss(Date.now() - b.call.startedAt)}</span>${c.conn && c.conn !== 'connected' ? ' · ' + esc(c.conn) : ''}`; actions = `<button class="callbtn mute ${c.muted ? 'on' : ''}" data-act="callMute" data-arg="${role}" aria-label="${c.muted ? 'Unmute' : 'Mute'}">${ic(c.muted ? 'micoff' : 'mic', 26)}</button><button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="End call">${ic('phone', 28)}</button>`; }
+  return `<div class="callscreen" data-ov="call-${k}"><div class="col" style="align-items:center;gap:12px;margin-top:12%">${pic}<b style="font-size:24px">${esc(who)}</b><span class="small" style="opacity:.8">${status}</span><span class="tiny" style="opacity:.55">${b.id} · in-app voice · your number stays private</span></div><div class="row" style="gap:44px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
+}
+
 function render() {
   normalizeCredits();
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
@@ -2014,10 +2151,11 @@ function render() {
   } else if (fid) { const el = document.getElementById(fid); if (el) el.focus({ preventScroll: true }); }
   mountKeeps();
   syncGps();
+  callSync();
   save();
   if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v6';
+const STORE = 'balik-demo-v7';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -2067,6 +2205,7 @@ function notifyProviderOfRequest(b, p) {
 function endService(b, auto = false) {
   const p = prov(b.pid);
   b.status = 'ended'; b.endedAt = auto ? b.endAt : now(); b.autoEnded = auto;
+  finishCall(b, 'closed'); if (S.cust.chat === b.id) S.cust.chat = null; if (S.prov.chat === b.id) S.prov.chat = null;
   logB(b, auto ? 'Service window ended · provider auto-returned to green' : 'Provider tapped End service · back to green', b.endedAt);
   p.status = 'green'; p.backAt = null;
   postLedger(b);
@@ -2220,6 +2359,15 @@ const A = {
   locAsk: () => { S.loc.ask = true; },
   locToggleProv: () => { S.loc.shareProv = !S.loc.shareProv; S.prov.gps = S.loc.shareProv; toast('provider', S.loc.shareProv ? 'Location sharing on' : 'Location sharing off', S.loc.shareProv ? 'Shared with the customer only while you are on the way.' : 'Customers will see an estimated position.'); },
   installApp: () => { if (!installEvt) return; installEvt.prompt(); installEvt.userChoice.then(c => { if (c && c.outcome === 'accepted') { S.loc.asked = false; S.loc.ask = true; } installEvt = null; render(); }).catch(() => { }); },
+  chatOpen: arg => { const [role, id] = arg.split(':'); const st = role === 'customer' ? S.cust : S.prov; st.chat = id; const b = bk(id); b.chatSeen = b.chatSeen || {}; b.chatSeen[myRoleKey(role)] = (b.chat || []).length; setTimeout(() => { const el = document.querySelector(`[data-scroll="chat-${myRoleKey(role)}"]`); if (el) el.scrollTop = el.scrollHeight; const inp = document.getElementById('chat-in-' + myRoleKey(role)); if (inp && !isPhone()) inp.focus(); }, 40); },
+  chatClose: role => { const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat); if (b) { b.chatSeen = b.chatSeen || {}; b.chatSeen[myRoleKey(role)] = (b.chat || []).length; } st.chat = null; },
+  chatSend: role => { const st = role === 'customer' ? S.cust : S.prov; sendChat(role, st.chatDraft); },
+  chatQuick: arg => { const i = arg.indexOf('|'); sendChat(arg.slice(0, i), arg.slice(i + 1)); },
+  callStart: arg => { const [role, id] = arg.split(':'); const st = role === 'customer' ? S.cust : S.prov; st.chat = null; startCall(role, id); },
+  callAccept: arg => { const [role, id] = arg.split(':'); acceptCall(role, id); },
+  callDecline: arg => { const [role, id] = arg.split(':'); finishCall(bk(id), 'declined'); stopRing(); },
+  callEnd: arg => { const [role, id] = arg.split(':'); finishCall(bk(id), 'hangup'); endCallLocal(role); },
+  callMute: role => { const c = CALLS[role]; if (!c) return; c.muted = !c.muted; c.stream.getAudioTracks().forEach(t => t.enabled = !c.muted); },
   toggleGps: () => { if (S.loc.status !== 'granted') { S.loc.ask = true; return; } S.loc.shareProv = !S.prov.gps; S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
@@ -2369,6 +2517,7 @@ const onBind = (e, live) => {
 let composing = false;
 document.addEventListener('compositionstart', () => { composing = true; });
 document.addEventListener('compositionend', e => { composing = false; if (e.target.dataset && e.target.dataset.bind) onBind(e, true); });
+document.addEventListener('keydown', e => { const el = e.target; if (e.key === 'Enter' && !e.isComposing && el && el.dataset && el.dataset.enter && A[el.dataset.enter]) { e.preventDefault(); A[el.dataset.enter](el.dataset.enterArg); render(); } });
 document.addEventListener('input', e => { if (e.isComposing || composing) { if (e.target.dataset && e.target.dataset.bind) setPath(e.target.dataset.bind, e.target.value); return; } if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
 document.addEventListener('change', e => {
   const el = e.target;
@@ -2590,6 +2739,8 @@ function tick(force = false) {
     document.querySelectorAll('[data-clock]').forEach(el => el.textContent = fmtT(n));
     document.querySelectorAll('[data-cd]').forEach(el => el.textContent = mmss(Number(el.dataset.cd) - n));
     updateMaps();
+    document.querySelectorAll('[data-calltime]').forEach(el => el.textContent = mmss(Date.now() - Number(el.dataset.calltime)));
+    if (callSync()) render();
   }
 }
 render();
