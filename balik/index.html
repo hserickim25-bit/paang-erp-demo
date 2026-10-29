@@ -2730,7 +2730,7 @@ const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
 const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
-window.__balikSync = SYNC; window.__balikState = () => S; window.__balikNow = () => now(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
+window.__balikSync = SYNC; window.__balikState = () => S; window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
 function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
@@ -2747,10 +2747,13 @@ const sortFns = {
   bookings: (a, b) => b.createdAt - a.createdAt,
   alerts: (a, b) => b.at - a.at, sms: (a, b) => b.at - a.at, applications: (a, b) => (b.at || 0) - (a.at || 0)
 };
+// Firebase keys cannot contain . # $ [ ] / — encode them
+const encK = k => String(k).replace(/[.#$\[\]\/%]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
+const decK = k => { try { return decodeURIComponent(k); } catch (e) { return k; } };
 function recordsOf(name) {
   const out = {};
-  if (SHARED_MAP.includes(name)) Object.entries(S[name] || {}).forEach(([k, v]) => { out[k] = JSON.stringify(v); });
-  else (S[name] || []).forEach(r => { if (r && r.id) out[r.id] = JSON.stringify(r); });
+  if (SHARED_MAP.includes(name)) Object.entries(S[name] || {}).forEach(([k, v]) => { out[encK(k)] = JSON.stringify(v); });
+  else (S[name] || []).forEach(r => { if (r && r.id) out[encK(r.id)] = JSON.stringify(r); });
   return out;
 }
 function snapshotPaths() {
@@ -2804,7 +2807,7 @@ function applyRemote(root) {
     if (differs) {
       changed = true;
       const vals = Object.entries(merged).map(([k, v]) => { try { return [k, JSON.parse(v)]; } catch (e) { return null; } }).filter(Boolean);
-      if (SHARED_MAP.includes(n)) S[n] = Object.fromEntries(vals);
+      if (SHARED_MAP.includes(n)) S[n] = Object.fromEntries(vals.map(([k, v]) => [decK(k), v]));
       else S[n] = vals.map(x => x[1]).sort(sortFns[n]);
     }
   });
