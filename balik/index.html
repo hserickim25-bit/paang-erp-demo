@@ -198,6 +198,14 @@ button.li:hover{background:var(--surface-2)}
 .tl i.on.r{background:radial-gradient(circle at 35% 35%,#FF9A9C,#F05A5E 60%);box-shadow:0 0 8px 1px #F05A5E}
 .tl i.on.y{background:radial-gradient(circle at 35% 35%,#FFE38A,#F2B300 60%);box-shadow:0 0 8px 1px #F2B300}
 .tl i.on.g{background:radial-gradient(circle at 35% 35%,#8BF0BB,#2FCB7A 60%);box-shadow:0 0 8px 1px #2FCB7A}
+.cal{border:1px solid var(--line);border-radius:14px;background:var(--surface);padding:10px;display:flex;flex-direction:column;gap:8px}
+.cal .iconbtn:first-child svg{transform:rotate(180deg)}.cal .iconbtn[disabled]{opacity:.3}
+.cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
+.cal-h{font-size:11px;font-weight:600;color:var(--muted);padding:2px 0}
+.cal-d{height:40px;border-radius:10px;border:0;background:transparent;font:inherit;font-size:15px;color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
+.cal-d:hover:not([disabled]){background:var(--surface-2)}.cal-d.today{box-shadow:inset 0 0 0 1.5px var(--accent)}.cal-d.off{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.cal-d[aria-pressed="true"],.cal-d[aria-pressed="true"]:hover{background:var(--accent);color:#fff;text-decoration:none;font-weight:700}.cal-d[disabled]{opacity:.28;cursor:default}
+.cal-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:4px}.cal-key.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
 .chatlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface-2);border-radius:12px;min-height:0}
 .bub{max-width:80%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.bub span{font-size:14px;white-space:pre-wrap;word-break:break-word}.bub i{font-style:normal;font-size:10.5px;color:var(--muted);align-self:flex-end}
 .bub.me{align-self:flex-end;background:var(--accent);color:#fff;border-color:transparent;border-radius:14px 14px 4px 14px}.bub.me i{color:rgba(255,255,255,.75)}
@@ -967,6 +975,26 @@ function cartInfo() {
   const svcs = c.cart.map(i => src.services[i]);
   return { src, svcs, gross: svcs.reduce((a, s) => a + s.price, 0), mins: svcs.reduce((a, s) => a + s.mins, 0) };
 }
+const BOOK_AHEAD_DAYS = 90;
+function calendar(c, av, d0) {
+  const last = d0 + BOOK_AHEAD_DAYS * DAY;
+  const sel = new Date(c.day);
+  if (c.calMonth == null) c.calMonth = new Date(sel.getFullYear(), sel.getMonth(), 1).getTime();
+  const m = new Date(c.calMonth), y = m.getFullYear(), mo = m.getMonth();
+  const first = new Date(y, mo, 1), lead = (first.getDay() + 6) % 7, nDays = new Date(y, mo + 1, 0).getDate();
+  const minMonth = new Date(new Date(d0).getFullYear(), new Date(d0).getMonth(), 1).getTime();
+  const maxMonth = new Date(new Date(last).getFullYear(), new Date(last).getMonth(), 1).getTime();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<span></span>');
+  for (let d = 1; d <= nDays; d++) {
+    const t = new Date(y, mo, d).getTime(), past = t < d0 || t > last, usual = av ? !!av.days[(new Date(t).getDay() + 6) % 7] : true;
+    cells.push(`<button type="button" class="cal-d${t === d0 ? ' today' : ''}${usual ? '' : ' off'}" data-act="setDay" data-arg="${t}" aria-pressed="${c.day === t}" ${past ? 'disabled' : ''} aria-label="${new Date(t).toDateString()}${usual ? '' : ' (usually off)'}">${d}</button>`);
+  }
+  return `<div class="cal">
+    <div class="row between"><button type="button" class="iconbtn" data-act="calMonth" data-arg="-1" ${c.calMonth <= minMonth ? 'disabled' : ''} aria-label="Previous month">${ic('chev', 18)}</button><b>${m.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</b><button type="button" class="iconbtn" data-act="calMonth" data-arg="1" ${c.calMonth >= maxMonth ? 'disabled' : ''} aria-label="Next month">${ic('chev', 18)}</button></div>
+    <div class="cal-g">${DAYS3.map(d => `<span class="cal-h">${d.slice(0, 2)}</span>`).join('')}${cells.join('')}</div>
+    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off · you can still ask</span>' : ''}<span class="tiny muted">Up to ${BOOK_AHEAD_DAYS} days ahead</span></div></div>`;
+}
 function schedPicker(c, src) {
   const d0 = dayStart(now()), minT = now() + 30 * MIN;
   if (c.day == null || c.day < d0) c.day = d0;
@@ -975,7 +1003,7 @@ function schedPicker(c, src) {
   c.slot = c.day + c.tmin * MIN;
   const av = src && src.services && !src.staff ? availOf(src) : null, nm = src && src.name ? src.name.split(' ')[0] : '';
   const groups = [['Morning', 360, 720], ['Afternoon', 720, 1080], ['Evening', 1080, 1440], ['Late night', 0, 360]];
-  return `<div class="row" style="gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px">${Array.from({ length: 14 }, (_, i) => d0 + i * DAY).map(d => { const dd = new Date(d); const lbl = d === d0 ? 'Today' : d === d0 + DAY ? 'Tomorrow' : dd.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + dd.getDate(); const usual = av ? !!av.days[(dd.getDay() + 6) % 7] : true; return `<button class="chip" style="flex-shrink:0;${usual ? '' : 'opacity:.6'}" data-act="setDay" data-arg="${d}" aria-pressed="${c.day === d}">${lbl}</button>`; }).join('')}</div>
+  return `${calendar(c, av, d0)}
     <label class="field">Time<select id="c-time" class="select" data-bind="cust.tmin" data-type="num" style="font-size:16px">${groups.map(([g, a, b]) => `<optgroup label="${g}">${Array.from({ length: (b - a) / 30 }, (_, i) => a + i * 30).map(m => `<option value="${m}" ${c.tmin === m ? 'selected' : ''} ${valid(m) ? '' : 'disabled'}>${fmtMin(m)}${av && !inUsual(av, c.day + m * MIN) ? ' · outside usual hours' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
     <div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><b class="small">${fmtWhen(c.slot)}</b>${av ? `<span class="small muted">${esc(nm)}'s usual hours: ${availText(av)}</span>${inUsual(av, c.slot) ? '' : `<span class="small" style="color:var(--warn)">Outside ${esc(nm)}'s usual hours. You can still send the request; ${esc(nm)} can accept or decline.</span>`}` : ''}<span class="tiny muted">Any time of day or night. The provider confirms before you pay.</span></div>`;
 }
@@ -2311,8 +2339,9 @@ const A = {
   back: () => { const c = S.cust; c.screen = c.screen === 'book' ? (c.screenSrc === 'biz' ? 'bizprofile' : 'profile') : (c.back && !['profile', 'bizprofile', 'book'].includes(c.back) ? c.back : 'home'); },
   toggleSvc: i => { i = Number(i); const c = S.cust.cart; const k = c.indexOf(i); k >= 0 ? c.splice(k, 1) : c.push(i); },
   goBook: () => { S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
-  setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; } },
+  setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
+  calMonth: dir => { const m = new Date(S.cust.calMonth || now()); S.cust.calMonth = new Date(m.getFullYear(), m.getMonth() + Number(dir), 1).getTime(); },
   availDay: arg => { const [path, k] = arg.split('|'); const av = getPath(path); if (av) av.days[Number(k)] = av.days[Number(k)] ? 0 : 1; },
   setSlot: t => { S.cust.slot = Number(t); },
   setPay: m => { S.customer.pay = m; },
