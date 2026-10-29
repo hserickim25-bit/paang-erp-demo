@@ -205,7 +205,7 @@ button.li:hover{background:var(--surface-2)}
 .cal-d{height:40px;border-radius:10px;border:0;background:transparent;font:inherit;font-size:15px;color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
 .cal-d:hover:not([disabled]){background:var(--surface-2)}.cal-d.today{box-shadow:inset 0 0 0 1.5px var(--accent)}.cal-d.off{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-2)}
 .cal-d[aria-pressed="true"],.cal-d[aria-pressed="true"]:hover{background:var(--accent);color:#fff;text-decoration:none;font-weight:700}.cal-d[disabled]{opacity:.28;cursor:default}
-.cal-d.open{background:var(--accent-soft);font-weight:600}.cal-key.open{background:var(--accent-soft)}
+.cal-d.open{background:var(--accent-soft);font-weight:600}.cal-d.open:not(.today){color:#15A34A}.cal-d.open:not(.today)[aria-pressed="true"],.cal-d.open:not(.today)[aria-pressed="true"]:hover{color:#5BE58C}.cal-key.open{background:var(--accent-soft);box-shadow:inset 0 0 0 2px #15A34A}
 .cal-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:4px}.cal-key.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
 .chatlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface-2);border-radius:12px;min-height:0}
 .bub{max-width:80%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.bub span{font-size:14px;white-space:pre-wrap;word-break:break-word}.bub i{font-style:normal;font-size:10.5px;color:var(--muted);align-self:flex-end}
@@ -748,7 +748,7 @@ function sendSms(to, text, kind = 'info') { S.sms.unshift({ id: 'sm' + Date.now(
 function toast(pane, title, body, sms = false, bid = null) {
   if (!bid) { const m = String(body || '').match(/balik\.ph\/r\/(\d+)/) || String(body || '').match(/\b(B-\d+)\b/); if (m) bid = m[1].startsWith('B-') ? m[1] : 'B-' + m[1]; if (bid && !bk(bid)) bid = null; }
   const tap = !!bid || ['provider', 'customer', 'business', 'admin'].includes(pane);
-  S.toasts.push({ id: Math.random().toString(36).slice(2), pane, title, body, sms, bid, tap, until: Date.now() + (sms || bid ? 15000 : 4500) });
+  S.toasts.push({ id: Math.random().toString(36).slice(2), pane, title, body, sms, bid, tap, until: Date.now() + (sms || bid ? 9000 : 4500) });
 }
 function openFromToast(pane, bid) {
   const b = bid ? bk(bid) : null;
@@ -761,7 +761,7 @@ function openFromToast(pane, bid) {
   } else if (pane === 'customer') {
     if (!S.customer.signedIn) return;
     const own = b && b.cid === (S.customer.cid || 'me') ? b : null;
-    if (own) { A.openBooking(own.id); if (own.status === 'ended') A.goReview(own.id); S.alerts.filter(a => a.to === tgt('customer') && a.bid === own.id).forEach(a => a.read = true); } else S.cust.screen = 'alerts';
+    if (own) { A.openBooking(own.id); if (own.status === 'ended') A.goReview(own.id); if (own.status === 'offered') A.openPay(own.id); S.alerts.filter(a => a.to === tgt('customer') && a.bid === own.id).forEach(a => a.read = true); } else S.cust.screen = 'alerts';
   } else if (pane === 'admin') { S.admin.tab = b && b.late && !b.late.resolved ? 'late' : 'jobs'; if (b) S.admin.sel = b.id; }
   else if (pane === 'business') { S.biz.tab = 'requests'; }
 }
@@ -1047,9 +1047,10 @@ function custRequest() {
       <span class="eyebrow" style="color:var(--good)">${esc(first)} accepted</span>
       <span style="font-size:15px">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span>
       <div class="row" style="align-items:baseline;gap:10px"><span class="num" style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
-      <span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span></div>`;
+      ${b.when === 'later' ? `<span class="small" style="color:var(--warn)">Pay by <b>${fmtWhen(b.offerExpires)}</b> (1 hour before). Unpaid bookings are cancelled automatically.</span>` : `<span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span>`}</div>
+      ${b.reminders && b.reminders.length ? remindersCard(b) : ''}`;
   else hero = `<div class="card" style="align-items:center;text-align:center;gap:10px;padding:22px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>
-      <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? 'The arrival time expired' : 'Request cancelled'}</h2>
+      <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? (b.autoCancelled ? 'Cancelled · not paid 1 hour before' : 'The arrival time expired') : b.cancelledBy === 'customer' ? 'You cancelled this booking' : 'Request cancelled'}</h2>
       <p class="small muted">You were not charged. Here are the nearest providers on stand-by.</p><button class="btn primary" data-act="openCat" data-arg="${p ? p.cat : 'massage'}">See nearest available</button></div>`;
   const step = { requested: 0, business_queue: 0, offered: 1 }[b.status] ?? -1;
   const stepsH = ['Request sent', 'Arrival time', 'Pay', 'Departed', 'Service'].map((s, i) => `<li class="${i < step + 1 ? 'done' : i === step + 1 ? 'now' : ''}"><span></span>${s}</li>`).join('');
@@ -1061,7 +1062,7 @@ function custRequest() {
         <div class="divider"></div>
         <div class="col small"><span>${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</span><span class="muted">${esc(b.address)}</span></div>
         <div class="row between small"><span class="muted">Total · ${esc(S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div></div>
-      ${b.status === 'offered' ? `<button class="btn primary block" data-act="openPay" data-arg="${b.id}">Accept & pay ${peso(b.gross)}</button><button class="btn secondary block" data-act="declineOffer" data-arg="${b.id}">Too late · find someone else</button>` : ''}
+      ${b.status === 'offered' ? `<button class="btn primary block" data-act="openPay" data-arg="${b.id}">Accept & pay ${peso(b.gross)}</button><button class="btn secondary block" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button>` : ''}
       ${['requested', 'business_queue'].includes(b.status) ? `<button class="btn secondary block" data-act="cancelReq" data-arg="${b.id}">Cancel request</button>` : ''}
     </div>`;
 }
@@ -1106,7 +1107,15 @@ function custTrack() {
       <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>
       ${b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : ''}
       ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted">Something wrong? Tap Help and our team steps in.</p></div>` : ''}
-      <div class="row between small"><span class="muted">Total paid · ${esc(S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
+      <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
+      ${['paid', 'departed'].includes(b.status) ? (S.cust.cancelAsk === b.id ? (() => { const q = refundQuote(b); return `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this booking?</b>
+        <div class="row between small"><span>Paid</span><b class="num">${peso(b.gross, 2)}</b></div>
+        <div class="row between small"><span>Cancellation fee ${q.free ? '(free · 24 h+ before)' : `(${POLICY.feePct}% · under 24 h)`}</span><b class="num">${q.fee ? '−' + peso(q.fee, 2) : peso(0, 2)}</b></div>
+        <div class="row between small"><b>Refund to ${esc(q.method)}</b><b class="num">${peso(q.amount, 2)}</b></div>
+        <span class="tiny">Refunded ${q.dueText}.</span>
+        <div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="custCancel" data-arg="${b.id}">Cancel booking</button><button class="btn secondary sm" data-act="custCancelAsk" data-arg="">Keep</button></div></div>`; })()
+        : `<button class="btn ghost sm" style="color:var(--bad);align-self:center" data-act="custCancelAsk" data-arg="${b.id}">Cancel booking</button><p class="tiny muted" style="text-align:center">${policyText()}</p>`) : ''}
+      ${b.refund ? `<div class="card tight"><span class="eyebrow">Refund</span><div class="row between small"><span>${esc(b.refund.method)} · ${b.refund.days === 5 ? 'within 5 days' : 'within 24 hours'}</span><b class="num">${peso(b.refund.amount, 2)}</b></div><span class="tiny muted">Expected by ${fmtWhen(b.refund.dueBy)}${b.refund.fee ? ' · cancellation fee ' + peso(b.refund.fee, 2) : ''}</span></div>` : ''}
     </div>`;
 }
 
@@ -1223,7 +1232,7 @@ function custOverlays() {
       ${c.pay.stage === 'confirm' ? `<div class="row between"><h3 style="font-size:17px">Confirm payment</h3><button class="iconbtn" data-act="closePay" aria-label="Close">${ic('x', 20)}</button></div>
         <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row between"><span>${esc(b.services.map(s => s.name).join(' + '))}</span><b class="num">${peso(b.gross)}</b></div><div class="row between small muted"><span>Arrival</span><span>${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min after payment'}</span></div></div>
         <div class="row" style="gap:10px;padding:12px;border:1.5px solid var(--accent);border-radius:12px"><span class="avatar" style="width:36px;height:36px;border-radius:9px;background:#0A63F6;color:#fff;font-size:13px">${S.customer.pay === 'Card' ? 'VISA' : S.customer.pay[0]}</span><div class="col grow"><b>${esc(S.customer.pay)}</b><span class="small muted">${S.customer.pay === 'GCash' ? '0917 ••• 0142' : S.customer.pay === 'Maya' ? 'Linked account' : 'Visa ending 4417'}</span></div>${ic('check', 18)}</div>
-        <button class="btn primary block" data-act="doPay">Pay ${peso(b.gross)}</button><p class="tiny muted" style="text-align:center">Held by BalikHome until the service ends. Processed by a BSP-registered payment partner.</p>`
+        <button class="btn primary block" data-act="doPay">Pay ${peso(b.gross)}</button><p class="tiny muted" style="text-align:center">Held by BalikHome until the service ends. Processed by a BSP-registered payment partner.</p><p class="tiny muted" style="text-align:center">${policyText()}</p>`
       : c.pay.stage === 'processing' ? `<div class="col" style="align-items:center;gap:12px;padding:30px 0"><div class="spin"></div><b>Processing ${peso(b.gross)}…</b></div>`
       : `<div class="col" style="align-items:center;gap:10px;padding:24px 0"><span class="avatar" style="width:56px;height:56px;background:var(--good-soft);color:var(--good)">${ic('check', 28)}</span><b style="font-size:17px">Paid</b><span class="small muted">The provider has been told to depart.</span></div>`}
     </div></div>`;
@@ -1672,6 +1681,7 @@ function admJobs() {
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
+      ${sel.refund ? `<div class="card tight" style="margin-top:8px"><b class="small">Refund ${peso(sel.refund.amount, 2)} to ${esc(sel.refund.method)}</b><span class="tiny muted">Due by ${fmtWhen(sel.refund.dueBy)}${sel.refund.fee ? ' · cancellation fee ' + peso(sel.refund.fee, 2) : ' · no fee'}</span></div>` : ''}
       ${(sel.chat || []).length ? `<details style="margin-top:8px"><summary class="small" style="cursor:pointer">In-app messages · ${sel.chat.length}</summary><div class="col" style="gap:4px;margin-top:6px">${sel.chat.map(m => `<span class="small"><b>${m.from === 'c' ? 'Customer' : 'Provider'}</b> <span class="tiny muted">${fmtT(m.at)}</span> ${esc(m.text)}</span>`).join('')}</div></details>` : ''}
       <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
       ${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Platform fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div><span class="tiny muted">${sel.ledger.paidAt ? 'Paid out ' + fmtD(sel.ledger.paidAt) : 'Not yet paid out'}</span>` : ''}
@@ -2263,7 +2273,7 @@ function render() {
   save();
   if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v7';
+const STORE = 'balik-demo-v8';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -2291,9 +2301,18 @@ function setPath(path, val) { const ks = path.split('.'); let o = S; for (let i 
 function getPath(path) { return path.split('.').reduce((o, k) => o && o[k], S); }
 
 /* ---------- booking reminders (in-app messages to customer and provider until cancelled) ---------- */
+/* ---------- cancellation and refund policy ---------- */
+const POLICY = { freeHours: 24, feePct: 30 };
+function refundQuote(b) {
+  const start = b.promisedAt || b.slotAt || now(), hrs = (start - now()) / HOUR, free = hrs >= POLICY.freeHours;
+  const fee = free ? 0 : Math.round(b.gross * POLICY.feePct) / 100, amount = Math.round((b.gross - fee) * 100) / 100;
+  const m = b.payMethod || S.customer.pay || 'GCash', card = m === 'Card';
+  return { free, fee, amount, method: m, days: card ? 5 : 1, dueText: card ? 'within 5 days' : 'within 24 hours', hrs };
+}
+const policyText = () => `Free cancellation up to ${POLICY.freeHours} hours before the booking. After that, a ${POLICY.feePct}% cancellation fee applies. Refunds: GCash or Maya within 24 hours, credit card within 5 days.`;
 function planReminders(b) {
   if (b.when !== 'later' || !b.slotAt) { b.reminders = []; return; }
-  const base = b.createdAt || now(), svc = b.slotAt, list = [];
+  const base = b.acceptedAt || b.createdAt || now(), svc = b.slotAt, list = [];
   const add = (key, at, label) => { if (at > now() && at < svc - 30 * MIN && !list.some(r => Math.abs(r.at - at) < 30 * MIN)) list.push({ key, at, label, sent: false }); };
   add('d1', base + DAY, 'Reminder · 1 day after booking');
   add('d2', base + 2 * DAY, 'Reminder · 2 days after booking');
@@ -2307,17 +2326,20 @@ function sendDueReminders(n) {
   let changed = false;
   S.bookings.forEach(b => {
     if (!b.reminders || !b.reminders.length) return;
-    if (!['paid', 'departed'].includes(b.status)) return;   // cancelled or already served: no more reminders
+    if (!['offered', 'paid', 'departed'].includes(b.status)) return;   // cancelled or already served: no more reminders
     b.reminders.forEach(r => {
       if (r.sent || n < r.at) return;
+      if (b.status === 'offered' && n >= (b.offerExpires || 0)) return;   // unpaid at the deadline: the booking is cancelled instead
       r.sent = true; r.sentAt = n; changed = true;
       const p = prov(b.pid), what = b.services.map(s => s.name).join(' + '), when = fmtWhen(b.slotAt);
       const cMsg = `${what} with ${p ? p.name : 'your provider'} · ${when}. Address: ${b.address.split(',').slice(0, 2).join(',')}`;
       const pMsg = `${what} for ${b.customer} · ${when} · ${b.address}`;
+      const unpaid = b.status === 'offered';
       if (b.cid) pushAlert('customer', 'BalikHome · ' + r.label, cMsg, b.id, 'info');
-      if (b.pid) pushAlert('provider:' + b.pid, 'BalikHome · ' + r.label, pMsg, b.id, 'info');
+      if (b.cid && unpaid) pushAlert('customer', 'Payment request · ' + peso(b.gross), `Your booking for ${when} is not paid yet. Pay by ${fmtWhen(b.offerExpires)} (1 hour before) or it is cancelled automatically. Tap to pay.`, b.id, 'pay');
+      if (b.pid) pushAlert('provider:' + b.pid, 'BalikHome · ' + r.label, pMsg + (unpaid ? ` · Not paid yet. Cancels automatically at ${fmtWhen(b.offerExpires)} if unpaid.` : ''), b.id, 'info');
       if (b.bizId) pushAlert('business:' + b.bizId, 'Reminder · ' + r.label, pMsg, b.id, 'info');
-      logB(b, 'Reminder sent to customer and provider: ' + r.label);
+      logB(b, 'Reminder sent to customer and provider: ' + r.label + (unpaid ? ' · with payment request' : ''));
     });
   });
   return changed;
@@ -2368,7 +2390,7 @@ function arrive(b) {
 
 const A = {
   setRole: r => { S.role = r; S.demoOpen = false; },
-  skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/skip': skip }).catch(() => { }); tick(true); },
+  skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
   open2307: key => { S.modal = { kind: '2307', key }; },
@@ -2384,6 +2406,14 @@ const A = {
   goBook: () => { S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
   setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
+  custCancelAsk: id => { S.cust.cancelAsk = id || null; },
+  custCancel: id => { const b = bk(id); if (!b || !['paid', 'departed'].includes(b.status)) return; const q = refundQuote(b), p = b.pid ? prov(b.pid) : null;
+    b.status = 'cancelled'; b.cancelledBy = 'customer'; b.cancelledAt = now(); b.refunded = true; b.refund = { amount: q.amount, fee: q.fee, method: q.method, days: q.days, dueBy: now() + q.days * DAY, at: now(), free: q.free };
+    if (b.late) b.late.resolved = true; S.cust.cancelAsk = null;
+    logB(b, `Customer cancelled ${q.free ? '24 h+ before · full refund' : 'under 24 h before · ' + POLICY.feePct + '% fee'} · refund ${peso(q.amount, 2)} to ${q.method} ${q.dueText}`);
+    if (p) { if (['departed'].includes(p.status) || p.status !== 'red') p.status = 'green'; pushAlert('provider:' + p.id, 'Booking cancelled by customer', `${b.id}${b.slotAt ? ' for ' + fmtWhen(b.slotAt) : ''}. No reward credits are affected.`, b.id, 'bad'); toast('provider', 'Booking cancelled by customer', b.id); }
+    pushAlert('customer', 'Booking cancelled · refund on the way', `${peso(q.amount, 2)} back to ${q.method} ${q.dueText}.`, b.id, 'good');
+    toast('customer', 'Booking cancelled', `${peso(q.amount, 2)} refund to ${q.method} ${q.dueText}.`); },
   calToday: () => { S.cust.day = dayStart(now()); S.cust.tmin = null; const d = new Date(now()); S.cust.calMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime(); },
   calMonth: dir => { const m = new Date(S.cust.calMonth || now()); S.cust.calMonth = new Date(m.getFullYear(), m.getMonth() + Number(dir), 1).getTime(); },
   availDay: arg => { const [path, k] = arg.split('|'); const av = getPath(path); if (av) av.days[Number(k)] = av.days[Number(k)] ? 0 : 1; },
@@ -2418,9 +2448,9 @@ const A = {
     setTimeout(() => {
       const b = bk(c.pay.bid), p = prov(b.pid);
       if (b.status !== 'offered') { c.pay = null; render(); return; }
-      b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN; planReminders(b);
+      b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN; b.payMethod = S.customer.pay; if (!b.reminders || !b.reminders.length) planReminders(b);
       logB(b, `Customer accepted arrival time and paid ${peso(b.gross)} via ${S.customer.pay}`);
-      pushAlert('provider:' + p.id, 'Payment received · depart', `Arrive by ${fmtT(b.promisedAt)}.`, b.id, 'good');
+      pushAlert('provider:' + p.id, b.when === 'later' ? 'Payment received · booking confirmed' : 'Payment received · depart', `Arrive by ${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}.`, b.id, 'good');
       toast('provider', 'Payment received', `Depart now · arrive by ${fmtT(b.promisedAt)}.`);
       sendSms(p.phone, `BalikHome: Customer paid for ${b.id}. Arrive by ${fmtT(b.promisedAt)}.`);
       c.pay.stage = 'done'; render();
@@ -2447,7 +2477,7 @@ const A = {
   shareTrip: () => { toast('customer', 'Trip link ready', 'balik.ph/t/' + S.cust.bid.slice(2) + ' · share it with someone you trust.'); },
   custHelp: () => { S.cust.help = true; },
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
-  openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
+  openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); if (bk(a.bid).status === 'offered') A.openPay(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
   readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); },
   startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null, ref: urlRef() }; },
   suSend: () => { const s = S.cust.signup; s.eCode = String(100000 + Math.floor(Math.random() * 899999)); s.pCode = String(100000 + Math.floor(Math.random() * 899999)); s.eOtp = ''; s.pOtp = ''; s.step = 2;
@@ -2484,9 +2514,9 @@ const A = {
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} can't take this one`, 'You were not charged. See the nearest providers on stand-by.', b.id, 'bad'); toast('customer', `${p.name.split(' ')[0]} is not available`, 'You were not charged.'); }
     S.prov.screen = 'jobs'; },
   acceptReq: id => { const b = bk(id), p = prov(b.pid);
-    b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = now() + S.settings.hold * MIN;
+    b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = b.when === 'later' ? Math.max(b.slotAt - HOUR, now() + S.settings.hold * MIN) : now() + S.settings.hold * MIN; if (b.when === 'later') { b.payDue = b.offerExpires; planReminders(b); }
     logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
-    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Confirm and pay.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay by ' + fmtWhen(b.offerExpires) + ' (1 hour before) or it is cancelled automatically.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
   depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
@@ -2692,7 +2722,7 @@ const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
 const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
-window.__balikSync = SYNC;
+window.__balikSync = SYNC; window.__balikState = () => S; window.__balikNow = () => now(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
 function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
@@ -2776,10 +2806,12 @@ function applyRemote(root) {
     if (!localChanged && remote !== SYNC.last[n]) { try { S[n] = JSON.parse(remote); changed = true; } catch (e) { } }
     if (!localChanged) SYNC.last[n] = remote;
   });
-  if (root.meta && typeof root.meta.skip === 'number' && root.meta.skip !== skip) { skip = root.meta.skip; changed = true; }
+  if (root.meta && typeof root.meta.offset === 'number') { const ns = root.meta.offset - (simStart - realStart); if (Math.abs(ns - skip) > 1500) { skip = ns; changed = true; } }
   SYNC.presence = root.presence || {};
   return changed;
 }
+// shared clock: every device uses the same offset from real time, so reloads and late joiners agree
+const simOffset = () => simStart - realStart + skip;
 function isLeader() {
   if (!SYNC.adapter) return true;
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
@@ -2826,7 +2858,7 @@ async function startSync() {
     if (lsGet('balik-reseed') === '1') { lsSet('balik-reseed', null); await SYNC.adapter.reset(); }
     const root = await SYNC.adapter.get();
     if (!root || !root.meta) {
-      await SYNC.adapter.update(Object.assign(snapshotPaths(), { 'meta/skip': skip, 'meta/createdAt': Date.now(), 'meta/by': DEVICE }));
+      await SYNC.adapter.update(Object.assign(snapshotPaths(), { 'meta/offset': simOffset(), 'meta/createdAt': Date.now(), 'meta/by': DEVICE }));
       markSynced();
     } else {
       SHARED_LIST.concat(SHARED_MAP).forEach(n => { SYNC.last[n] = {}; });
@@ -2838,7 +2870,7 @@ async function startSync() {
       SHARED_ONE.forEach(n => { if (root[n]) { try { S[n] = JSON.parse(root[n]); SYNC.last[n] = root[n]; } catch (e) { } } });
     }
     if (!S.customers[S.customer.cid || 'me'] && S.customer.signedIn) S.customers[S.customer.cid || 'me'] = custRecordFromLocal();
-    SYNC.ready = true;
+    SYNC.ready = true; setTimeout(() => landOnBooking(), 50);
     SYNC.status = SYNC.mode === 'live' ? 'Live' : 'This device only';
     SYNC.adapter.onChange(r => { if (applyRemote(r)) render(); });
     const beat = () => SYNC.adapter.update({ ['presence/' + DEVICE]: Date.now() }).catch(() => { });
@@ -2867,7 +2899,11 @@ function tick(force = false) {
   if (lead) S.bookings.forEach(b => {
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true;
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
-    if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; logB(b, 'Customer did not confirm in time'); changed = true; pushAlert('provider:' + b.pid, 'Offer expired', b.id + ' · the customer did not confirm.', b.id); }
+    if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; changed = true;
+      if (b.when === 'later') { b.autoCancelled = true; logB(b, 'Not paid 1 hour before · booking cancelled automatically');
+        pushAlert('provider:' + b.pid, 'Booking cancelled · not paid', `${b.id} for ${fmtWhen(b.slotAt)} was not paid in time.`, b.id, 'bad');
+        if (b.cid) pushAlert('customer', 'Booking cancelled · not paid', `Your booking for ${fmtWhen(b.slotAt)} was cancelled because payment was not made 1 hour before. You were not charged.`, b.id, 'bad'); }
+      else { logB(b, 'Customer did not confirm in time'); pushAlert('provider:' + b.pid, 'Offer expired', b.id + ' · the customer did not confirm.', b.id); } }
     if (['paid', 'departed'].includes(b.status) && !b.arrivedAt && b.promisedAt && n > b.promisedAt + S.settings.lateTrigger * MIN && !b.late) {
       const p = prov(b.pid);
       b.late = { at: n, penalty: false, replies: [], resolved: false, seen: false }; changed = true;
@@ -2892,7 +2928,18 @@ function tick(force = false) {
     if (callSync()) render();
   }
 }
+function landOnBooking() {
+  if (LANDED || !S.customer.signedIn || !['customer', 'both'].includes(S.role)) return;
+  const mine = S.bookings.filter(b => b.cid === (S.customer.cid || 'me'));
+  const b = mine.find(x => x.status === 'offered') || mine.find(x => ['requested', 'business_queue', 'paid', 'departed', 'arrived'].includes(x.status));
+  if (!b) return; LANDED = true;
+  A.openBooking(b.id);
+  if (b.status === 'offered' && b.when === 'later') toast('customer', 'Payment needed', `Pay by ${fmtWhen(b.offerExpires)} to keep your booking.`, false, b.id);
+  render();
+}
+let LANDED = false;
 render();
+landOnBooking();
 startSync();
 setInterval(() => tick(false), 1000);
 })();
