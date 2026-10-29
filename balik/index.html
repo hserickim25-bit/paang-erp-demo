@@ -245,6 +245,7 @@ ol.steps{margin:0;padding:0}
 @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .toasts{position:absolute;top:8px;left:8px;right:8px;z-index:30;display:flex;flex-direction:column;gap:6px;pointer-events:none}
+.toast.tap{cursor:pointer}.toast.tap:active{transform:scale(.98)}.toast.tap::after{content:'Open ›';align-self:center;font-size:12px;font-weight:600;color:var(--accent);flex-shrink:0}
 .toast{pointer-events:auto;background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--line);box-shadow:var(--shadow-md);border-radius:16px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;animation:drop .3s cubic-bezier(.2,.8,.2,1)}
 .toast .app{width:28px;height:28px;border-radius:8px;background:var(--mango);color:var(--mango-ink);display:grid;place-items:center;flex-shrink:0}
 .toast .app.sms{background:var(--good-dot);color:#04170D}
@@ -702,7 +703,26 @@ seedHistory(); SEEDING = false;
 /* ---------- alerts, sms, toasts ---------- */
 function pushAlert(to, title, body, bid, kind = 'info') { if (to === 'customer') { const b = bid && bk(bid); to = 'customer:' + ((b && b.cid) || S.customer.cid || 'me'); } S.alerts.unshift({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, title, body, bid: bid || null, kind, at: now(), read: false }); }
 function sendSms(to, text, kind = 'info') { S.sms.unshift({ id: 'sm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, text, at: now(), kind }); }
-function toast(pane, title, body, sms = false) { S.toasts.push({ id: Math.random().toString(36).slice(2), pane, title, body, sms, until: Date.now() + 4200 }); }
+function toast(pane, title, body, sms = false, bid = null) {
+  if (!bid) { const m = String(body || '').match(/balik\.ph\/r\/(\d+)/) || String(body || '').match(/\b(B-\d+)\b/); if (m) bid = m[1].startsWith('B-') ? m[1] : 'B-' + m[1]; if (bid && !bk(bid)) bid = null; }
+  const tap = !!bid || ['provider', 'customer', 'business', 'admin'].includes(pane);
+  S.toasts.push({ id: Math.random().toString(36).slice(2), pane, title, body, sms, bid, tap, until: Date.now() + (sms || bid ? 15000 : 4500) });
+}
+function openFromToast(pane, bid) {
+  const b = bid ? bk(bid) : null;
+  if (pane === 'provider') {
+    const job = b && b.pid === S.prov.id ? b : S.bookings.find(x => x.pid === S.prov.id && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status));
+    S.prov.chat = null; S.prov.cam = null;
+    if (!job) { S.prov.screen = 'jobs'; return; }
+    S.prov.bid = job.id; if (job.status === 'requested') { S.prov.screen = 'request'; S.prov.eta = S.prov.eta || 30; } else S.prov.screen = 'job';
+    S.alerts.filter(a => a.to === 'provider:' + S.prov.id && a.bid === job.id).forEach(a => a.read = true);
+  } else if (pane === 'customer') {
+    if (!S.customer.signedIn) return;
+    const own = b && b.cid === (S.customer.cid || 'me') ? b : null;
+    if (own) { A.openBooking(own.id); if (own.status === 'ended') A.goReview(own.id); S.alerts.filter(a => a.to === tgt('customer') && a.bid === own.id).forEach(a => a.read = true); } else S.cust.screen = 'alerts';
+  } else if (pane === 'admin') { S.admin.tab = b && b.late && !b.late.resolved ? 'late' : 'jobs'; if (b) S.admin.sel = b.id; }
+  else if (pane === 'business') { S.biz.tab = 'requests'; }
+}
 const tgt = to => to === 'customer' ? 'customer:' + (S.customer.cid || 'me') : to;
 const unread = to => S.alerts.filter(a => a.to === tgt(to) && !a.read).length;
 const custActive = () => S.bookings.find(b => b.cid === (S.customer.cid || 'me') && ['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'].includes(b.status));
@@ -1767,7 +1787,7 @@ function modal() {
 function toastsFor(pane, web = false) {
   const t = S.toasts.filter(x => x.pane === pane && x.until > Date.now()).slice(-2);
   if (!t.length) return '';
-  return `<div class="toasts" style="${web ? 'left:auto;right:16px;top:16px;width:min(360px,calc(100% - 32px))' : ''}">${t.map(x => `<div class="toast" role="status"><span class="app ${x.sms ? 'sms' : ''}">${ic(x.sms ? 'phone' : 'bell', 16)}</span><div class="col grow"><b class="small">${esc(x.title)}</b><span class="small muted">${esc(x.body)}</span></div></div>`).join('')}</div>`;
+  return `<div class="toasts" style="${web ? 'left:auto;right:16px;top:16px;width:min(360px,calc(100% - 32px))' : ''}">${t.map(x => `<div class="toast${x.tap ? ' tap' : ''}" role="status"${x.tap ? ` data-act="toastOpen" data-arg="${x.id}" tabindex="0" aria-label="${esc(x.title)} · open"` : ''}><span class="app ${x.sms ? 'sms' : ''}">${ic(x.sms ? 'phone' : 'bell', 16)}</span><div class="col grow"><b class="small">${esc(x.title)}</b><span class="small muted">${esc(x.body)}</span></div></div>`).join('')}</div>`;
 }
 
 /* =============== Shell =============== */
@@ -2303,7 +2323,7 @@ const A = {
   shareTrip: () => { toast('customer', 'Trip link ready', 'balik.ph/t/' + S.cust.bid.slice(2) + ' · share it with someone you trust.'); },
   custHelp: () => { S.cust.help = true; },
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
-  openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to === 'customer' && a.bid) { A.openBooking(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
+  openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
   readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); },
   startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null, ref: urlRef() }; },
   suSend: () => { const s = S.cust.signup; s.eCode = String(100000 + Math.floor(Math.random() * 899999)); s.pCode = String(100000 + Math.floor(Math.random() * 899999)); s.eOtp = ''; s.pOtp = ''; s.step = 2;
@@ -2368,6 +2388,7 @@ const A = {
   callDecline: arg => { const [role, id] = arg.split(':'); finishCall(bk(id), 'declined'); stopRing(); },
   callEnd: arg => { const [role, id] = arg.split(':'); finishCall(bk(id), 'hangup'); endCallLocal(role); },
   callMute: role => { const c = CALLS[role]; if (!c) return; c.muted = !c.muted; c.stream.getAudioTracks().forEach(t => t.enabled = !c.muted); },
+  toastOpen: id => { const t = S.toasts.find(x => x.id === id); if (!t) return; S.toasts = S.toasts.filter(x => x.id !== id); openFromToast(t.pane, t.bid); },
   toggleGps: () => { if (S.loc.status !== 'granted') { S.loc.ask = true; return; } S.loc.shareProv = !S.prov.gps; S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
@@ -2609,7 +2630,7 @@ function applyRemote(root) {
       if (!localChanged && remote[k] != null && last[k] == null && local[k] == null) {   // brand-new record from another device
         try {
           const r = JSON.parse(remote[k]);
-          if (n === 'alerts' && mine[r.to] && SYNC.ready) toast(mine[r.to], r.title, r.body);
+          if (n === 'alerts' && mine[r.to] && SYNC.ready) toast(mine[r.to], r.title, r.body, false, r.bid || null);
           if (n === 'sms' && SYNC.ready) { if (r.to === myPhone) toast('provider', 'SMS · BalikHome', r.text, true); if (r.kind === 'late') toast('admin', 'SMS · Late arrival', r.text, true); }
         } catch (e) { }
       }
