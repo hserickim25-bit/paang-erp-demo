@@ -1,6 +1,6 @@
 {
-  "name": "Balik Home Care",
-  "short_name": "Balik",
+  "name": "BalikHome",
+  "short_name": "BalikHome",
   "description": "Book verified beauty, massage and pet-grooming pros at home.",
   "start_url": "./",
   "scope": "./",

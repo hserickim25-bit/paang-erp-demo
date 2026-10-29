@@ -1,6 +1,6 @@
-# Balik Home Care — test build
+# BalikHome Home Care — test build
 
-A working test build of the Balik home-service platform (Philippines): customers book verified beauty, massage and pet-grooming pros at home; providers, partner businesses and Balik operations each have their own app.
+A working test build of the BalikHome home-service platform (Philippines): customers book verified beauty, massage and pet-grooming pros at home; providers, partner businesses and BalikHome operations each have their own app.
 
 **Open it:** https://hserickim25-bit.github.io/paang-erp-demo/balik/
 
@@ -14,7 +14,7 @@ A working test build of the Balik home-service platform (Philippines): customers
 - Search by distance from your saved address, traffic-light availability (green / yellow / red).
 - Request → provider gets app alert + SMS → accepts with an arrival time (10–60 min) → customer pays → Depart → check-in → "In service" → End service (or auto-end) → review with stars and photos.
 - Late-arrival alerts (admin SMS + provider alert), penalty points and referral-fee tiers (20 / 22 / 25 %, draft).
-- Business accounts that work end to end: invite staff by SMS → staff signs up → Balik approves → joins the team; edit or remove staff; assign or decline spa requests; editable business profile and menu; settlement statements by cycle.
+- Business accounts that work end to end: invite staff by SMS → staff signs up → BalikHome approves → joins the team; edit or remove staff; assign or decline spa requests; editable business profile and menu; settlement statements by cycle.
 - Admin console with real controls: approve / decline / ask for info on applications, edit or suspend providers, reset penalty points, set a provider's light, search and filter jobs, message customers, add notes, cancel and refund, suspend customers, hide reviews, run payout batches, and record 0619-E / 1601-EQ filings and 2307 issuance.
 - Withholding tax under BIR RR 16-2023 (1 % of ½ gross above ₱500,000 a year) with a Form 2307 preview.
 
