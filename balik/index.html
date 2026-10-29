@@ -205,6 +205,7 @@ button.li:hover{background:var(--surface-2)}
 .cal-d{height:40px;border-radius:10px;border:0;background:transparent;font:inherit;font-size:15px;color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
 .cal-d:hover:not([disabled]){background:var(--surface-2)}.cal-d.today{box-shadow:inset 0 0 0 1.5px var(--accent)}.cal-d.off{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-2)}
 .cal-d[aria-pressed="true"],.cal-d[aria-pressed="true"]:hover{background:var(--accent);color:#fff;text-decoration:none;font-weight:700}.cal-d[disabled]{opacity:.28;cursor:default}
+.cal-d.open{background:var(--accent-soft);font-weight:600}.cal-key.open{background:var(--accent-soft)}
 .cal-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:4px}.cal-key.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
 .chatlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface-2);border-radius:12px;min-height:0}
 .bub{max-width:80%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.bub span{font-size:14px;white-space:pre-wrap;word-break:break-word}.bub i{font-style:normal;font-size:10.5px;color:var(--muted);align-self:flex-end}
@@ -572,7 +573,7 @@ const S = {
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
       bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
       rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } },
-    respond: 5, hold: 5, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
+    respond: 5, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
     alertBiz: true, tellCustomer: true
   }
@@ -975,37 +976,44 @@ function cartInfo() {
   const svcs = c.cart.map(i => src.services[i]);
   return { src, svcs, gross: svcs.reduce((a, s) => a + s.price, 0), mins: svcs.reduce((a, s) => a + s.mins, 0) };
 }
-const BOOK_AHEAD_DAYS = 90;
+const bookWindowH = () => Number(S.settings.bookAheadHours) || 72;
+const bookMax = () => now() + bookWindowH() * HOUR;
 function calendar(c, av, d0) {
-  const last = d0 + BOOK_AHEAD_DAYS * DAY;
-  const sel = new Date(c.day);
-  if (c.calMonth == null) c.calMonth = new Date(sel.getFullYear(), sel.getMonth(), 1).getTime();
+  const minT = now() + 30 * MIN, maxT = bookMax();
+  if (c.calMonth == null) { const sel = new Date(c.day); c.calMonth = new Date(sel.getFullYear(), sel.getMonth(), 1).getTime(); }
   const m = new Date(c.calMonth), y = m.getFullYear(), mo = m.getMonth();
-  const first = new Date(y, mo, 1), lead = (first.getDay() + 6) % 7, nDays = new Date(y, mo + 1, 0).getDate();
-  const minMonth = new Date(new Date(d0).getFullYear(), new Date(d0).getMonth(), 1).getTime();
-  const maxMonth = new Date(new Date(last).getFullYear(), new Date(last).getMonth(), 1).getTime();
+  const lead = (new Date(y, mo, 1).getDay() + 6) % 7, nDays = new Date(y, mo + 1, 0).getDate();
+  const thisY = new Date(now()).getFullYear();
+  const years = [thisY, thisY + 1, thisY + 2];
+  const months = Array.from({ length: 12 }, (_, i) => new Date(2026, i, 1).toLocaleDateString('en-US', { month: 'long' }));
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push('<span></span>');
+  let open = 0;
   for (let d = 1; d <= nDays; d++) {
-    const t = new Date(y, mo, d).getTime(), past = t < d0 || t > last, usual = av ? !!av.days[(new Date(t).getDay() + 6) % 7] : true;
-    cells.push(`<button type="button" class="cal-d${t === d0 ? ' today' : ''}${usual ? '' : ' off'}" data-act="setDay" data-arg="${t}" aria-pressed="${c.day === t}" ${past ? 'disabled' : ''} aria-label="${new Date(t).toDateString()}${usual ? '' : ' (usually off)'}">${d}</button>`);
+    const t = new Date(y, mo, d).getTime(), ok = t + DAY > minT && t <= maxT, usual = av ? !!av.days[(new Date(t).getDay() + 6) % 7] : true;
+    if (ok) open++;
+    cells.push(`<button type="button" class="cal-d${t === d0 ? ' today' : ''}${usual ? '' : ' off'}${ok ? ' open' : ''}" data-act="setDay" data-arg="${t}" aria-pressed="${c.day === t}" ${ok ? '' : 'disabled'} aria-label="${new Date(t).toDateString()}${usual ? '' : ' (usually off)'}">${d}</button>`);
   }
   return `<div class="cal">
-    <div class="row between"><button type="button" class="iconbtn" data-act="calMonth" data-arg="-1" ${c.calMonth <= minMonth ? 'disabled' : ''} aria-label="Previous month">${ic('chev', 18)}</button><b>${m.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</b><button type="button" class="iconbtn" data-act="calMonth" data-arg="1" ${c.calMonth >= maxMonth ? 'disabled' : ''} aria-label="Next month">${ic('chev', 18)}</button></div>
+    <div class="row" style="gap:6px"><button type="button" class="iconbtn" data-act="calMonth" data-arg="-1" aria-label="Previous month">${ic('chev', 18)}</button>
+      <select id="cal-y" class="select" style="height:38px;flex:1;min-width:84px;padding:0 26px 0 10px;font-size:15px" data-act-change="calPick" data-which="y">${years.map(v => `<option value="${v}" ${v === y ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <select id="cal-m" class="select" style="height:38px;flex:1.4;min-width:0;padding:0 26px 0 10px;font-size:15px" data-act-change="calPick" data-which="m">${months.map((v, i) => `<option value="${i}" ${i === mo ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <button type="button" class="iconbtn" data-act="calMonth" data-arg="1" aria-label="Next month">${ic('chev', 18)}</button><button type="button" class="btn ghost xs" data-act="calToday">Today</button></div>
     <div class="cal-g">${DAYS3.map(d => `<span class="cal-h">${d.slice(0, 2)}</span>`).join('')}${cells.join('')}</div>
-    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off · you can still ask</span>' : ''}<span class="tiny muted">Up to ${BOOK_AHEAD_DAYS} days ahead</span></div></div>`;
+    ${open ? '' : `<span class="small" style="color:var(--warn)">No bookable days in this month. Bookings open ${bookWindowH()} hours ahead.</span>`}
+    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected</span><span class="tiny muted"><span class="cal-key open"></span> Bookable · next ${bookWindowH()} h</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off</span>' : ''}</div></div>`;
 }
 function schedPicker(c, src) {
-  const d0 = dayStart(now()), minT = now() + 30 * MIN;
-  if (c.day == null || c.day < d0) c.day = d0;
-  const valid = m => c.day + m * MIN >= minT;
-  if (c.tmin == null || !valid(c.tmin)) { const first = Array.from({ length: 48 }, (_, i) => i * 30).find(valid); if (first == null) { c.day += DAY; c.tmin = 0; } else c.tmin = first; }
+  const d0 = dayStart(now()), minT = now() + 30 * MIN, maxT = bookMax();
+  if (c.day == null || c.day < d0 || c.day > maxT) c.day = d0;
+  const valid = m => { const t = c.day + m * MIN; return t >= minT && t <= maxT; };
+  if (c.tmin == null || !valid(c.tmin)) { let f = Array.from({ length: 48 }, (_, i) => i * 30).find(valid); if (f == null && c.day + DAY <= maxT) { c.day += DAY; f = Array.from({ length: 48 }, (_, i) => i * 30).find(valid); } c.tmin = f == null ? 0 : f; }
   c.slot = c.day + c.tmin * MIN;
   const av = src && src.services && !src.staff ? availOf(src) : null, nm = src && src.name ? src.name.split(' ')[0] : '';
   const groups = [['Morning', 360, 720], ['Afternoon', 720, 1080], ['Evening', 1080, 1440], ['Late night', 0, 360]];
   return `${calendar(c, av, d0)}
-    <label class="field">Time<select id="c-time" class="select" data-bind="cust.tmin" data-type="num" style="font-size:16px">${groups.map(([g, a, b]) => `<optgroup label="${g}">${Array.from({ length: (b - a) / 30 }, (_, i) => a + i * 30).map(m => `<option value="${m}" ${c.tmin === m ? 'selected' : ''} ${valid(m) ? '' : 'disabled'}>${fmtMin(m)}${av && !inUsual(av, c.day + m * MIN) ? ' · outside usual hours' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
-    <div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><b class="small">${fmtWhen(c.slot)}</b>${av ? `<span class="small muted">${esc(nm)}'s usual hours: ${availText(av)}</span>${inUsual(av, c.slot) ? '' : `<span class="small" style="color:var(--warn)">Outside ${esc(nm)}'s usual hours. You can still send the request; ${esc(nm)} can accept or decline.</span>`}` : ''}<span class="tiny muted">Any time of day or night. The provider confirms before you pay.</span></div>`;
+    <label class="field">Time<select id="c-time" class="select" data-bind="cust.tmin" data-type="num" style="font-size:16px">${groups.map(([g, a, b]) => `<optgroup label="${g}">${Array.from({ length: (b - a) / 30 }, (_, i) => a + i * 30).map(m => `<option value="${m}" ${c.tmin === m ? 'selected' : ''} ${valid(m) ? '' : 'disabled'}>${fmtMin(m)}${av && valid(m) && !inUsual(av, c.day + m * MIN) ? ' · outside usual hours' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    <div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><b class="small">${fmtWhen(c.slot)}</b>${av ? `<span class="small muted">${esc(nm)}'s usual hours: ${availText(av)}</span>${inUsual(av, c.slot) ? '' : `<span class="small" style="color:var(--warn)">Outside ${esc(nm)}'s usual hours. You can still send the request; ${esc(nm)} can accept or decline.</span>`}` : ''}<span class="tiny muted">Book any time of day or night, up to ${bookWindowH()} hours ahead (until ${fmtWhen(maxT)}). Reminders come by in-app message 1 and 2 days after booking, on the day, and 1 hour before.</span></div>`;
 }
 function slots() { const t = now(); const start = Math.ceil((t + 60 * MIN) / (30 * MIN)) * 30 * MIN; return Array.from({ length: 6 }, (_, i) => start + i * 30 * MIN); }
 function custBook() {
@@ -1023,7 +1031,7 @@ function custBook() {
       <div class="col" style="gap:8px"><span class="eyebrow">Payment method · charged later</span><div class="list">${pm('GCash')}${pm('Maya')}${pm('Card')}</div></div>
       <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row" style="align-items:flex-start">${ic('shield', 18)}<p class="small">No contact before payment. Once you pay, you can message or call your provider in the app until the service ends.</p></div></div>
     </div>`;
-  const dis = c.when === 'later' && (!c.slot || c.slot < now() + 30 * MIN);
+  const dis = c.when === 'later' && (!c.slot || c.slot < now() + 30 * MIN || c.slot > bookMax());
   const f = `<button class="btn primary block" data-act="sendRequest" ${dis ? 'disabled' : ''}>${ic('send', 18)} Send request</button><span class="tiny muted" style="text-align:center">No charge now. You pay after you accept the arrival time.</span>`;
   return [h, f];
 }
@@ -1085,12 +1093,14 @@ function custTrack() {
   const doneN = { paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0;
   const late = b.late && !b.arrivedAt;
   const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: 'Service in progress', ended: 'Service ended', reviewed: 'Completed' }[b.status];
-  const sub = { paid: `Paid ${fmtT(b.paidAt)} · arrives by ${fmtT(b.promisedAt)}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: `Arrived ${fmtT(b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}` }[b.status];
+  const pT = b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt);
+  const sub = { paid: `Paid ${fmtT(b.paidAt)} · ${b.when === 'later' ? 'booked for' : 'arrives by'} ${pT}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: `Arrived ${fmtT(b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}` }[b.status];
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
     <div class="scroll" data-scroll="c-track">
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
       <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
+      ${b.reminders && b.reminders.length && ['paid'].includes(b.status) ? remindersCard(b) : ''}
       ${['paid', 'departed', 'arrived'].includes(b.status) ? liveMap(b, p, 'c') : ''}
       ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Arrival check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Check-in photo taken by ${esc(first)} at arrival" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;background:#0E1520"></div>` : ''}
       <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>
@@ -1308,7 +1318,7 @@ function provJob() {
   const doneN = { offered: 0, paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0;
   let hero = '', f = '';
   if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
-  if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = `<button class="btn primary block" data-act="depart" data-arg="${b.id}">${ic('route', 18)} Depart now</button>`; }
+  if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = `<button class="btn primary block" data-act="depart" data-arg="${b.id}">${ic('route', 18)} Depart now</button>`; }
   if (b.status === 'departed') { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">On the way</b><span class="small">Departed ${fmtT(b.departedAt)} · arrive by <b class="num">${fmtT(b.promisedAt)}</b> (<span class="num" data-cd="${b.promisedAt}">${mmss(b.promisedAt - now())}</span> left)</span></div>`; f = `<button class="btn primary block" data-act="arrive" data-arg="${b.id}">${ic('pin', 18)} I've arrived · check in</button>`; }
   if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = `<button class="btn good block" data-act="endService" data-arg="${b.id}">${ic('check', 18)} End service · back to green</button>`; }
   if (['ended', 'reviewed'].includes(b.status)) { hero = `<div class="card"><div class="row"><span class="dot green" style="width:12px;height:12px"></span><b style="font-size:17px">Service ended · you're on green</b></div><span class="small muted">${b.autoEnded ? 'Ended automatically at the shown service time.' : 'Ended ' + fmtT(b.endedAt) + '.'} The customer was asked to rate you. Change your status if you need to:</span>
@@ -1319,6 +1329,7 @@ function provJob() {
     ${hero}
     ${canTalk(b) ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
+    ${b.reminders && b.reminders.length && b.status === 'paid' ? remindersCard(b) : ''}
     ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
     ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Your check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Your check-in photo" style="width:100%;border-radius:10px;max-height:220px;object-fit:contain;background:#0E1520"></div>` : ''}
     <div class="list"><div class="li"><span class="muted small" style="width:80px">Service</span><b class="grow small">${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</b></div>
@@ -1817,7 +1828,7 @@ function admSettings() {
     <div class="narrow panel"><div class="panel-h"><h3>Stand-by & lateness</h3></div><div class="panel-b">
       ${num('s-week', 'settings.weeklyTarget', st.weeklyTarget, 'Weekly green target', 'hours')}${num('s-day', 'settings.dayTarget', st.dayTarget, 'Hours that count as a full day', 'hours')}
       ${num('s-pen', 'settings.penaltyAfter', st.penaltyAfter, 'Counts as late after promised arrival', 'minutes')}${num('s-trig', 'settings.lateTrigger', st.lateTrigger, 'Send late alert after promised arrival', 'minutes')}
-      ${num('s-resp', 'settings.respond', st.respond, 'Time to answer a request', 'minutes')}</div></div></div>
+      ${num('s-resp', 'settings.respond', st.respond, 'Time to answer a request', 'minutes')}${num('s-ahead', 'settings.bookAheadHours', st.bookAheadHours || 72, 'Customers can book up to', 'hours ahead')}</div></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Late alert routing</h3></div><div class="panel-b">
       <label class="field">On-duty admin SMS numbers<input id="s-nums" class="input" data-bind="settings.adminNumbers" value="${esc(st.adminNumbers)}"></label>
       <label class="check"><input type="checkbox" id="s-biz" data-bind="settings.alertBiz" ${st.alertBiz ? 'checked' : ''}>Also alert the business when its staff are late</label>
@@ -1891,8 +1902,8 @@ function demoSheet() {
     <div class="row between"><h3 style="font-size:17px">Demo controls</h3><button class="iconbtn" data-act="demo" aria-label="Close">${ic('x', 20)}</button></div>
     <span class="eyebrow">Switch app</span>
     <div class="rolegrid">${rb('customer', 'Customer', 'user', 'Book a service')}${rb('provider', 'Provider', 'bag', 'Accept & serve')}${rb('business', 'Business', 'building', 'Spa staff & payouts')}${rb('admin', 'Admin', 'gear', 'Operations & tax')}</div>
-    <span class="eyebrow">Simulated clock · <span class="num" data-clock>${fmtT(now())}</span></span>
-    <div class="row" style="gap:8px"><button class="btn secondary sm grow" data-act="skip" data-arg="10">+10 min</button><button class="btn secondary sm grow" data-act="skip" data-arg="60">+1 hour</button><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
+    <span class="eyebrow">Simulated clock · <span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span>
+    <div class="row" style="gap:8px"><button class="btn secondary sm grow" data-act="skip" data-arg="10">+10 min</button><button class="btn secondary sm grow" data-act="skip" data-arg="60">+1 hour</button><button class="btn secondary sm grow" data-act="skip" data-arg="1440">+1 day</button><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
     ${liveSection()}
     <p class="tiny muted">Test build. Email and SMS codes are shown on screen instead of being sent, and payments are simulated.</p>
     <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn secondary sm" data-act="resetDemo">Reset this device</button><button class="btn danger sm" data-act="resetRoom">${S.demoConfirm === 'room' ? 'Tap again to reset for everyone' : 'Reset shared test data'}</button></div>
@@ -1919,7 +1930,7 @@ function shell() {
   return `<header class="topbar"><div class="topbar-in">
       <button class="brand" data-act="goHome" aria-label="BalikHome · home"><span class="brand-mark"><img src="${LOGO_MARK}" alt=""></span>BalikHome <small>test build</small></button>
       <nav class="seg" aria-label="View">${wide() ? role('both', 'Customer + Provider') : ''}${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
-      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtT(now())}</span><button class="mini" data-act="skip" data-arg="10">+10 min</button><button class="mini" data-act="skip" data-arg="60">+1 h</button><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
+      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span><button class="mini" data-act="skip" data-arg="10">+10 min</button><button class="mini" data-act="skip" data-arg="60">+1 h</button><button class="mini" data-act="skip" data-arg="1440">+1 day</button><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
     </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}`;
 }
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
@@ -2279,6 +2290,38 @@ const resetScroll = key => { const el = document.querySelector(`[data-scroll="${
 function setPath(path, val) { const ks = path.split('.'); let o = S; for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]]; o[ks[ks.length - 1]] = val; }
 function getPath(path) { return path.split('.').reduce((o, k) => o && o[k], S); }
 
+/* ---------- booking reminders (in-app messages to customer and provider until cancelled) ---------- */
+function planReminders(b) {
+  if (b.when !== 'later' || !b.slotAt) { b.reminders = []; return; }
+  const base = b.createdAt || now(), svc = b.slotAt, list = [];
+  const add = (key, at, label) => { if (at > now() && at < svc - 30 * MIN && !list.some(r => Math.abs(r.at - at) < 30 * MIN)) list.push({ key, at, label, sent: false }); };
+  add('d1', base + DAY, 'Reminder · 1 day after booking');
+  add('d2', base + 2 * DAY, 'Reminder · 2 days after booking');
+  const morning = dayStart(svc) + 8 * HOUR; add('day', morning > base ? morning : dayStart(svc) + 30 * MIN, 'Today is your booking day');
+  list.push({ key: 'h1', at: Math.max(now() + MIN, svc - HOUR), label: 'Starts in 1 hour', sent: false });
+  b.reminders = list.sort((x, y) => x.at - y.at);
+  logB(b, 'Reminders set: ' + b.reminders.map(r => fmtWhen(r.at)).join(' · '));
+}
+const remindersCard = b => `<div class="card tight" style="gap:6px"><span class="eyebrow">Reminders by in-app message</span>${b.reminders.map(r => `<div class="row between small"><span>${esc(r.label)}</span><span class="${r.sent ? 'muted' : ''}">${r.sent ? 'Sent ' : ''}${fmtWhen(r.at)}</span></div>`).join('')}<span class="tiny muted">Sent to you and ${'the other side'} until the booking is cancelled.</span></div>`;
+function sendDueReminders(n) {
+  let changed = false;
+  S.bookings.forEach(b => {
+    if (!b.reminders || !b.reminders.length) return;
+    if (!['paid', 'departed'].includes(b.status)) return;   // cancelled or already served: no more reminders
+    b.reminders.forEach(r => {
+      if (r.sent || n < r.at) return;
+      r.sent = true; r.sentAt = n; changed = true;
+      const p = prov(b.pid), what = b.services.map(s => s.name).join(' + '), when = fmtWhen(b.slotAt);
+      const cMsg = `${what} with ${p ? p.name : 'your provider'} · ${when}. Address: ${b.address.split(',').slice(0, 2).join(',')}`;
+      const pMsg = `${what} for ${b.customer} · ${when} · ${b.address}`;
+      if (b.cid) pushAlert('customer', 'BalikHome · ' + r.label, cMsg, b.id, 'info');
+      if (b.pid) pushAlert('provider:' + b.pid, 'BalikHome · ' + r.label, pMsg, b.id, 'info');
+      if (b.bizId) pushAlert('business:' + b.bizId, 'Reminder · ' + r.label, pMsg, b.id, 'info');
+      logB(b, 'Reminder sent to customer and provider: ' + r.label);
+    });
+  });
+  return changed;
+}
 function sendRequest() {
   if (myCust().suspended) { toast('customer', 'Account on hold', 'Please contact BalikHome support to reactivate your account.'); return; }
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
@@ -2341,6 +2384,7 @@ const A = {
   goBook: () => { S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
   setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
+  calToday: () => { S.cust.day = dayStart(now()); S.cust.tmin = null; const d = new Date(now()); S.cust.calMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime(); },
   calMonth: dir => { const m = new Date(S.cust.calMonth || now()); S.cust.calMonth = new Date(m.getFullYear(), m.getMonth() + Number(dir), 1).getTime(); },
   availDay: arg => { const [path, k] = arg.split('|'); const av = getPath(path); if (av) av.days[Number(k)] = av.days[Number(k)] ? 0 : 1; },
   setSlot: t => { S.cust.slot = Number(t); },
@@ -2374,7 +2418,7 @@ const A = {
     setTimeout(() => {
       const b = bk(c.pay.bid), p = prov(b.pid);
       if (b.status !== 'offered') { c.pay = null; render(); return; }
-      b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN;
+      b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN; planReminders(b);
       logB(b, `Customer accepted arrival time and paid ${peso(b.gross)} via ${S.customer.pay}`);
       pushAlert('provider:' + p.id, 'Payment received · depart', `Arrive by ${fmtT(b.promisedAt)}.`, b.id, 'good');
       toast('provider', 'Payment received', `Depart now · arrive by ${fmtT(b.promisedAt)}.`);
@@ -2620,6 +2664,7 @@ const onBind = (e, live) => {
 let composing = false;
 document.addEventListener('compositionstart', () => { composing = true; });
 document.addEventListener('compositionend', e => { composing = false; if (e.target.dataset && e.target.dataset.bind) onBind(e, true); });
+document.addEventListener('change', e => { const el = e.target; if (el && el.dataset && el.dataset.actChange === 'calPick') { const m = new Date(S.cust.calMonth || now()); let y = m.getFullYear(), mo = m.getMonth(); if (el.dataset.which === 'y') y = Number(el.value); else mo = Number(el.value); S.cust.calMonth = new Date(y, mo, 1).getTime(); render(); } });
 document.addEventListener('keydown', e => { const el = e.target; if (e.key === 'Enter' && !e.isComposing && el && el.dataset && el.dataset.enter && A[el.dataset.enter]) { e.preventDefault(); A[el.dataset.enter](el.dataset.enterArg); render(); } });
 document.addEventListener('input', e => { if (e.isComposing || composing) { if (e.target.dataset && e.target.dataset.bind) setPath(e.target.dataset.bind, e.target.value); return; } if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
 document.addEventListener('change', e => {
@@ -2818,6 +2863,7 @@ function tick(force = false) {
   const lead = isLeader();
   if (lead) { const wk = weekKeyOf(n); if (CR().lastWeek && CR().lastWeek !== wk) { closeWeekAll(CR().lastWeek); changed = true; } if (CR().lastWeek !== wk) { CR().lastWeek = wk; } }
   if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
+  if (lead && sendDueReminders(n)) changed = true;
   if (lead) S.bookings.forEach(b => {
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true;
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
@@ -2839,7 +2885,7 @@ function tick(force = false) {
   const before = S.toasts.length; S.toasts = S.toasts.filter(t => t.until > Date.now()); if (S.toasts.length !== before) changed = true;
   if (changed) render();
   else {
-    document.querySelectorAll('[data-clock]').forEach(el => el.textContent = fmtT(n));
+    document.querySelectorAll('[data-clock]').forEach(el => el.textContent = fmtD(n) + ' ' + fmtT(n));
     document.querySelectorAll('[data-cd]').forEach(el => el.textContent = mmss(Number(el.dataset.cd) - n));
     updateMaps();
     document.querySelectorAll('[data-calltime]').forEach(el => el.textContent = mmss(Date.now() - Number(el.dataset.calltime)));
