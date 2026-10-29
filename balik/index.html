@@ -409,6 +409,33 @@ let skip = 0;
 const now = () => simStart + (Date.now() - realStart) + skip;
 const fmtT = t => new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 const fmtD = t => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+/* ---------- usual working hours (reference only; the traffic light decides live availability) ---------- */
+const DAYS3 = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const fmtMin = m => { m = ((m % 1440) + 1440) % 1440; return new Date(2026, 0, 1, Math.floor(m / 60), m % 60).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }); };
+const dayStart = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime(); };
+const fmtWhen = t => { const d0 = dayStart(now()), d = dayStart(t); const day = d === d0 ? 'Today' : d === d0 + DAY ? 'Tomorrow' : new Date(t).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }); return day + ' ' + fmtT(t); };
+const availOf = p => (p && p.avail) || (p && p.biz && biz(p.biz) && biz(p.biz).avail) || defAvail();
+const defAvail = () => ({ days: [1, 1, 1, 1, 1, 1, 0], from: 540, to: 1260 });
+function daysText(d) {
+  const on = d.map((x, i) => x ? i : -1).filter(i => i >= 0);
+  if (on.length === 7) return 'Every day'; if (!on.length) return 'No set days';
+  const runs = []; let st = on[0], pr = on[0];
+  for (let k = 1; k <= on.length; k++) { if (on[k] === pr + 1) { pr = on[k]; continue; } runs.push(st === pr ? DAYS3[st] : pr - st === 1 ? DAYS3[st] + ', ' + DAYS3[pr] : DAYS3[st] + '–' + DAYS3[pr]); st = pr = on[k]; }
+  return runs.join(', ');
+}
+const availText = av => `${daysText(av.days)} · ${fmtMin(av.from)}–${fmtMin(av.to)}${av.to <= av.from ? ' (next day)' : ''}`;
+function inUsual(av, t) {
+  const d = new Date(t), wd = (d.getDay() + 6) % 7, m = d.getHours() * 60 + d.getMinutes();
+  if (av.to > av.from) return !!av.days[wd] && m >= av.from && m < av.to;
+  return (!!av.days[wd] && m >= av.from) || (!!av.days[(wd + 6) % 7] && m < av.to);
+}
+function availEditor(path, av, idp) {
+  const opts = sel => Array.from({ length: 48 }, (_, i) => i * 30).map(m => `<option value="${m}" ${sel === m ? 'selected' : ''}>${fmtMin(m)}</option>`).join('');
+  return `<div class="col" style="gap:8px">
+    <div class="row" style="gap:6px;flex-wrap:wrap">${DAYS3.map((d, k) => `<button type="button" class="chip" style="min-width:46px" data-act="availDay" data-arg="${path}|${k}" aria-pressed="${!!av.days[k]}">${d}</button>`).join('')}</div>
+    <div class="row" style="gap:8px"><label class="field grow">From<select id="${idp}-from" class="select" data-bind="${path}.from" data-type="num">${opts(av.from)}</select></label><label class="field grow">To<select id="${idp}-to" class="select" data-bind="${path}.to" data-type="num">${opts(av.to)}</select></label></div>
+    <span class="tiny muted">${availText(av)}. Night hours are fine: choose an end time earlier than the start for shifts past midnight.</span></div>`;
+}
 const peso = (n, d = 0) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: d });
 const pct = n => Math.round(n) + '%';
 const mmss = ms => { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -692,6 +719,12 @@ function seedHistory() {
   });
 }
 seedHistory(); SEEDING = false;
+(function seedAvail() {
+  const A0 = { p1: [[1, 1, 1, 1, 1, 1, 0], 600, 1320], p2: [[1, 1, 1, 1, 1, 0, 0], 540, 1140], p3: [[0, 1, 1, 1, 1, 1, 1], 780, 1380], p4: [[1, 1, 1, 1, 1, 1, 0], 480, 1020],
+    p5: [[1, 1, 1, 1, 1, 1, 1], 720, 120], p6: [[0, 0, 1, 1, 1, 1, 1], 720, 0], p7: [[0, 0, 0, 0, 1, 1, 1], 480, 1080], p8: [[1, 1, 1, 1, 1, 1, 0], 540, 1200] };
+  S.providers.forEach(p => { const a = A0[p.id]; p.avail = a ? { days: a[0].slice(), from: a[1], to: a[2] } : defAvail(); });
+  S.businesses.forEach(b => { b.avail = b.avail || { days: [1, 1, 1, 1, 1, 1, 1], from: 600, to: 120 }; });
+})();
 (function seedCredits() {
   const lastWk = weekKeyOf(now() - 7 * DAY), wk = weekKeyOf(now());
   const set = { p1: [7, 6], p2: [5, 5], p3: [9, 8], p4: [4, 5], p5: [6, 6], p6: [5, 4], p7: [8, 7], p8: [5, 5] };
@@ -896,6 +929,7 @@ function custProfile() {
           ${p.cert ? `<span class="pill accent">${esc(p.cert)}</span>` : '<span class="pill outline">No certificate · experience verified</span>'}
           ${p.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
       </div>
+      <div class="card tight" style="gap:6px"><div class="row between"><span class="eyebrow">Usual working hours</span>${statusLine(p)}</div><b class="small">${availText(availOf(p))}</b><span class="tiny muted">For reference. The traffic light shows whether ${esc(p.name.split(' ')[0])} is available right now, and it always comes first.</span></div>
       <div class="card"><span class="eyebrow">Background</span><p>${esc(p.past)}</p><p class="small muted">${esc(p.story)}</p></div>
       ${ratingBlock(p)}
       ${reviewsBlock(p)}
@@ -933,6 +967,18 @@ function cartInfo() {
   const svcs = c.cart.map(i => src.services[i]);
   return { src, svcs, gross: svcs.reduce((a, s) => a + s.price, 0), mins: svcs.reduce((a, s) => a + s.mins, 0) };
 }
+function schedPicker(c, src) {
+  const d0 = dayStart(now()), minT = now() + 30 * MIN;
+  if (c.day == null || c.day < d0) c.day = d0;
+  const valid = m => c.day + m * MIN >= minT;
+  if (c.tmin == null || !valid(c.tmin)) { const first = Array.from({ length: 48 }, (_, i) => i * 30).find(valid); if (first == null) { c.day += DAY; c.tmin = 0; } else c.tmin = first; }
+  c.slot = c.day + c.tmin * MIN;
+  const av = src && src.services && !src.staff ? availOf(src) : null, nm = src && src.name ? src.name.split(' ')[0] : '';
+  const groups = [['Morning', 360, 720], ['Afternoon', 720, 1080], ['Evening', 1080, 1440], ['Late night', 0, 360]];
+  return `<div class="row" style="gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px">${Array.from({ length: 14 }, (_, i) => d0 + i * DAY).map(d => { const dd = new Date(d); const lbl = d === d0 ? 'Today' : d === d0 + DAY ? 'Tomorrow' : dd.toLocaleDateString('en-US', { weekday: 'short' }) + ' ' + dd.getDate(); const usual = av ? !!av.days[(dd.getDay() + 6) % 7] : true; return `<button class="chip" style="flex-shrink:0;${usual ? '' : 'opacity:.6'}" data-act="setDay" data-arg="${d}" aria-pressed="${c.day === d}">${lbl}</button>`; }).join('')}</div>
+    <label class="field">Time<select id="c-time" class="select" data-bind="cust.tmin" data-type="num" style="font-size:16px">${groups.map(([g, a, b]) => `<optgroup label="${g}">${Array.from({ length: (b - a) / 30 }, (_, i) => a + i * 30).map(m => `<option value="${m}" ${c.tmin === m ? 'selected' : ''} ${valid(m) ? '' : 'disabled'}>${fmtMin(m)}${av && !inUsual(av, c.day + m * MIN) ? ' · outside usual hours' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    <div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><b class="small">${fmtWhen(c.slot)}</b>${av ? `<span class="small muted">${esc(nm)}'s usual hours: ${availText(av)}</span>${inUsual(av, c.slot) ? '' : `<span class="small" style="color:var(--warn)">Outside ${esc(nm)}'s usual hours. You can still send the request; ${esc(nm)} can accept or decline.</span>`}` : ''}<span class="tiny muted">Any time of day or night. The provider confirms before you pay.</span></div>`;
+}
 function slots() { const t = now(); const start = Math.ceil((t + 60 * MIN) / (30 * MIN)) * 30 * MIN; return Array.from({ length: 6 }, (_, i) => start + i * 30 * MIN); }
 function custBook() {
   const c = S.cust, a = addr(), { src, svcs, gross, mins } = cartInfo();
@@ -941,15 +987,15 @@ function custBook() {
     <div class="scroll" data-scroll="c-book">
       <div class="card tight"><div class="row">${c.screenSrc === 'biz' ? `<span class="avatar" style="width:40px;height:40px;border-radius:12px;background:hsl(${src.hue} 50% 90%);color:hsl(${src.hue} 50% 28%)">${ic('building', 20)}</span>` : avatar(src.name, src.hue, 40)}<div class="col grow"><b>${esc(src.name)}</b><span class="small muted">${svcs.map(s => esc(s.name)).join(' + ')} · ${mins} min</span></div><b class="num">${peso(gross)}</b></div></div>
       <div class="col" style="gap:8px"><span class="eyebrow">When</span>
-        <div class="seg" style="width:100%"><button style="flex:1" data-act="setWhen" data-arg="now" aria-pressed="${c.when === 'now'}">As soon as possible</button><button style="flex:1" data-act="setWhen" data-arg="later" aria-pressed="${c.when === 'later'}">Later today</button></div>
+        <div class="seg" style="width:100%"><button style="flex:1" data-act="setWhen" data-arg="now" aria-pressed="${c.when === 'now'}">As soon as possible</button><button style="flex:1" data-act="setWhen" data-arg="later" aria-pressed="${c.when === 'later'}">Schedule</button></div>
         ${c.when === 'now' ? `<p class="small muted">The provider replies with an arrival time of 10 to 60 minutes. You confirm and pay only after that.</p>` :
-        `<div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${slots().map(t => `<button class="chip" style="height:40px" data-act="setSlot" data-arg="${t}" aria-pressed="${c.slot === t}">${fmtT(t)}</button>`).join('')}</div>`}</div>
+        schedPicker(c, src)}</div>
       <div class="col" style="gap:8px"><span class="eyebrow">Where</span>
         <button class="card tight" data-act="addrSheet" style="text-align:left;flex-direction:row;align-items:center">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}</b><span class="small muted">${esc(a.line)}</span></div><span class="small" style="color:var(--accent);font-weight:600">Change</span></button></div>
       <div class="col" style="gap:8px"><span class="eyebrow">Payment method · charged later</span><div class="list">${pm('GCash')}${pm('Maya')}${pm('Card')}</div></div>
       <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row" style="align-items:flex-start">${ic('shield', 18)}<p class="small">No contact before payment. Once you pay, you can message or call your provider in the app until the service ends.</p></div></div>
     </div>`;
-  const dis = c.when === 'later' && !c.slot;
+  const dis = c.when === 'later' && (!c.slot || c.slot < now() + 30 * MIN);
   const f = `<button class="btn primary block" data-act="sendRequest" ${dis ? 'disabled' : ''}>${ic('send', 18)} Send request</button><span class="tiny muted" style="text-align:center">No charge now. You pay after you accept the arrival time.</span>`;
   return [h, f];
 }
@@ -964,7 +1010,7 @@ function custRequest() {
   else if (b.status === 'offered') hero = `<div class="card" style="gap:6px;padding:18px;border-color:var(--good-dot);box-shadow:0 0 0 3px var(--good-soft)">
       <span class="eyebrow" style="color:var(--good)">${esc(first)} accepted</span>
       <span style="font-size:15px">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span>
-      <div class="row" style="align-items:baseline;gap:10px"><span class="num" style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtT(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
+      <div class="row" style="align-items:baseline;gap:10px"><span class="num" style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
       <span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span></div>`;
   else hero = `<div class="card" style="align-items:center;text-align:center;gap:10px;padding:22px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>
       <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? 'The arrival time expired' : 'Request cancelled'}</h2>
@@ -1125,7 +1171,7 @@ function custOverlays() {
       <button class="iconbtn lb-x" data-act="closeZoom" aria-label="Close">${ic('x', 20)}</button>
       <img src="${photoOf(p)}" alt="Photo of ${esc(p.name)}">
       <div class="lb-cap"><div class="row between"><b style="font-size:17px">${esc(p.name)}</b>${statusLine(p, true)}</div>
-        <span class="small muted">${b ? esc(b.name) + ' · staff' : catName(p.cat)} · ${p.years} yrs experience · ${starsH(p.rating)} ${p.rating}</span>
+        <span class="small muted">${b ? esc(b.name) + ' · staff' : catName(p.cat)} · ${p.years} yrs experience · ${starsH(p.rating)} ${p.rating}</span><span class="small muted">${ic('clock', 13)} Usually ${esc(availText(availOf(p)))}</span>
         <div class="row" style="flex-wrap:wrap;gap:6px"><span class="pill good">${ic('shield', 13)} ID verified</span><span class="pill good">Photo matched to ID</span>${p.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
         <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="openProvider" data-arg="${p.id}">View profile & book</button><button class="btn secondary sm" data-act="closeZoom">Close</button></div></div>
     </div></div>`;
@@ -1137,7 +1183,7 @@ function custOverlays() {
     const b = bk(c.pay.bid);
     o += `<div class="overlay"><div class="sheet" data-stop="1"><div class="grab"></div>
       ${c.pay.stage === 'confirm' ? `<div class="row between"><h3 style="font-size:17px">Confirm payment</h3><button class="iconbtn" data-act="closePay" aria-label="Close">${ic('x', 20)}</button></div>
-        <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row between"><span>${esc(b.services.map(s => s.name).join(' + '))}</span><b class="num">${peso(b.gross)}</b></div><div class="row between small muted"><span>Arrival</span><span>${b.when === 'later' ? fmtT(b.slotAt) : b.eta + ' min after payment'}</span></div></div>
+        <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row between"><span>${esc(b.services.map(s => s.name).join(' + '))}</span><b class="num">${peso(b.gross)}</b></div><div class="row between small muted"><span>Arrival</span><span>${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min after payment'}</span></div></div>
         <div class="row" style="gap:10px;padding:12px;border:1.5px solid var(--accent);border-radius:12px"><span class="avatar" style="width:36px;height:36px;border-radius:9px;background:#0A63F6;color:#fff;font-size:13px">${S.customer.pay === 'Card' ? 'VISA' : S.customer.pay[0]}</span><div class="col grow"><b>${esc(S.customer.pay)}</b><span class="small muted">${S.customer.pay === 'GCash' ? '0917 ••• 0142' : S.customer.pay === 'Maya' ? 'Linked account' : 'Visa ending 4417'}</span></div>${ic('check', 18)}</div>
         <button class="btn primary block" data-act="doPay">Pay ${peso(b.gross)}</button><p class="tiny muted" style="text-align:center">Held by BalikHome until the service ends. Processed by a BSP-registered payment partner.</p>`
       : c.pay.stage === 'processing' ? `<div class="col" style="align-items:center;gap:12px;padding:30px 0"><div class="spin"></div><b>Processing ${peso(b.gross)}…</b></div>`
@@ -1192,7 +1238,7 @@ function provJobs() {
     ${reqs.map(b => `<button class="card" data-act="openReq" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
       <div class="row between"><span class="eyebrow" style="color:var(--accent)">New request · also sent by SMS</span><span class="pill warn num" data-cd="${b.respondBy}">${mmss(b.respondBy - n)}</span></div>
       <b style="font-size:17px">${esc(b.services.map(s => s.name).join(' + '))}</b>
-      <span class="small muted">${b.when === 'later' ? 'At ' + fmtT(b.slotAt) : 'As soon as possible'} · ${fmtKm(haversine(me, b))} from your base · ${peso(b.gross)}</span>
+      <span class="small muted">${b.when === 'later' ? 'At ' + fmtWhen(b.slotAt) : 'As soon as possible'} · ${fmtKm(haversine(me, b))} from your base · ${peso(b.gross)}</span>
       <span class="btn primary sm" style="align-self:flex-start">Respond ${ic('chev', 16)}</span></button>`).join('')}
     ${active ? `<button class="card" data-act="openJob" data-arg="${active.id}" style="text-align:left"><div class="row between"><span class="eyebrow">Current job</span>${statusPill(active.status)}</div><b>${esc(active.services.map(s => s.name).join(' + '))}</b><span class="small muted">${esc(active.address)}</span></button>` : ''}
     ${!reqs.length && !active ? `<div class="card" style="align-items:center;text-align:center;padding:22px"><span class="dot ${statusOf(me).cls}" style="width:14px;height:14px"></span><b>${me.status === 'green' ? "You're on stand-by" : me.status === 'yellow' ? 'Away until ' + fmtT(me.backAt) : 'Off today'}</b><span class="small muted">${me.status === 'green' ? 'New requests arrive here and by SMS.' : 'Switch to stand-by to get requests.'}</span></div>` : ''}
@@ -1212,7 +1258,7 @@ function provRequest() {
   const h = `${bar('New request', 'provBack')}<div class="scroll" data-scroll="p-req">
     <div class="col" style="gap:8px"><span class="eyebrow">Arrived as</span>
       <div class="toast" style="animation:none;position:static"><span class="app">${ic('bell', 16)}</span><div class="col"><b class="small">BalikHome · New request</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))} · ${fmtKm(haversine(me, b))} · tap to respond</span></div></div>
-      <div class="sms">${ic('phone', 14)} <b>SMS · BalikHome</b><br>New booking request${b.when === 'later' ? ' for ' + fmtT(b.slotAt) : ''}. ${esc(b.services[0].name)}, ${esc(b.address.split(',').slice(-2).join(',').trim())}. Accept or decline: balik.ph/r/${b.id.slice(2)}</div></div>
+      <div class="sms">${ic('phone', 14)} <b>SMS · BalikHome</b><br>New booking request${b.when === 'later' ? ' for ' + fmtWhen(b.slotAt) : ''}. ${esc(b.services[0].name)}, ${esc(b.address.split(',').slice(-2).join(',').trim())}. Accept or decline: balik.ph/r/${b.id.slice(2)}</div></div>
     <div class="row between"><h2 style="font-size:20px">Respond in</h2><span class="pill warn num" style="font-size:15px;height:30px" data-cd="${b.respondBy}">${mmss(b.respondBy - now())}</span></div>
     <div class="list">
       <div class="li"><span class="muted small" style="width:90px">Service</span><b class="grow">${esc(b.services.map(s => s.name + ' · ' + s.mins + ' min').join(', '))}</b></div>
@@ -1220,7 +1266,7 @@ function provRequest() {
       <div class="li"><span class="muted small" style="width:90px">Customer</span><span class="grow small">Email &amp; phone verified · ${b.bizId ? 'via ' + esc(biz(b.bizId).name) : 'direct'}</span></div>
       <div class="li"><span class="muted small" style="width:90px">${b.bizId ? 'Job value' : 'You receive'}</span><b class="grow num">${b.bizId ? peso(b.gross) : peso(net) + ' <span class="small muted" style="font-family:var(--font)">after ' + tierRate(me) + '% platform fee</span>'}</b></div>
     </div>
-    ${b.when === 'later' ? `<div class="card tight"><b>Requested for ${fmtT(b.slotAt)}</b><span class="small muted">Accepting promises arrival at that time.</span></div>` :
+    ${b.when === 'later' ? `<div class="card tight"><b>Requested for ${fmtWhen(b.slotAt)}</b><span class="small muted">Accepting promises arrival at that time.</span></div>` :
     `<div class="col" style="gap:8px"><span class="eyebrow">Accept with arrival time</span><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">${[10, 20, 30, 40, 50, 60].map(m => `<button class="chip" style="height:46px;padding:0;font-family:var(--mono);font-weight:600" data-act="setEta" data-arg="${m}" aria-pressed="${S.prov.eta === m}">${m}</button>`).join('')}</div><span class="small muted">Minutes after the customer pays. They see this time before paying. Arriving more than ${S.settings.penaltyAfter} min after it costs 1 reward credit, and cancelling after you accept costs ${Math.abs(CR().rules.acceptCancel)}.</span></div>`}
     <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Your answer goes to the customer instantly. After the customer pays you can message or call them in the app until the service ends.</p></div>
   </div>`;
@@ -1233,7 +1279,7 @@ function provJob() {
   const stages = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
   const doneN = { offered: 0, paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0;
   let hero = '', f = '';
-  if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtT(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
+  if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
   if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = `<button class="btn primary block" data-act="depart" data-arg="${b.id}">${ic('route', 18)} Depart now</button>`; }
   if (b.status === 'departed') { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">On the way</b><span class="small">Departed ${fmtT(b.departedAt)} · arrive by <b class="num">${fmtT(b.promisedAt)}</b> (<span class="num" data-cd="${b.promisedAt}">${mmss(b.promisedAt - now())}</span> left)</span></div>`; f = `<button class="btn primary block" data-act="arrive" data-arg="${b.id}">${ic('pin', 18)} I've arrived · check in</button>`; }
   if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = `<button class="btn good block" data-act="endService" data-arg="${b.id}">${ic('check', 18)} End service · back to green</button>`; }
@@ -1249,7 +1295,7 @@ function provJob() {
     ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Your check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Your check-in photo" style="width:100%;border-radius:10px;max-height:220px;object-fit:contain;background:#0E1520"></div>` : ''}
     <div class="list"><div class="li"><span class="muted small" style="width:80px">Service</span><b class="grow small">${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</b></div>
       <div class="li"><span class="muted small" style="width:80px">Address</span><span class="grow small">${esc(b.address)}</span></div>
-      <div class="li"><span class="muted small" style="width:80px">Promise</span><span class="grow small">${b.promisedAt ? 'Arrive by ' + fmtT(b.promisedAt) : (b.when === 'later' ? fmtT(b.slotAt) : b.eta + ' min after payment')}</span></div></div>
+      <div class="li"><span class="muted small" style="width:80px">Promise</span><span class="grow small">${b.promisedAt ? 'Arrive by ' + fmtT(b.promisedAt) : (b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min after payment')}</span></div></div>
     ${led ? `<div class="card tight"><span class="eyebrow">Payout for this job</span>
       <div class="row between small"><span>Customer paid</span><span class="num">${peso(b.gross, 2)}</span></div>
       <div class="row between small"><span>Platform fee (${led.rate}%)</span><span class="num">−${peso(led.fee, 2)}</span></div>
@@ -1331,6 +1377,7 @@ function provPerf() {
 function provServices() {
   const me = prov(S.prov.id), i = S.providers.indexOf(me);
   return `${provHeader('Services & prices')}<div class="scroll" data-scroll="p-svc">
+    <div class="card" style="gap:8px"><span class="eyebrow">Usual working hours</span>${availEditor('providers.' + i + '.avail', me.avail || (me.avail = defAvail()), 'p-av')}<span class="tiny muted">Shown to customers for reference. Your traffic light always comes first.</span></div>
     <p class="small muted">You set your own prices. Area averages are shown as a guide.</p>
     ${me.services.map((s, j) => { const avg = Math.round(s.price * 1.08 / 10) * 10; const named = String(s.name || '').trim().length > 0; return `<div class="card" id="svc-card-${j}" style="${named ? '' : 'border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)'}"><div class="row between"><span class="eyebrow">${named ? 'Service' : 'New service'}</span><div class="row" style="gap:6px"><label class="check" style="align-items:center"><input type="checkbox" id="svc-on-${j}" data-bind="providers.${i}.services.${j}.on" ${s.on && named ? 'checked' : ''} ${named ? '' : 'disabled'}>Active</label>${me.services.length > 1 ? `<button class="iconbtn" style="width:32px;height:32px" data-act="removeSvc" data-arg="${j}" aria-label="Remove ${esc(s.name || 'service')}">${ic('x', 16)}</button>` : ''}</div></div>
       <label class="field">Service name<input id="svc-n-${j}" class="input" maxlength="40" data-bind="providers.${i}.services.${j}.name" value="${esc(s.name)}" placeholder="e.g. Gel pedicure, Kids' haircut"></label>
@@ -1407,10 +1454,11 @@ function provApply() {
   } else if (a.step === 3) {
     body = `<h2 style="font-size:22px">Where you start from</h2><p class="small muted">Step 3 of 4 · Customers see their distance from your base address.</p>
       <label class="field">Base area<input id="ap-area" class="input" data-bind="prov.apply.area" value="${esc(a.area)}" placeholder="e.g. Cubao, Quezon City"></label>
+      <div class="col" style="gap:6px"><span class="field" style="margin:0">When you can work</span>${availEditor('prov.apply.avail', a.avail || (a.avail = defAvail()), 'ap-av')}<span class="tiny muted">Customers see these hours as a guide. Your traffic light (green, yellow, red) still decides when you get requests.</span></div>
       <label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="ap-ref" class="input" data-bind="prov.apply.ref" value="${esc(a.ref || '')}" placeholder="Code from the pro who invited you"></label>
       <label class="field">Join as<select id="ap-type" class="select" data-bind="prov.apply.type"><option value="individual" ${a.type === 'individual' ? 'selected' : ''}>Individual</option><option value="staff" ${a.type === 'staff' ? 'selected' : ''}>Staff of a business (invite code)</option></select></label>
       <label class="field">Certificate (optional)<input id="ap-cert" class="input" data-bind="prov.apply.cert" value="${esc(a.cert)}" placeholder="e.g. TESDA NC II"></label>`;
-    cta = `<button class="btn primary block" data-act="apNext" ${!a.area ? 'disabled' : ''}>Continue</button>`;
+    cta = `<button class="btn primary block" data-act="apNext" ${!a.area || !(a.avail && a.avail.days.some(Boolean)) ? 'disabled' : ''}>Continue</button>`;
   } else {
     body = `<h2 style="font-size:22px">Payouts & taxes</h2><p class="small muted">Step 4 of 4</p>
       <label class="field">Payout account<select id="ap-pay" class="select" data-bind="prov.apply.payout"><option>GCash</option><option>Maya</option><option>Bank account</option></select></label>
@@ -1460,7 +1508,7 @@ function bizRequests(b, q) {
   const roster = b.staff.map(id => prov(id)).filter(p => p && p.active !== false);
   return `<div class="page-h"><div><h1>Requests</h1><p>Customers who book the spa land here. Assign the nearest therapist on stand-by; they get an app alert and SMS and send the customer an arrival time. If no one can go, decline so the customer can book elsewhere right away.</p></div></div>
     ${q.length ? q.map(r => { const staff = roster.map(p => ({ p, d: haversine(p, r) })).sort((x, y) => ({ green: 0, yellow: 1, red: 2 }[x.p.status] - { green: 0, yellow: 1, red: 2 }[y.p.status]) || x.d - y.d);
-      return `<div class="panel"><div class="panel-h"><div class="col"><h3>${esc(r.services.map(s => s.name).join(' + '))} · ${peso(r.gross)}</h3><span class="small muted">${r.id} · ${esc(r.customer)} · ${esc(r.address)} · ${r.when === 'later' ? fmtT(r.slotAt) : 'As soon as possible'}</span></div><div class="row" style="gap:8px"><span class="pill accent">Needs assignment</span><button class="btn danger xs" data-act="bizDecline" data-arg="${r.id}">Decline</button></div></div>
+      return `<div class="panel"><div class="panel-h"><div class="col"><h3>${esc(r.services.map(s => s.name).join(' + '))} · ${peso(r.gross)}</h3><span class="small muted">${r.id} · ${esc(r.customer)} · ${esc(r.address)} · ${r.when === 'later' ? fmtWhen(r.slotAt) : 'As soon as possible'}</span></div><div class="row" style="gap:8px"><span class="pill accent">Needs assignment</span><button class="btn danger xs" data-act="bizDecline" data-arg="${r.id}">Decline</button></div></div>
       <div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Status</th><th class="num">Distance</th><th class="num">This week</th><th></th></tr></thead><tbody>
       ${staff.map(({ p, d }) => `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<b>${esc(p.name)}</b></div></td><td>${statusLine(p)}</td><td class="num">${fmtKm(d)}</td><td class="num">${weekTotal(p).toFixed(1)} h</td><td class="num"><button class="btn ${p.status === 'green' ? 'primary' : 'secondary'} xs" data-act="assign" data-arg="${r.id}:${p.id}" ${p.status === 'red' ? 'disabled' : ''}>Assign</button></td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">No active staff. Invite therapists in Staff.</div></td></tr>'}
       </tbody></table></div></div>`; }).join('') : `<div class="panel"><div class="empty">No requests waiting. New spa bookings appear here with an alert.</div></div>`}
@@ -2023,6 +2071,7 @@ function installRow() {
 function normalizeCredits() {
   const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } };
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
+  S.providers.forEach(p => { if (!p.avail) p.avail = defAvail(); });
   S.providers.forEach(p => { if (p.credits == null || isNaN(p.credits)) p.credits = S.settings.credit.start; p.credits = Math.max(S.settings.credit.min, Math.min(S.settings.credit.max, Math.round(p.credits))); if (!p.creditLog) p.creditLog = []; if (!p.creditWeeks) p.creditWeeks = []; if (p.tierOverride != null && p.tierOverride >= S.settings.credit.bands.length) p.tierOverride = null; });
 }
 /* =============== In-app messages and voice calls (open after payment, closed when the service ends) =============== */
@@ -2262,7 +2311,9 @@ const A = {
   back: () => { const c = S.cust; c.screen = c.screen === 'book' ? (c.screenSrc === 'biz' ? 'bizprofile' : 'profile') : (c.back && !['profile', 'bizprofile', 'book'].includes(c.back) ? c.back : 'home'); },
   toggleSvc: i => { i = Number(i); const c = S.cust.cart; const k = c.indexOf(i); k >= 0 ? c.splice(k, 1) : c.push(i); },
   goBook: () => { S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
-  setWhen: w => { S.cust.when = w; },
+  setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; } },
+  setDay: d => { S.cust.day = Number(d); },
+  availDay: arg => { const [path, k] = arg.split('|'); const av = getPath(path); if (av) av.days[Number(k)] = av.days[Number(k)] ? 0 : 1; },
   setSlot: t => { S.cust.slot = Number(t); },
   setPay: m => { S.customer.pay = m; },
   addrSheet: () => { S.cust.addrSheet = true; },
@@ -2361,8 +2412,8 @@ const A = {
     S.prov.screen = 'jobs'; },
   acceptReq: id => { const b = bk(id), p = prov(b.pid);
     b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = now() + S.settings.hold * MIN;
-    logB(b, b.when === 'later' ? `Accepted for ${fmtT(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
-    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtT(b.slotAt) + '. Confirm and pay.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtT(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
+    logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Confirm and pay.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
   depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
@@ -2403,14 +2454,14 @@ const A = {
   addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
-  startApply: () => { S.prov.apply = { step: 1, ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
+  startApply: () => { S.prov.apply = { step: 1, avail: defAvail(), ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
   apNext: () => { S.prov.apply.step++; },
   apBack: () => { const a = S.prov.apply; if (a.step > 1) a.step--; else S.prov.apply = null; },
   apToggle: k => { S.prov.apply[k] = true; },
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
@@ -2495,6 +2546,7 @@ const A = {
     const base = { cubao: [14.6196, 121.0536] }; const ll = base.cubao;
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on BalikHome.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
+    prov(nid).avail = a.avail ? JSON.parse(JSON.stringify(a.avail)) : defAvail();
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by BalikHome.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
   reject: id => { const a = S.applications.find(x => x.id === id); a.status = 'declined'; if (a.staffOf) { const sb = biz(a.staffOf); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' was not approved', 'Contact BalikHome support for details.'); } },
@@ -2526,6 +2578,7 @@ const onBind = (e, live) => {
   let v = el.type === 'checkbox' ? el.checked : el.value;
   if (el.type === 'number') v = el.value === '' ? 0 : Number(el.value);
   if (el.dataset.type === 'tier') v = el.value === '' ? null : Number(el.value);
+  if (el.dataset.type === 'num') v = Number(el.value);
   const svcName = path.match(/^providers\.(\d+)\.services\.(\d+)\.name$/);
   const wasEmpty = svcName && !String(getPath(path) || '').trim();
   setPath(path, v);
