@@ -207,6 +207,11 @@ button.li:hover{background:var(--surface-2)}
 .cal-d[aria-pressed="true"],.cal-d[aria-pressed="true"]:hover{background:var(--accent);color:#fff;text-decoration:none;font-weight:700}.cal-d[disabled]{opacity:.28;cursor:default}
 .cal-d.open{background:var(--accent-soft);font-weight:600}.cal-d.open:not(.today){color:#15A34A}.cal-d.open:not(.today)[aria-pressed="true"],.cal-d.open:not(.today)[aria-pressed="true"]:hover{color:#5BE58C}.cal-key.open{background:var(--accent-soft);box-shadow:inset 0 0 0 2px #15A34A}
 .cal-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:4px}.cal-key.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
+.sheet.terms{max-height:92dvh;height:92dvh;gap:12px}.terms-body{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;padding-right:4px}
+.terms-body h4{font-size:15px;margin:10px 0 4px}.terms-body p{margin:0 0 6px}.terms-toc{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2)}
+.terms-toc button{background:none;border:0;color:var(--accent);text-align:left;font:inherit;font-size:13px;padding:3px 0;cursor:pointer}
+.inlinelink{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
+@media(min-width:700px){.sheet.terms{max-width:720px}}
 .chatlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface-2);border-radius:12px;min-height:0}
 .bub{max-width:80%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.bub span{font-size:14px;white-space:pre-wrap;word-break:break-word}.bub i{font-style:normal;font-size:10.5px;color:var(--muted);align-self:flex-end}
 .bub.me{align-self:flex-end;background:var(--accent);color:#fff;border-color:transparent;border-radius:14px 14px 4px 14px}.bub.me i{color:rgba(255,255,255,.75)}
@@ -567,7 +572,7 @@ const S = {
   biz: { id: 'b1', tab: 'requests', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
   admin: { tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
   fin: { remit: {}, filed: {}, issued: {}, ref: '' },
-  providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], modal: null,
+  providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], consents: null, terms: null, modal: null,
   settings: {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
@@ -1155,7 +1160,7 @@ function custAccount() {
       <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div><span class="pill good">Verified</span></div>
       <div class="li">${ic('phone', 20)}<div class="col grow"><b>Mobile</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">Verified</span></div>
       <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
-      ${locRow('c')}${installRow()}
+      ${locRow('c')}${installRow()}${termsRow('customer', S.customer.cid || 'me')}
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
@@ -1177,7 +1182,7 @@ function custSplash() {
       <button class="btn ghost-light block" data-act="goPro">I'm a pro · start earning</button>
       <button class="btn link-light" data-act="demoSignIn">I already have an account</button>
       ${!isStandalone() && installEvt ? `<button class="btn link-light" data-act="installApp">${ic('phone', 16)} Install the app</button>` : ''}
-      <span class="tiny" style="text-align:center;opacity:.65">Verified customers and providers · Pay in app</span>
+      <span class="tiny" style="text-align:center;opacity:.65">Verified customers and providers · Pay in app · <button type="button" class="inlinelink" style="color:inherit" data-act="termsOpen">Terms and Conditions</button></span>
     </div></div>`;
 }
 function custSignup() {
@@ -1191,7 +1196,7 @@ function custSignup() {
       <label class="field">Email<input id="su-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="cust.signup.email" value="${esc(s.email)}" placeholder="you@example.com"></label>
       <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="su-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="cust.signup.phone" value="${esc(s.phone)}" placeholder="917 555 0142"></div></label>
       <label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="su-ref" class="input" data-bind="cust.signup.ref" value="${esc(s.ref || '')}" placeholder="e.g. LIZA-P1" autocapitalize="characters">${s.ref && !provByRef(s.ref) ? '<span class="tiny" style="color:var(--warn)">Code not found. You can still continue.</span>' : s.ref ? `<span class="tiny" style="color:var(--good)">Referred by ${esc(provByRef(s.ref).name)}</span>` : ''}</label>
-      <label class="check"><input type="checkbox" id="su-terms" data-bind="cust.signup.terms" ${s.terms ? 'checked' : ''}>I agree to the Terms and Privacy Policy (Data Privacy Act of 2012).</label>`;
+      <label class="check"><input type="checkbox" id="su-terms" data-bind="cust.signup.terms" ${s.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">BalikHome Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms (Data Privacy Act of 2012).</span></label>`;
     cta = `<button class="btn primary block" data-act="suSend" ${!(s.name.trim() && emailOk && phoneOk && s.terms) ? 'disabled' : ''}>Send verification codes</button>`;
   } else if (s.step === 2) {
     const eDone = s.eOtp === s.eCode, pDone = s.pOtp === s.pCode;
@@ -1473,7 +1478,7 @@ function provAccount() {
     <div class="card" style="align-items:center;text-align:center">${avatar(me.name, me.hue, 96)}<label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} Change photo<input type="file" accept="image/*" class="sr" data-file="providers.${i}.photo" data-compress="1" id="p-photo"></label><b style="font-size:18px">${esc(me.name)}</b><span class="small muted">${catName(me.cat)} · ${me.years} yrs · ${esc(me.area)}</span>${me.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
     <div class="card"><span class="eyebrow">Your household goal</span><label class="field">Monthly goal (₱)<input id="p-goal" class="input num" type="number" min="0" step="1000" data-bind="providers.${i}.goal" value="${me.goal}"></label><span class="small muted">We show your progress on the Jobs screen.</span></div>
     <div class="list">
-      ${locRow('p')}${installRow()}
+      ${locRow('p')}${installRow()}${termsRow('provider', S.prov.id)}
       <div class="li">${ic('shield', 20)}<div class="col grow"><b>Government ID & selfie</b><span class="small muted">Verified</span></div><span class="pill good">Done</span></div>
       <div class="li">${ic('receipt', 20)}<div class="col grow"><b>TIN</b><span class="small muted num">${esc(me.tin)}</span></div><span class="pill good">Done</span></div>
       <div class="li">${ic('bag', 20)}<div class="col grow"><b>Work history</b><span class="small muted">${esc(me.past)}</span></div></div>
@@ -1519,7 +1524,7 @@ function provApply() {
     body = `<h2 style="font-size:22px">Payouts & taxes</h2><p class="small muted">Step 4 of 4</p>
       <label class="field">Payout account<select id="ap-pay" class="select" data-bind="prov.apply.payout"><option>GCash</option><option>Maya</option><option>Bank account</option></select></label>
       <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">BalikHome keeps only a platform fee. If your yearly remittances pass ${peso(S.settings.whtThreshold)}, BalikHome withholds 1% of half the gross (BIR RR 16-2023) and gives you Form 2307. You file your own income tax.</p></div>
-      <label class="check"><input type="checkbox" id="ap-ok" data-bind="prov.apply.ok" ${a.ok ? 'checked' : ''}>I confirm my details are true and agree to the provider terms.</label>`;
+      <label class="check"><input type="checkbox" id="ap-ok" data-bind="prov.apply.ok" ${a.ok ? 'checked' : ''}><span>I confirm my details are true, and I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">BalikHome Terms and Conditions</button> (v${TERMS.version}), including that I work as an independent provider and the disclaimer of liability.</span></label>`;
     cta = `<button class="btn primary block" data-act="apSubmit" ${!a.ok ? 'disabled' : ''}>Submit application</button>`;
   }
   return `${bar('Become a provider', 'apBack')}<div class="scroll" data-scroll="p-ap">${steps}${body}</div><div class="footer-bar">${cta}</div>`;
@@ -1632,7 +1637,9 @@ function bizSettle(b) {
 function bizProfile(b) {
   const bi = S.businesses.indexOf(b);
   const f = (label, key, extra = '') => `<label class="field">${label}<input id="bp-${key}" class="input" data-bind="businesses.${bi}.${key}" value="${esc(b[key])}" ${extra}></label>`;
-  return `<div class="page-h"><div><h1>Business profile</h1><p>Customers see your name, rating, description, menu and the distance from your address. Changes save automatically.</p></div><span class="pill good">${ic('check', 14)} Saved</span></div>
+  const tc = consentOf('business', b.id);
+  return `<div class="panel" style="${tc ? '' : 'border-color:var(--warn)'}"><div class="panel-b row between" style="gap:12px;flex-wrap:wrap"><div class="col" style="gap:2px"><b>BalikHome Terms and Conditions · v${TERMS.version}</b><span class="small muted">${tc ? `Accepted for ${esc(b.name)} on ${fmtD(tc.at)} ${fmtT(tc.at)}` : 'Not accepted yet. Your business must accept the current terms.'}</span></div><div class="row" style="gap:8px"><button class="btn secondary sm" data-act="termsOpen">Read</button>${tc ? '' : '<button class="btn primary sm" data-act="bizTerms">Review and accept</button>'}</div></div></div>
+    <div class="page-h"><div><h1>Business profile</h1><p>Customers see your name, rating, description, menu and the distance from your address. Changes save automatically.</p></div><span class="pill good">${ic('check', 14)} Saved</span></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Details</h3></div><div class="panel-b">
       <div class="formgrid">${f('Business name', 'name', 'maxlength="60"')}${f('Owner / authorized person', 'owner')}${f('Contact mobile', 'phone', 'inputmode="tel"')}${f('Address', 'area')}</div>
       <label class="field">Description shown to customers<textarea id="bp-story" class="textarea" data-bind="businesses.${bi}.story">${esc(b.story)}</textarea></label>
@@ -1831,7 +1838,12 @@ function admLate() {
 function admSettings() {
   const st = S.settings;
   const num = (id, path, v, label, unit) => `<label class="field">${label}<div class="row"><input id="${id}" class="input num" type="number" data-bind="${path}" value="${v}" style="max-width:140px">${unit ? `<span class="small muted">${unit}</span>` : ''}</div></label>`;
+  const cons = S.consents || [];
   return `<div class="page-h"><div><h1>Rules & settings</h1><p>Changes apply immediately across every app in this prototype.</p></div></div>
+    <div class="panel"><div class="panel-h"><div class="col"><h3>Terms and Conditions · consent records</h3><span class="small muted">Current version ${TERMS.version} · effective ${TERMS.effective} · ${cons.filter(c => c.version === TERMS.version).length} acceptances stored</span></div><button class="btn secondary sm" data-act="termsOpen">Read terms</button></div>
+      <div class="tablewrap"><table><thead><tr><th>Accepted</th><th>Role</th><th>Name</th><th>Contact</th><th>Version</th><th>Method · device</th><th>Text fingerprint</th></tr></thead><tbody>
+      ${cons.slice(0, 50).map(c => `<tr><td class="mono">${fmtD(c.at)} ${fmtT(c.at)}</td><td><span class="pill">${esc(c.role)}</span></td><td>${esc(c.name)}<br><span class="tiny muted mono">${esc(c.who)}</span></td><td class="small">${esc(c.contact || '—')}</td><td>v${esc(c.version)}</td><td class="small">${esc(c.method)}<br><span class="tiny muted">${esc(c.device)}</span></td><td class="tiny mono" title="${esc(c.hash)}">${esc(String(c.hash).slice(0, 18))}…</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No records yet.</td></tr>'}
+      </tbody></table></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Platform fee by reward credits</h3><span class="pill warn">Draft rates · confirm before launch</span></div><div class="tablewrap"><table><thead><tr><th>Band</th><th>Credits</th><th>Platform fee</th></tr></thead><tbody>
       ${st.credit.bands.map((t, i) => `<tr><td><b>${t.label}</b></td><td>${t.min}${i === st.credit.bands.length - 1 ? '–' + st.credit.max : '–' + t.max}</td><td><div class="row"><input id="band-rate-${i}" class="input num" type="number" min="0" max="50" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.bands.${i}.rate" value="${t.rate}"><span class="small muted">%</span></div></td></tr>`).join('')}
     </tbody></table></div>
@@ -2113,6 +2125,10 @@ function locSheet() {
     <button class="btn ghost block" data-act="locLater">Not now</button>
   </div></div>`;
 }
+function termsRow(role, who) {
+  const c = consentOf(role, who);
+  return `<button class="li" data-act="termsOpen">${ic('shield', 20)}<div class="col grow"><b>Terms and Conditions</b><span class="small muted">${c ? `You agreed to v${c.version} on ${fmtD(c.at)} ${fmtT(c.at)}` : `Version ${TERMS.version} · not accepted yet`}</span></div>${ic('chev', 16)}</button>`;
+}
 function locRow(who) {
   const st = S.loc.status, on = st === 'granted' && (who === 'p' ? S.loc.shareProv : true);
   const sub = st === 'granted' ? (who === 'p' ? (S.loc.shareProv ? 'On · shared with the customer only while you are on the way' : 'Off · customers see an estimated position') : 'On · "Current location" is available as an address') : st === 'denied' ? 'Blocked in phone settings' : 'Not turned on yet';
@@ -2254,15 +2270,167 @@ function callScreen(role) {
   return `<div class="callscreen" data-ov="call-${k}"><div class="col" style="align-items:center;gap:12px;margin-top:12%">${pic}<b style="font-size:24px">${esc(who)}</b><span class="small" style="opacity:.8">${status}</span><span class="tiny" style="opacity:.55">${b.id} · in-app voice · your number stays private</span></div><div class="row" style="gap:44px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
 }
 
+/* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
+const TERMS = {
+  version: '1.0',
+  effective: 'October 30, 2026',
+  title: 'BalikHome Terms and Conditions',
+  intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses BalikHome: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using BalikHome, you accept these Terms.',
+  sections: [
+    ['1. Who we are and what BalikHome does', [
+      'BalikHome is an online platform operated by its operating company in the Philippines (the "Company", "we" or "us"). The Company\'s registered name, SEC registration number and address are shown in Section 21 once registration is complete.',
+      'BalikHome is an intermediary. It connects customers with independent service providers and business partners who offer home beauty, wellness and pet-grooming services. As an e-marketplace under Republic Act No. 11967 (Internet Transactions Act of 2023), the Company provides the app, identity checks, booking tools, in-app payment collection and support.',
+      'The Company does not itself perform any service. Each service is a contract directly between the customer and the provider (or the business partner whose staff performs it). The Company is not a party to that contract, and is not the employer, agent or partner of any provider or business partner.'
+    ]],
+    ['2. Definitions', [
+      '"Customer" means a person who books a service. "Provider" means an individual who performs services through BalikHome, either independently or as staff of a Business Partner. "Business Partner" means a registered business (such as a spa or salon) that lists its staff on BalikHome. "User" means any Customer, Provider or Business Partner. "Booking" means a service request made through the app. "Platform Fee" means the fee the Company keeps from each completed booking.'
+    ]],
+    ['3. Accepting these Terms', [
+      'You must accept these Terms to create an account. We record your acceptance (your name, role, contact details, the Terms version, the date and time, and the device used) and keep that record for as long as your account exists and for the period required by law.',
+      'If we change these Terms, we will show the new version in the app. You will be asked to accept it before your next booking or job. If you do not accept it, you may close your account.'
+    ]],
+    ['4. Eligibility and accounts', [
+      'You must be at least 18 years old and able to enter into a binding contract under Philippine law.',
+      'Customers sign up with a verified email address and mobile number. Adding a government ID is optional and shows a Verified badge to providers.',
+      'Providers must give a valid government ID, a selfie that matches the ID, a Tax Identification Number (TIN), a recent clear photo of themselves and truthful work experience. Business Partners must give their business registration details and must make sure their staff meet the same requirements.',
+      'You are responsible for keeping your login and device secure and for everything done through your account. Information you give must be true, complete and kept up to date. One person or business may hold only one account per role.'
+    ]],
+    ['5. Bookings', [
+      'A Customer can ask for a service "as soon as possible" or schedule one for a date and time up to 72 hours ahead. A Provider accepts a request by choosing an arrival time, or declines it. No contact details are shared before payment.',
+      'For "as soon as possible" bookings, the Customer must confirm and pay within the time shown in the app. For scheduled bookings, payment must be completed no later than 1 hour before the start time. Unpaid bookings are cancelled automatically at that time, without charge.',
+      'Each Provider shows usual working days and hours for reference only. The live traffic light (green, yellow, red) shows whether a Provider is available now and always takes priority.',
+      'Reminders for scheduled bookings are sent by in-app message to the Customer and the Provider one and two days after the booking, on the day of the service and 1 hour before it, until the booking ends or is cancelled. A reminder for an unpaid booking includes a request to pay.'
+    ]],
+    ['6. Prices, payments and fees', [
+      'Providers and Business Partners set their own prices. The price shown at booking is the total the Customer pays for the service.',
+      'All payments must be made in the app through the Company\'s BSP-registered payment partners (such as GCash, Maya or card). The Company collects the payment on behalf of the Provider or Business Partner and holds it until the service ends. Paying, or asking to be paid, outside the app is not allowed and removes any refund or support from the Company.',
+      'After the service, the Company pays the Provider or Business Partner the amount received less the Platform Fee and any tax the Company must withhold. Individual Providers are paid to their registered GCash or bank account; Business Partners are paid on their chosen schedule (weekly, twice a month or monthly).',
+      'The Platform Fee depends on the Provider\'s reward credits under Section 8 (currently 22% to 30%). The Company may change fee rates with at least 7 days\' notice in the app.',
+      'Under BIR Revenue Regulations No. 16-2023, the Company withholds 1% of one-half of the gross remittance once payments to a Provider or Business Partner exceed ₱500,000 in a year, and issues BIR Form 2307. Providers and Business Partners remain responsible for registering with the BIR and filing and paying their own taxes.'
+    ]],
+    ['7. Cancellations and refunds', [
+      'A Customer may cancel an unpaid booking at any time without charge.',
+      'If a Customer cancels a paid booking 24 hours or more before the service time, the Customer receives a 100% refund. If the Customer cancels less than 24 hours before the service time, a cancellation fee of 30% of the booking amount is deducted and the rest is refunded.',
+      'Refunds are sent to the original payment method: GCash or Maya within 24 hours, and credit or debit card within 5 days. These are the times within which the Company sends the refund; the time for funds to appear also depends on the payment partner or bank.',
+      'If a Provider or Business Partner cancels, does not arrive, or the Company cancels a paid booking because of a problem on the provider side, the Customer receives a 100% refund.',
+      'A Provider who cancels after accepting, or after the Customer has paid, loses reward credits under Section 8.'
+    ]],
+    ['8. Reward credits for Providers', [
+      'Every Provider starts with 5 reward credits. Credits are counted from Monday to Sunday and updated every Sunday, and are kept between 0 and 20.',
+      'A Provider earns 1 credit for: 30 or more hours on green (stand-by) in the week; completing 2 or more services a day as set by the Company; sharing BalikHome on Facebook, Instagram or TikTok (once a week); and each customer or provider who joins with the Provider\'s referral code.',
+      'A Provider loses 1 credit for each late arrival and for a week with fewer than 30 hours on green, 3 credits for cancelling after accepting a request, and 5 credits for cancelling after the Customer has paid.',
+      'The Platform Fee is set by the credits held after each Sunday update: 0 to 4 credits, 30%; 5 to 6 credits, 25%; 7 to 8 credits, 23%; 9 or more credits, 22%. The Company may review a Provider\'s record and adjust credits or the fee band where it finds an error or abuse.',
+      'Reward credits are not money, cannot be transferred and have no cash value.'
+    ]],
+    ['9. Independent providers', [
+      'Providers and Business Partners are independent. They decide whether to accept a request, set their own prices and working hours, and supply their own tools and materials. Stand-by targets only affect reward credits and the Platform Fee; they are not an obligation to work.',
+      'Providers are responsible for having any skills, licences or certificates the law requires for the services they offer (for example, rules of the Department of Health or TESDA for massage), for their own conduct, and for their own taxes, social contributions and insurance.'
+    ]],
+    ['10. Safety and conduct', [
+      'All Users must treat each other with respect and follow the law. Harassment, discrimination, violence, threats, sexual advances, theft, damage to property, being under the influence of alcohol or drugs during a booking, and fraud are strictly prohibited.',
+      'Customers must give an accurate address, provide a safe place to work, keep pets under control and tell the Provider about any health condition or allergy that matters for the service. Providers must arrive on time, keep tools clean and hygienic, perform only the booked service and leave if they feel unsafe.',
+      'On arrival, a Provider must check in with a photo taken in the app\'s live camera. Photos from the gallery cannot be used. The photo is time-stamped and shared with the Customer and the Company.',
+      'With permission, the app uses the device location so Customers can find nearby Providers and see the Provider on a live map while the Provider is on the way. Location sharing stops at check-in.',
+      'The SOS button alerts the Company\'s safety team, and "Share trip" lets a Customer send booking details to someone they trust. These tools help but do not replace emergency services. In an emergency, call 911 or the nearest police station.',
+      'After payment, the Customer and Provider can send in-app messages and make in-app voice calls until the service ends. Phone numbers are not shared. Messages, call times and booking records are kept to help with safety and disputes.'
+    ]],
+    ['11. Reviews', [
+      'Customers may leave a star rating and a written review after a service. Reviews must be honest, based on the actual service and free of personal information, abuse or unlawful content. Photos cannot be added to reviews. The Company may hide reviews that break these rules.'
+    ]],
+    ['12. Disputes between Users', [
+      'Because each service is a contract between the Customer and the Provider or Business Partner, any claim about the quality of a service, damage, loss, injury or behaviour during a booking is first a matter between those Users.',
+      'Please report a problem through Help in the app within 48 hours of the booking. The Company will review the booking record (times, check-in photo, messages and call log) and may, in good faith, help the Users reach a solution, issue a full or partial refund from the amount it holds, adjust reward credits, or suspend an account. The Company is not obliged to decide a dispute, and its help does not make it responsible for the outcome.',
+      'Where a matter involves a possible crime or injury, the Company will cooperate with the police and other authorities and may share relevant records with them as allowed by law.'
+    ]],
+    ['13. Disclaimer', [
+      'The Company makes reasonable efforts to verify identities, keep the platform secure and support Users. However, it cannot control or guarantee the conduct, skill, honesty or availability of any User, the quality or result of any service, or the condition of any home or pet. The app is provided "as is" and "as available".'
+    ]],
+    ['14. Limitation of liability', [
+      'To the fullest extent permitted by Philippine law, the Company is not liable for any dispute, incident, accident, injury, illness, loss, theft or damage to persons, pets or property that arises from a service or from dealings between Users, whether during or after a booking. Users deal with each other at their own risk.',
+      'To the fullest extent permitted by law, the Company is not liable for indirect or consequential losses, such as lost income or business. Where the Company is found liable, its total liability for any booking is limited to the Platform Fee it received for that booking.',
+      'Nothing in these Terms excludes or limits any liability that cannot be excluded or limited under Philippine law, including liability for fraud, bad faith or gross negligence of the Company, or the rights of consumers and the obligations of e-marketplaces under Republic Act No. 7394 (Consumer Act) and Republic Act No. 11967 (Internet Transactions Act of 2023).'
+    ]],
+    ['15. Indemnity', [
+      'You agree to hold the Company harmless from claims, losses and reasonable costs (including legal fees) that arise from your breach of these Terms, your breach of law, or your acts or omissions during a booking, except to the extent caused by the Company.'
+    ]],
+    ['16. Insurance', [
+      'Users are responsible for their own insurance. The Company may offer or arrange optional cover for home-service bookings. Any such cover will be governed by its own policy terms, and its availability does not change Sections 13 and 14.'
+    ]],
+    ['17. Privacy', [
+      'The Company processes personal data in line with Republic Act No. 10173 (Data Privacy Act of 2012) and the rules of the National Privacy Commission. We collect the data needed to run BalikHome: account and contact details, identity and tax documents (Providers and Business Partners), addresses, booking and payment records, location while a booking is active, check-in photos, in-app messages and call logs.',
+      'We use this data to verify Users, arrange and support bookings, process payments, refunds and taxes, keep Users safe, handle disputes and meet legal duties. We share only what is needed: for example, a Provider sees the Customer\'s name and address after payment, and payment partners receive payment details. We do not sell personal data.',
+      'You may ask to access, correct or delete your data, or object to its processing, by contacting our Data Protection Officer in the app. Some records must be kept for the periods required by tax and other laws.'
+    ]],
+    ['18. Suspension and closing an account', [
+      'The Company may warn, restrict, suspend or close an account if a User breaks these Terms or the law, gives false information, receives serious or repeated complaints, or puts others at risk. Where it is safe and lawful to do so, we will tell the User why. Amounts owed for completed services will still be paid, less any refunds or amounts owed to the Company.',
+      'You may close your account at any time from Account or by contacting support. Bookings in progress must be completed or cancelled first.'
+    ]],
+    ['19. The app and its content', [
+      'The BalikHome name, logo, app and content belong to the Company or its licensors. You may use the app only for its intended purpose. You must not copy, reverse-engineer, scrape or misuse it, or interfere with its security. You give the Company permission to display the photos, descriptions and reviews you add, for the purpose of running the platform.'
+    ]],
+    ['20. Governing law and disputes with the Company', [
+      'These Terms are governed by the laws of the Republic of the Philippines. If you have a dispute with the Company, please contact us first so we can try to resolve it within 30 days. If it is not resolved, either side may refer it to mediation or to the proper courts of Makati City, without affecting any right you have to file a complaint with the Department of Trade and Industry or another government agency.'
+    ]],
+    ['21. Contact', [
+      'Questions, complaints and data privacy requests: use Help in the app, or contact BalikHome support at +63 2 8888 2254. Company name, SEC registration number and business address: to be shown here after registration.'
+    ]]
+  ],
+  note: 'Draft for review by Philippine counsel before launch.'
+};
+const termsText = () => TERMS.title + ' v' + TERMS.version + '\n' + TERMS.intro + '\n' + TERMS.sections.map(([h, ps]) => h + '\n' + ps.join('\n')).join('\n');
+let TERMS_HASH = '';
+(function hashTerms() {
+  const t = termsText();
+  let h = 0x811c9dc5; for (let i = 0; i < t.length; i++) { h ^= t.charCodeAt(i); h = Math.imul(h, 0x01000193) >>> 0; }
+  TERMS_HASH = 'fnv-' + h.toString(16);
+  try { crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)).then(buf => { TERMS_HASH = 'sha256-' + [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join(''); }).catch(() => { }); } catch (e) { }
+})();
+const consentOf = (role, who) => (S.consents || []).find(c => c.role === role && c.who === who && c.version === TERMS.version);
+function recordConsent(role, who, name, contact) {
+  S.consents = S.consents || [];
+  if (consentOf(role, who)) return;
+  S.consents.unshift({ id: 'tc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), role, who, name, contact: contact || '', version: TERMS.version, hash: TERMS_HASH, at: Date.now(), device: (typeof DEVICE !== 'undefined' ? DEVICE : ''), agent: String(navigator.userAgent || '').slice(0, 120), method: 'Ticked "I agree" in the app' });
+}
+function termsSheet() {
+  const t = S.terms; if (!t || !t.open) return '';
+  const acc = t.accept;   // { role, who, name, contact, then }
+  return `<div class="demo-sheet" data-ov="terms" style="z-index:130"><div class="sheet terms" data-stop="1">
+    <div class="row between"><div class="col" style="gap:2px"><b style="font-size:18px">${esc(TERMS.title)}</b><span class="tiny muted">Version ${TERMS.version} · effective ${TERMS.effective} · one agreement for customers, businesses and providers</span></div><button class="iconbtn" data-act="termsClose" aria-label="Close">${ic('x', 20)}</button></div>
+    <div class="terms-body" data-scroll="terms">
+      <p>${esc(TERMS.intro)}</p>
+      <div class="terms-toc">${TERMS.sections.map(([h], i) => `<button class="link" data-act="termsGo" data-arg="${i}">${esc(h)}</button>`).join('')}</div>
+      ${TERMS.sections.map(([h, ps], i) => `<section id="terms-s${i}"><h4>${esc(h)}</h4>${ps.map(p => `<p>${esc(p)}</p>`).join('')}</section>`).join('')}
+      <p class="tiny muted">${esc(TERMS.note)}</p>
+    </div>
+    ${acc ? `<label class="check"><input type="checkbox" id="terms-agree" data-bind="terms.ok" ${t.ok ? 'checked' : ''}>I have read and agree to the BalikHome Terms and Conditions (v${TERMS.version}), including the Disclaimer and Limitation of Liability (Sections 13–14) and the Privacy terms (Section 17).</label>
+      <button class="btn primary block" data-act="termsAccept" ${t.ok ? '' : 'disabled'}>Agree and continue</button>` : `<button class="btn secondary block" data-act="termsClose">Close</button>`}
+  </div></div>`;
+}
+// Ask for acceptance of the current version before an action; returns true if already accepted
+function needTerms(role, who, name, contact, then) {
+  if (consentOf(role, who)) return true;
+  S.terms = { open: true, ok: false, accept: { role, who, name, contact, then } };
+  return false;
+}
+
+function seedConsents() {
+  const t0 = Date.now() - 30 * DAY, out = [];
+  const add = (role, who, name, contact, d) => out.push({ id: 'tcs-' + role + '-' + who, role, who, name, contact, version: TERMS.version, hash: TERMS_HASH, at: t0 + d * HOUR, device: 'seed', agent: 'Accepted at sign-up (demo data)', method: 'Ticked "I agree" in the app' });
+  S.providers.forEach((p, i) => add('provider', p.id, p.name, p.phone || '', i * 7));
+  S.businesses.forEach((b, i) => add('business', b.id, b.name, b.phone || '', 3 + i));
+  add('customer', 'me', ME, 'maria.santos@example.com', 60);
+  return out;
+}
 function render() {
   normalizeCredits();
+  if (!S.consents) S.consents = seedConsents();
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
   const keep = ae && ae.id && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file'].includes(ae.type))) ? ae : null;
   const fid = ae && ae.id;
   const scrolls = {}; document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = el.scrollTop; });
   const prevOv = new Set([...document.querySelectorAll('[data-ov]')].map(el => el.dataset.ov));
-  document.getElementById('app').innerHTML = shell() + locSheet();
+  document.getElementById('app').innerHTML = shell() + locSheet() + termsSheet();
   document.querySelectorAll('[data-ov]').forEach(el => { if (prevOv.has(el.dataset.ov)) { el.style.animation = 'none'; el.querySelectorAll('.sheet').forEach(x => x.style.animation = 'none'); } });
   document.querySelectorAll('[data-scroll]').forEach(el => { if (scrolls[el.dataset.scroll] != null) { el.style.scrollBehavior = 'auto'; el.scrollTop = scrolls[el.dataset.scroll]; el.style.scrollBehavior = ''; } });
   if (keep) {
@@ -2281,7 +2449,7 @@ function render() {
   save();
   if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v8';
+const STORE = 'balik-demo-v9';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -2353,6 +2521,7 @@ function sendDueReminders(n) {
   return changed;
 }
 function sendRequest() {
+  if (!needTerms('customer', S.customer.cid || 'me', S.customer.name, (S.customer.email || '') + ' · ' + (S.customer.phone || ''), { act: 'sendRequest' })) return;
   if (myCust().suspended) { toast('customer', 'Account on hold', 'Please contact BalikHome support to reactivate your account.'); return; }
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
   const b = newBooking({ pid: isBiz ? null : src.id, bizId: isBiz ? src.id : (src.biz || null), services: svcs.map(s => ({ ...s })), gross, mins, status: isBiz ? 'business_queue' : 'requested', when: c.when, slotAt: c.when === 'later' ? c.slot : null, respondBy: now() + S.settings.respond * MIN });
@@ -2499,7 +2668,7 @@ const A = {
   suNext: () => { S.cust.signup.step++; },
   suBack: () => { const s = S.cust.signup; if (s.step > 1) s.step--; else S.cust.signup = null; },
   suAddr: id => { S.cust.signup.addr = id; },
-  suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true; c.cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5); S.customers[c.cid] = custRecordFromLocal(); { const rp = provByRef(s.ref); if (rp) { S.customers[c.cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + c.cid); } }
+  suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true; c.cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5); S.customers[c.cid] = custRecordFromLocal(); recordConsent('customer', c.cid, c.name, c.email + ' · ' + c.phone); { const rp = provByRef(s.ref); if (rp) { S.customers[c.cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + c.cid); } }
     S.cust.signup = null; S.cust.screen = 'home'; toast('customer', 'Welcome to BalikHome, ' + c.name.split(' ')[0], 'Email and phone verified. You can book now.'); },
   demoSignIn: () => { const m = S.customers.me || {}; const c = S.customer; Object.assign(c, { cid: 'me', name: m.name || ME, email: m.email || c.email, phone: m.phone || c.phone, addr: m.addr || 'home', idOk: !!m.idOk }); c.signedIn = true; S.cust.screen = 'home'; toast('customer', 'Signed in', 'Welcome back, ' + c.name.split(' ')[0] + '.'); },
   signOut: () => { S.customer.signedIn = false; S.cust.signup = null; S.cust.screen = 'home'; },
@@ -2526,7 +2695,7 @@ const A = {
   declineReq: id => { const b = bk(id), p = prov(b.pid); b.status = 'declined'; logB(b, `${p.name} tapped Not available`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} can't take this one`, 'You were not charged. See the nearest providers on stand-by.', b.id, 'bad'); toast('customer', `${p.name.split(' ')[0]} is not available`, 'You were not charged.'); }
     S.prov.screen = 'jobs'; },
-  acceptReq: id => { const b = bk(id), p = prov(b.pid);
+  acceptReq: id => { const b = bk(id), p = prov(b.pid); if (!needTerms('provider', p.id, p.name, p.phone || '', { act: 'acceptReq', arg: id })) return;
     b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = b.when === 'later' ? Math.max(b.slotAt - HOUR, now() + S.settings.hold * MIN) : now() + S.settings.hold * MIN; if (b.when === 'later') { b.payDue = b.offerExpires; planReminders(b); }
     logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay by ' + fmtWhen(b.offerExpires) + ' (1 hour before) or it is cancelled automatically.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
@@ -2556,6 +2725,12 @@ const A = {
   callEnd: arg => { const [role, id] = arg.split(':'); finishCall(bk(id), 'hangup'); endCallLocal(role); },
   callMute: role => { const c = CALLS[role]; if (!c) return; c.muted = !c.muted; c.stream.getAudioTracks().forEach(t => t.enabled = !c.muted); },
   toastOpen: id => { const t = S.toasts.find(x => x.id === id); if (!t) return; S.toasts = S.toasts.filter(x => x.id !== id); openFromToast(t.pane, t.bid); },
+  termsOpen: () => { S.terms = { open: true, ok: false, accept: null }; },
+  termsClose: () => { S.terms = null; },
+  termsGo: i => { const el = document.getElementById('terms-s' + i); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); },
+  termsAccept: () => { const t = S.terms; if (!t || !t.accept || !t.ok) return; const a = t.accept; recordConsent(a.role, a.who, a.name, a.contact); S.terms = null;
+    toast(a.role === 'business' ? 'business' : a.role, 'Terms accepted', 'Version ' + TERMS.version + ' · your consent is saved.'); if (a.then && A[a.then.act]) A[a.then.act](a.then.arg); },
+  bizTerms: () => { const b = biz(S.biz.id); needTerms('business', b.id, b.name, b.phone || '', null); },
   toggleGps: () => { if (S.loc.status !== 'granted') { S.loc.ask = true; return; } S.loc.shareProv = !S.prov.gps; S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
@@ -2577,7 +2752,7 @@ const A = {
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
@@ -2663,6 +2838,7 @@ const A = {
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on BalikHome.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
     prov(nid).avail = a.avail ? JSON.parse(JSON.stringify(a.avail)) : defAvail();
+    { const src = a.tcId && (S.consents || []).find(c => c.who === a.tcId); if (src && !consentOf('provider', nid)) S.consents.unshift(Object.assign({}, src, { id: 'tc' + Date.now().toString(36), who: nid, name: prov(nid).name, method: 'Accepted when applying (' + a.id + ')' })); }
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by BalikHome.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
   reject: id => { const a = S.applications.find(x => x.id === id); a.status = 'declined'; if (a.staffOf) { const sb = biz(a.staffOf); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' was not approved', 'Contact BalikHome support for details.'); } },
@@ -2730,7 +2906,7 @@ let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => {
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications'];
+const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -2750,7 +2926,7 @@ const sortFns = {
   providers: (a, b) => (parseInt(a.id.slice(1)) || 0) - (parseInt(b.id.slice(1)) || 0),
   businesses: (a, b) => a.id < b.id ? -1 : 1,
   bookings: (a, b) => b.createdAt - a.createdAt,
-  alerts: (a, b) => b.at - a.at, sms: (a, b) => b.at - a.at, applications: (a, b) => (b.at || 0) - (a.at || 0)
+  alerts: (a, b) => b.at - a.at, sms: (a, b) => b.at - a.at, applications: (a, b) => (b.at || 0) - (a.at || 0), consents: (a, b) => (b.at || 0) - (a.at || 0)
 };
 // Firebase keys cannot contain . # $ [ ] / — encode them
 const encK = k => String(k).replace(/[.#$\[\]\/%]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
