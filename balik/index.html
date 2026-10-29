@@ -413,9 +413,9 @@ td.num,th.num{text-align:right}
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const MIN = 60000, HOUR = 3600000, DAY = 86400000;
 const realStart = Date.now();
-const simStart = (() => { const d = new Date(); d.setHours(13, 0, 0, 0); return d.getTime(); })();
+const simStart = realStart;   // demo history is laid out relative to the moment the app first opens
 let skip = 0;
-const now = () => simStart + (Date.now() - realStart) + skip;
+const now = () => Date.now();   // real time on every device
 const fmtT = t => new Date(t).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 const fmtD = t => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 /* ---------- usual working hours (reference only; the traffic light decides live availability) ---------- */
@@ -1107,7 +1107,7 @@ function custTrack() {
       ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Arrival check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Check-in photo taken by ${esc(first)} at arrival" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;background:#0E1520"></div>` : ''}
       <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>
       ${b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : ''}
-      ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted">Something wrong? Tap Help and our team steps in.</p></div>` : ''}
+      ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted"><b>SOS</b> alerts the BalikHome safety team at once if you feel unsafe during the visit. <b>Share trip</b> sends who is coming, the arrival time and your address to family or a friend.</p></div>` : ''}
       <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
       ${['paid', 'departed'].includes(b.status) ? (S.cust.cancelAsk === b.id ? (() => { const q = refundQuote(b); return `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this booking?</b>
         <div class="row between small"><span>Paid</span><b class="num">${peso(b.gross, 2)}</b></div>
@@ -1920,8 +1920,8 @@ function demoSheet() {
     <div class="row between"><h3 style="font-size:17px">Demo controls</h3><button class="iconbtn" data-act="demo" aria-label="Close">${ic('x', 20)}</button></div>
     <span class="eyebrow">Switch app</span>
     <div class="rolegrid">${rb('customer', 'Customer', 'user', 'Book a service')}${rb('provider', 'Provider', 'bag', 'Accept & serve')}${rb('business', 'Business', 'building', 'Spa staff & payouts')}${rb('admin', 'Admin', 'gear', 'Operations & tax')}</div>
-    <span class="eyebrow">Simulated clock · <span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span>
-    <div class="row" style="gap:8px"><button class="btn secondary sm grow" data-act="skip" data-arg="10">+10 min</button><button class="btn secondary sm grow" data-act="skip" data-arg="60">+1 hour</button><button class="btn secondary sm grow" data-act="skip" data-arg="1440">+1 day</button><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
+    <span class="eyebrow">Now · <span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span>
+    <div class="row" style="gap:8px"><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
     ${liveSection()}
     <p class="tiny muted">Test build. Email and SMS codes are shown on screen instead of being sent, and payments are simulated.</p>
     <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn secondary sm" data-act="resetDemo">Reset this device</button><button class="btn danger sm" data-act="resetRoom">${S.demoConfirm === 'room' ? 'Tap again to reset for everyone' : 'Reset shared test data'}</button></div>
@@ -1948,7 +1948,7 @@ function shell() {
   return `<header class="topbar"><div class="topbar-in">
       <button class="brand" data-act="goHome" aria-label="BalikHome · home"><span class="brand-mark"><img src="${LOGO_MARK}" alt=""></span>BalikHome <small>test build</small></button>
       <nav class="seg" aria-label="View">${wide() ? role('both', 'Customer + Provider') : ''}${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
-      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span><button class="mini" data-act="skip" data-arg="10">+10 min</button><button class="mini" data-act="skip" data-arg="60">+1 h</button><button class="mini" data-act="skip" data-arg="1440">+1 day</button><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
+      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
     </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}`;
 }
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
@@ -2001,7 +2001,7 @@ function makeKeep(k) {
     return { el, kind, who, bid, init() {
       const b = bk(bid), p = b && prov(b.pid); if (!b || !p) return;
       const m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap contributors © CARTO' }).addTo(m);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap contributors' }).addTo(m);
       m.attributionControl.setPrefix(false); L.control.zoom({ position: 'topright' }).addTo(m);
       this.m = m; this.line = L.polyline([], { color: '#12355B', weight: 5, opacity: .7 }).addTo(m);
       this.dest = L.marker([b.lat, b.lng], { icon: pinIcon(), zIndexOffset: 100 }).addTo(m);
@@ -2482,7 +2482,12 @@ const A = {
     S.cust.screen = 'home';
   },
   sos: () => { const b = bk(S.cust.bid); sendSms(S.settings.adminNumbers, `[SOS] Customer pressed SOS on ${b.id}. Call +63 917 555 0142 now.`, 'late'); logB(b, 'Customer pressed SOS'); toast('customer', 'SOS sent', 'Our safety team is calling you now.'); toast('admin', 'SOS · ' + b.id, 'Customer pressed SOS.'); },
-  shareTrip: () => { toast('customer', 'Trip link ready', 'balik.ph/t/' + S.cust.bid.slice(2) + ' · share it with someone you trust.'); },
+  shareTrip: () => { const b = bk(S.cust.bid); if (!b) return; const p = prov(b.pid);
+    const st = { paid: 'is getting ready', departed: 'is on the way', arrived: 'is with me now' }[b.status] || 'is booked';
+    const txt = `BalikHome trip ${b.id}: ${p.name} (${catName(p.cat)}, ID-verified) ${st}. ${b.status === 'arrived' ? 'Service until about ' + fmtT(b.endAt) : 'Arrives by ' + fmtT(b.promisedAt)}. Address: ${b.address}.`;
+    logB(b, 'Customer shared trip details');
+    if (navigator.share) { navigator.share({ title: 'My BalikHome booking', text: txt }).catch(() => { }); }
+    else { try { navigator.clipboard.writeText(txt); } catch (e) { } toast('customer', 'Trip details copied', 'Paste them to someone you trust.'); } },
   custHelp: () => { S.cust.help = true; },
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); if (bk(a.bid).status === 'offered') A.openPay(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
