@@ -1056,6 +1056,7 @@ function custRequest() {
   const stepsH = ['Request sent', 'Arrival time', 'Pay', 'Departed', 'Service'].map((s, i) => `<li class="${i < step + 1 ? 'done' : i === step + 1 ? 'now' : ''}"><span></span>${s}</li>`).join('');
   return `${bar('Booking ' + b.id, 'toBookings')}
     <div class="scroll" data-scroll="c-req">
+      ${['requested', 'business_queue'].includes(b.status) ? offlineBanner('customer') : ''}
       ${hero}
       ${step >= 0 ? `<ol class="steps">${stepsH}</ol>` : ''}
       <div class="card tight"><div class="row">${p ? zav(p, 48) : avatar(bz.name, bz.hue, 40)}<div class="col grow"><b>${esc(who)}</b>${p ? statusLine(p) : ''}</div></div>
@@ -1272,6 +1273,13 @@ function provHeader(title) {
     <button class="pill ${st.cls === 'green' ? 'good' : st.cls === 'yellow' ? 'warn' : 'bad'}" data-act="provTab" data-arg="status" style="border:0;height:30px"><span class="dot ${st.cls}"></span>${st.cls === 'green' ? 'Stand by' : st.cls === 'yellow' ? 'Away' : 'Off today'}</button></header>`;
 }
 function myLedger(p, filter = () => true) { return S.bookings.filter(b => b.pid === p.id && b.ledger && filter(b)); }
+function offlineBanner(role) {
+  if (SYNC.mode === 'live') return '';
+  return `<button class="card tight" data-act="demo" style="text-align:left;gap:6px;background:var(--warn-soft);border-color:transparent">
+    <b class="small" style="color:var(--warn)">${ic('alert', 15)} Not connected to other phones yet</b>
+    <span class="small">${role === 'provider' ? 'Requests sent from a customer on another phone cannot reach this phone until the live server (Firebase) is connected.' : 'Your request only reaches a provider using this same browser until the live server (Firebase) is connected.'} To test on one phone now, tap ⚙ and switch between Customer and Provider.</span>
+    <span class="tiny" style="color:var(--accent);font-weight:600">Open live connection settings ›</span></button>`;
+}
 function provJobs() {
   const me = prov(S.prov.id), n = now();
   const reqs = S.bookings.filter(b => b.pid === me.id && b.status === 'requested');
@@ -1281,7 +1289,7 @@ function provJobs() {
   const today = myLedger(me, b => sameDay(b.endedAt, n));
   const wk = weekTotal(me), staff = !!me.biz;
   const goalBase = staff ? monthGross : monthNet;
-  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">
+  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${offlineBanner('provider')}
     ${reqs.map(b => `<button class="card" data-act="openReq" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
       <div class="row between"><span class="eyebrow" style="color:var(--accent)">New request · also sent by SMS</span><span class="pill warn num" data-cd="${b.respondBy}">${mmss(b.respondBy - n)}</span></div>
       <b style="font-size:17px">${esc(b.services.map(s => s.name).join(' + '))}</b>
