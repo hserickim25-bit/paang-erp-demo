@@ -339,6 +339,7 @@ td.num,th.num{text-align:right}
 .appshell .webwrap{padding-top:env(safe-area-inset-top,0px)}
 .fab{position:fixed;z-index:70;right:max(12px,env(safe-area-inset-right,0px));bottom:calc(96px + env(safe-area-inset-bottom,0px));height:40px;padding:0 14px;border-radius:20px;border:0;background:var(--mango);color:var(--mango-ink);font-weight:700;font-size:13px;display:flex;align-items:center;gap:6px;box-shadow:0 10px 24px -8px rgba(13,40,70,.5)}
 .demo-sheet{position:fixed;inset:0;z-index:90;background:rgba(8,10,16,.45);display:flex;align-items:flex-end;animation:fade .15s}
+@media(min-width:700px){.demo-sheet{justify-content:center;align-items:center}.demo-sheet .sheet{max-width:460px;border-radius:22px}}
 .demo-sheet .sheet{max-height:85dvh;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .rolegrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .rolegrid button{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);font-weight:600;font-size:14px;text-align:left}
@@ -375,6 +376,7 @@ td.num,th.num{text-align:right}
 .form2307 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}
 .form2307 .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 </style>
+<script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -476,7 +478,8 @@ const catName = id => (CATS.find(c => c.id === id) || {}).name || '';
 
 const S = {
   role: 'both', theme: null,
-  customer: { name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', signedIn: false, emailOk: true, phoneOk: true, idOk: false, pay: 'GCash' },
+  customers: { me: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', idOk: false, suspended: false, createdAt: simStart - 40 * DAY } },
+  customer: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', signedIn: false, emailOk: true, phoneOk: true, idOk: false, pay: 'GCash' },
   cust: { screen: 'home', cat: null, filter: 'nearest', q: '', pid: null, bizId: null, cart: [], when: 'now', slot: null, bid: null, pay: null, review: { stars: 5, tags: ['On time'], text: '', photos: [] }, addrSheet: false, signup: null, help: false },
   prov: { id: 'p1', screen: 'jobs', bid: null, eta: 30, apply: null, perf: false },
   biz: { id: 'b1', tab: 'requests', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
@@ -546,9 +549,9 @@ const weekTotal = p => weekHours(p).reduce((a, b) => a + b, 0);
 const daysMet = p => weekHours(p).filter(h => h >= S.settings.dayTarget).length;
 
 /* ---------- bookings ---------- */
-let seq = 1040;
+let seq = 1040; let SEEDING = true;
 function newBooking(o) {
-  const b = Object.assign({ id: 'B-' + (++seq), customer: S.customer.name, cid: 'me', address: addr().line, lat: addr().lat, lng: addr().lng, log: [], late: null, review: null, ledger: null, createdAt: now(), when: 'now', slotAt: null }, o);
+  const b = Object.assign({ id: SEEDING ? 'B-' + (++seq) : uniqueId('B-', x => !!bk(x)), customer: S.customer.name, cid: S.customer.cid || 'me', address: addr().line, lat: addr().lat, lng: addr().lng, log: [], late: null, review: null, ledger: null, createdAt: now(), when: 'now', slotAt: null }, o);
   S.bookings.unshift(b);
   return b;
 }
@@ -587,14 +590,15 @@ function seedHistory() {
     else { const bz = biz(b.bizId), end = periodEnd(bz.cycle, periodStart(bz.cycle, b.endedAt)); if (end <= simStart) b.ledger.paidAt = end; }
   });
 }
-seedHistory();
+seedHistory(); SEEDING = false;
 
 /* ---------- alerts, sms, toasts ---------- */
-function pushAlert(to, title, body, bid, kind = 'info') { S.alerts.unshift({ id: Math.random().toString(36).slice(2), to, title, body, bid, kind, at: now(), read: false }); }
-function sendSms(to, text, kind = 'info') { S.sms.unshift({ to, text, at: now(), kind }); }
+function pushAlert(to, title, body, bid, kind = 'info') { if (to === 'customer') { const b = bid && bk(bid); to = 'customer:' + ((b && b.cid) || S.customer.cid || 'me'); } S.alerts.unshift({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, title, body, bid: bid || null, kind, at: now(), read: false }); }
+function sendSms(to, text, kind = 'info') { S.sms.unshift({ id: 'sm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, text, at: now(), kind }); }
 function toast(pane, title, body, sms = false) { S.toasts.push({ id: Math.random().toString(36).slice(2), pane, title, body, sms, until: Date.now() + 4200 }); }
-const unread = to => S.alerts.filter(a => a.to === to && !a.read).length;
-const custActive = () => S.bookings.find(b => b.cid === 'me' && ['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'].includes(b.status));
+const tgt = to => to === 'customer' ? 'customer:' + (S.customer.cid || 'me') : to;
+const unread = to => S.alerts.filter(a => a.to === tgt(to) && !a.read).length;
+const custActive = () => S.bookings.find(b => b.cid === (S.customer.cid || 'me') && ['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'].includes(b.status));
 
 /* ---------- small renderers ---------- */
 const photoOf = p => p ? (p.photo || PHOTOS[p.photoKey || p.id] || null) : null;
@@ -615,7 +619,7 @@ const starsH = n => `<span class="stars" aria-label="${n} out of 5">${'★'.repe
 const photo = (c, h = 64) => `<span class="photo" style="height:${h}px;background:linear-gradient(135deg,${c},color-mix(in srgb,${c} 55%,#5b4a7a))">${ic('camera', 14)}</span>`;
 function statusOf(p) {
   const job = S.bookings.find(b => b.pid === p.id && b.status === 'arrived');
-  if (p.status === 'green') return { cls: 'green', text: job ? `In service ${fmtT(job.arrivedAt)}–${fmtT(job.endAt)}` : 'Available now', busy: !!job, job };
+  if (p.status === 'green') return { cls: 'green', text: job ? `In service ${fmtT(job.arrivedAt)}–${fmtT(job.endAt)}` : 'Available for service', busy: !!job, job };
   if (p.status === 'yellow') return { cls: 'yellow', text: 'Back at ' + fmtT(p.backAt) };
   return { cls: 'red', text: 'Not available today' };
 }
@@ -919,11 +923,12 @@ function custReview() {
 }
 
 function custBookings() {
-  const mine = S.bookings.filter(b => b.cid === 'me');
+  const mine = S.bookings.filter(b => b.cid === (S.customer.cid || 'me'));
   return `${bar('Bookings')}<div class="scroll" data-scroll="c-bk">
     ${mine.length ? `<div class="list">${mine.map(b => { const p = b.pid ? prov(b.pid) : null, z = b.bizId ? biz(b.bizId) : null; return `<button class="li" data-act="openBooking" data-arg="${b.id}">${p ? avatar(p.name, p.hue, 40) : avatar(z.name, z.hue, 40)}<div class="col grow"><b class="ellipsis">${esc(b.services.map(s => s.name).join(' + '))}</b><span class="small muted">${esc(p ? p.name : z.name)} · ${fmtD(b.createdAt)}</span></div><div class="col" style="align-items:flex-end">${statusPill(b.status)}<span class="small num">${peso(b.gross)}</span></div></button>`; }).join('')}</div>` : '<div class="empty">No bookings yet.</div>'}</div>`;
 }
 function alertList(to) {
+  to = tgt(to);
   const list = S.alerts.filter(a => a.to === to);
   return list.length ? `<div class="list">${list.map(a => `<button class="li" data-act="openAlert" data-arg="${a.id}"><span class="avatar" style="width:36px;height:36px;background:${a.kind === 'bad' ? 'var(--bad-soft)' : a.kind === 'good' ? 'var(--good-soft)' : 'var(--accent-soft)'};color:${a.kind === 'bad' ? 'var(--bad)' : a.kind === 'good' ? 'var(--good)' : 'var(--accent)'}">${ic(a.kind === 'bad' ? 'alert' : a.kind === 'good' ? 'check' : 'bell', 18)}</span><div class="col grow"><b class="small">${esc(a.title)}</b><span class="small muted">${esc(a.body)}</span></div><span class="tiny muted num">${fmtT(a.at)}</span>${a.read ? '' : '<span class="dot green" style="background:var(--accent);box-shadow:none"></span>'}</button>`).join('')}</div>` : '<div class="empty">No alerts yet. Updates about your bookings show up here.</div>';
 }
@@ -935,7 +940,7 @@ function custAccount() {
     <div class="list">
       <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div><span class="pill good">Verified</span></div>
       <div class="li">${ic('phone', 20)}<div class="col grow"><b>Mobile</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">Verified</span></div>
-      <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${c.idOk ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${c.idOk ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
+      <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
@@ -1469,12 +1474,12 @@ function admProviders() {
 }
 function customerRows() {
   const map = {};
+  Object.values(S.customers || {}).forEach(c => { map[c.cid] = { key: c.cid, rec: c, name: c.name, jobs: 0, spent: 0, last: c.createdAt || 0 }; });
   S.bookings.forEach(b => {
-    const key = b.cid === 'me' ? 'me' : b.customer;
-    const o = map[key] || (map[key] = { key, name: b.cid === 'me' ? S.customer.name : b.customer, jobs: 0, spent: 0, last: 0, me: b.cid === 'me' });
-    o.jobs++; if (b.paidAt && !b.refunded && !['cancelled'].includes(b.status)) o.spent += b.gross; o.last = Math.max(o.last, b.createdAt);
+    const key = b.cid || 'n:' + b.customer;
+    const o = map[key] || (map[key] = { key, rec: (S.customers || {})[key] || null, name: b.customer, jobs: 0, spent: 0, last: 0 });
+    o.jobs++; if (b.paidAt && !b.refunded && b.status !== 'cancelled') o.spent += b.gross; o.last = Math.max(o.last, b.createdAt);
   });
-  if (!map.me) map.me = { key: 'me', name: S.customer.name, jobs: 0, spent: 0, last: 0, me: true };
   return Object.values(map).sort((a, b) => b.last - a.last);
 }
 function admCustomers() {
@@ -1484,10 +1489,10 @@ function admCustomers() {
   S.providers.forEach(p => p.reviews.forEach((r, k) => reviews.push({ p, r, k })));
   return `<div class="page-h"><div><h1>Customers & reviews</h1><p>Customers sign up with a verified email and mobile number; government ID is optional. Suspended customers cannot send new requests. Hidden reviews disappear from provider profiles.</p></div></div>
     <div class="panel"><div class="panel-h"><h3>Customers · ${rows.length}</h3></div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Verification</th><th class="num">Bookings</th><th class="num">Spent</th><th>Last booking</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-    ${rows.map(c => { const susp = c.me ? !!S.customer.suspended : !!(flags[c.key] && flags[c.key].suspended); return `<tr style="${susp ? 'background:var(--bad-soft)' : ''}"><td><b>${esc(c.name)}</b>${c.me ? `<br><span class="tiny muted">${esc(S.customer.email)} · ${esc(S.customer.phone)}</span>` : ''}</td>
-      <td>${c.me ? `<span class="pill good">Email</span> <span class="pill good">Phone</span> ${S.customer.idOk ? '<span class="pill good">ID</span>' : '<span class="pill outline">No ID</span>'}` : '<span class="pill good">Email</span> <span class="pill good">Phone</span>'}</td>
+    ${rows.map(c => { const r = c.rec || (S.customers || {})[c.key] || {}; const reg = !!(c.rec && c.rec.email); const susp = !!r.suspended; return `<tr style="${susp ? 'background:var(--bad-soft)' : ''}"><td><b>${esc(c.name)}</b>${reg ? `<br><span class="tiny muted">${esc(r.email)} · ${esc(r.phone)}</span>` : ''}${c.key === (S.customer.cid || 'me') && S.customer.signedIn ? ' <span class="pill accent" style="height:20px">This device</span>' : ''}</td>
+      <td><span class="pill good">Email</span> <span class="pill good">Phone</span> ${r.idOk ? '<span class="pill good">ID</span>' : '<span class="pill outline">No ID</span>'}</td>
       <td class="num">${c.jobs}</td><td class="num">${peso(c.spent)}</td><td class="mono small">${c.last ? fmtD(c.last) : '—'}</td><td>${susp ? '<span class="pill bad">Suspended</span>' : '<span class="pill good">Active</span>'}</td>
-      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admCustJobs" data-arg="${esc(c.name)}">Bookings</button><button class="btn ${susp ? 'primary' : 'ghost'} xs" style="${susp ? '' : 'color:var(--bad)'}" data-act="admCustSusp" data-arg="${esc(c.key)}">${susp ? 'Reactivate' : 'Suspend'}</button>${c.me && !S.customer.idOk ? `<button class="btn ghost xs" data-act="admCustId">Mark ID verified</button>` : ''}</div></td></tr>`; }).join('')}
+      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admCustJobs" data-arg="${esc(c.name)}">Bookings</button><button class="btn ${susp ? 'primary' : 'ghost'} xs" style="${susp ? '' : 'color:var(--bad)'}" data-act="admCustSusp" data-arg="${esc(c.key)}">${susp ? 'Reactivate' : 'Suspend'}</button>${reg && !r.idOk ? `<button class="btn ghost xs" data-act="admCustId" data-arg="${esc(c.key)}">Mark ID verified</button>` : ''}</div></td></tr>`; }).join('')}
     </tbody></table></div></div>
     <div class="panel"><div class="panel-h"><h3>Review moderation · ${reviews.length}</h3><span class="small muted">Photo reviews appear on provider profiles</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>By</th><th>Rating</th><th>Review</th><th>Photos</th><th>Status</th><th></th></tr></thead><tbody>
     ${reviews.map(({ p, r, k }) => `<tr style="${r.hidden ? 'opacity:.55' : ''}"><td>${esc(p.name)}</td><td>${esc(r.by)}<br><span class="tiny muted">${esc(r.ago)}</span></td><td>${starsH(r.stars)}</td><td class="small" style="max-width:280px">${esc(r.text || '—')}</td><td>${r.photos.length}</td><td>${r.hidden ? '<span class="pill bad">Hidden</span>' : '<span class="pill good">Visible</span>'}</td><td><button class="btn ${r.hidden ? 'secondary' : 'ghost'} xs" data-act="admReview" data-arg="${p.id}:${k}">${r.hidden ? 'Show' : 'Hide'}</button></td></tr>`).join('')}
@@ -1626,6 +1631,20 @@ function toastsFor(pane, web = false) {
 /* =============== Shell =============== */
 function wide() { return window.innerWidth >= 980; }
 function isPhone() { return window.innerWidth < 700; }
+const shareLink = () => { try { const u = new URL(location.href); u.hash = ''; u.searchParams.set('room', SYNC.room); return u.toString(); } catch (e) { return ''; } };
+function liveSection() {
+  const live = SYNC.mode === 'live';
+  return `<div class="card tight" style="gap:8px;${live ? 'border-color:var(--good-dot)' : ''}">
+    <div class="row between"><span class="eyebrow">Live connection</span><span class="pill ${live ? 'good' : SYNC.mode === 'tabs' ? 'warn' : 'bad'}">${live ? 'Live · ' + devicesOnline() + ' device' + (devicesOnline() > 1 ? 's' : '') + ' online' : esc(SYNC.status)}</span></div>
+    ${live ? `<span class="small">Room <b class="num">${esc(SYNC.room)}</b>. Open the same link on each phone or PC: the customer, provider, business and admin then share bookings, alerts and payments in real time.</span>`
+      : `<span class="small">${SYNC.cfgErr ? 'Firebase could not start (' + esc(SYNC.cfgErr) + '). ' : ''}Not connected to Firebase yet, so only tabs on this device share data.</span>`}
+    <div class="row" style="gap:6px"><input id="room-link" class="input" readonly value="${esc(shareLink())}" style="height:36px;font-size:12px" onfocus="this.select()"><button class="btn secondary xs" data-act="copyLink">Copy</button></div>
+    <div class="row" style="gap:6px"><input id="room-in" class="input" data-bind="roomInput" value="${esc(S.roomInput || '')}" placeholder="Room code, e.g. team1" style="height:36px"><button class="btn secondary xs" data-act="joinRoom" ${(S.roomInput || '').trim() ? '' : 'disabled'}>Join</button></div>
+    ${live ? (lsGet('balik-fb-config') ? '<button class="btn ghost xs" data-act="clearFb">Remove Firebase config saved on this device</button>' : '') : `<details><summary class="small" style="cursor:pointer">Connect Firebase on this device</summary>
+      <label class="field" style="margin-top:8px">Paste firebaseConfig<textarea id="fb-in" class="textarea" style="min-height:90px;font-family:var(--mono);font-size:12px" data-bind="fbInput" placeholder='{ "apiKey": "…", "authDomain": "…", "databaseURL": "https://…firebasedatabase.app", "projectId": "…" }'>${esc(S.fbInput || '')}</textarea></label>
+      ${S.fbErr ? `<span class="small" style="color:var(--bad)">${esc(S.fbErr)}</span>` : ''}<button class="btn primary xs" data-act="saveFb">Save & connect</button></details>`}
+  </div>`;
+}
 function demoSheet() {
   if (!S.demoOpen) return '';
   const cur = S.role === 'both' ? 'customer' : S.role;
@@ -1636,8 +1655,9 @@ function demoSheet() {
     <div class="rolegrid">${rb('customer', 'Customer', 'user', 'Book a service')}${rb('provider', 'Provider', 'bag', 'Accept & serve')}${rb('business', 'Business', 'building', 'Spa staff & payouts')}${rb('admin', 'Admin', 'gear', 'Operations & tax')}</div>
     <span class="eyebrow">Simulated clock · <span class="num" data-clock>${fmtT(now())}</span></span>
     <div class="row" style="gap:8px"><button class="btn secondary sm grow" data-act="skip" data-arg="10">+10 min</button><button class="btn secondary sm grow" data-act="skip" data-arg="60">+1 hour</button><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
-    <p class="tiny muted">Test build. Email and SMS codes are shown on screen instead of being sent, and payments are simulated. Your test data stays on this device.</p>
-    <button class="btn danger sm" data-act="resetDemo">Reset demo data</button>
+    ${liveSection()}
+    <p class="tiny muted">Test build. Email and SMS codes are shown on screen instead of being sent, and payments are simulated.</p>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn secondary sm" data-act="resetDemo">Reset this device</button><button class="btn danger sm" data-act="resetRoom">${S.demoConfirm === 'room' ? 'Tap again to reset for everyone' : 'Reset shared test data'}</button></div>
   </div></div>`;
 }
 function shell() {
@@ -1661,8 +1681,8 @@ function shell() {
   return `<header class="topbar"><div class="topbar-in">
       <button class="brand" data-act="goHome" aria-label="Balik home"><span class="brand-mark">${ic('refresh', 16, 2.2)}</span>Balik <small>Home Care · test build</small></button>
       <nav class="seg" aria-label="View">${wide() ? role('both', 'Customer + Provider') : ''}${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
-      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtT(now())}</span><button class="mini" data-act="skip" data-arg="10">+10 min</button><button class="mini" data-act="skip" data-arg="60">+1 h</button><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="resetDemo">Reset</button></div>
-    </div></header><div class="stage">${stage}</div>${modal()}`;
+      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtT(now())}</span><button class="mini" data-act="skip" data-arg="10">+10 min</button><button class="mini" data-act="skip" data-arg="60">+1 h</button><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
+    </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}`;
 }
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
 
@@ -1685,8 +1705,9 @@ function render() {
     } else if (nu) nu.focus({ preventScroll: true });
   } else if (fid) { const el = document.getElementById(fid); if (el) el.focus({ preventScroll: true }); }
   save();
+  if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v3';
+const STORE = 'balik-demo-v4';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -1714,7 +1735,7 @@ function setPath(path, val) { const ks = path.split('.'); let o = S; for (let i 
 function getPath(path) { return path.split('.').reduce((o, k) => o && o[k], S); }
 
 function sendRequest() {
-  if (S.customer.suspended) { toast('customer', 'Account on hold', 'Please contact Balik support to reactivate your account.'); return; }
+  if (myCust().suspended) { toast('customer', 'Account on hold', 'Please contact Balik support to reactivate your account.'); return; }
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
   const b = newBooking({ pid: isBiz ? null : src.id, bizId: isBiz ? src.id : (src.biz || null), services: svcs.map(s => ({ ...s })), gross, mins, status: isBiz ? 'business_queue' : 'requested', when: c.when, slotAt: c.when === 'later' ? c.slot : null, respondBy: now() + S.settings.respond * MIN });
   logB(b, 'Customer sent request (no charge)');
@@ -1739,7 +1760,7 @@ function endService(b, auto = false) {
   logB(b, auto ? 'Service window ended · provider auto-returned to green' : 'Provider tapped End service · back to green', b.endedAt);
   p.status = 'green'; p.backAt = null;
   postLedger(b);
-  if (b.cid === 'me') {
+  if (b.cid) {
     pushAlert('customer', 'Service ended · rate your provider', `How was ${p.name.split(' ')[0]}? Leave stars and a review.`, b.id, 'good');
     toast('customer', 'Service ended', `Rate ${p.name.split(' ')[0]} and add photos.`);
     if (S.cust.bid === b.id && ['track', 'request'].includes(S.cust.screen)) { S.cust.screen = 'review'; S.cust.review = { stars: 5, tags: ['On time'], text: '', photos: [] }; }
@@ -1752,13 +1773,13 @@ function arrive(b) {
   logB(b, `Arrived · ${Math.round((b.arrivedAt - b.promisedAt) / MIN) <= 0 ? 'on time' : Math.round((b.arrivedAt - b.promisedAt) / MIN) + ' min after promise'}`);
   if (b.late) { b.late.resolved = true; if (!b.late.penalty && b.arrivedAt > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; p.points++; logB(b, 'Penalty point added (late arrival)'); } }
   logB(b, `In service ${fmtT(b.arrivedAt)}–${fmtT(b.endAt)}`);
-  if (b.cid === 'me') { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
+  if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
   S.prov.screen = 'job'; S.prov.bid = b.id;
 }
 
 const A = {
   setRole: r => { S.role = r; S.demoOpen = false; },
-  skip: m => { skip += Number(m) * MIN; tick(true); },
+  skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/skip': skip }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
   open2307: key => { S.modal = { kind: '2307', key }; },
@@ -1819,7 +1840,7 @@ const A = {
   custHelp: () => { S.cust.help = true; },
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to === 'customer' && a.bid) { A.openBooking(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
-  readAll: to => { S.alerts.filter(a => a.to === to).forEach(a => a.read = true); },
+  readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); },
   startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null }; },
   suSend: () => { const s = S.cust.signup; s.eCode = String(100000 + Math.floor(Math.random() * 899999)); s.pCode = String(100000 + Math.floor(Math.random() * 899999)); s.eOtp = ''; s.pOtp = ''; s.step = 2;
   },
@@ -1827,13 +1848,19 @@ const A = {
   suNext: () => { S.cust.signup.step++; },
   suBack: () => { const s = S.cust.signup; if (s.step > 1) s.step--; else S.cust.signup = null; },
   suAddr: id => { S.cust.signup.addr = id; },
-  suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true;
+  suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true; c.cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5); S.customers[c.cid] = custRecordFromLocal();
     S.cust.signup = null; S.cust.screen = 'home'; toast('customer', 'Welcome to Balik, ' + c.name.split(' ')[0], 'Email and phone verified. You can book now.'); },
-  demoSignIn: () => { const c = S.customer; c.signedIn = true; S.cust.screen = 'home'; toast('customer', 'Signed in', 'Welcome back, ' + c.name.split(' ')[0] + '.'); },
+  demoSignIn: () => { const m = S.customers.me || {}; const c = S.customer; Object.assign(c, { cid: 'me', name: m.name || ME, email: m.email || c.email, phone: m.phone || c.phone, addr: m.addr || 'home', idOk: !!m.idOk }); c.signedIn = true; S.cust.screen = 'home'; toast('customer', 'Signed in', 'Welcome back, ' + c.name.split(' ')[0] + '.'); },
   signOut: () => { S.customer.signedIn = false; S.cust.signup = null; S.cust.screen = 'home'; },
-  addId: () => { if (!S.customer.idOk) { S.customer.idOk = true; toast('customer', 'ID verified', 'Providers now see a Verified badge on your requests.'); } },
+  addId: () => { if (!S.customer.idOk) { S.customer.idOk = true; if (S.customers[S.customer.cid]) S.customers[S.customer.cid].idOk = true; toast('customer', 'ID verified', 'Providers now see a Verified badge on your requests.'); } },
   goPro: () => { if (isPhone() || !wide()) S.role = 'provider'; A.startApply(); },
   resetDemo: () => { try { localStorage.removeItem(STORE); } catch (e) { } location.reload(); },
+  resetRoom: () => { if (S.demoConfirm !== 'room') { S.demoConfirm = 'room'; return; } try { localStorage.removeItem(STORE); localStorage.setItem('balik-reseed', '1'); } catch (e) { } location.reload(); },
+  joinRoom: () => { const r = String(S.roomInput || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); if (!r) return; try { localStorage.setItem('balik-room', r); localStorage.removeItem(STORE); } catch (e) { } const u = new URL(location.href); u.searchParams.set('room', r); location.href = u.toString(); },
+  saveFb: () => { let t = String(S.fbInput || '').trim(); const m = t.match(/\{[\s\S]*\}/); if (m) t = m[0]; let cfg = null; try { cfg = JSON.parse(t); } catch (e) { try { cfg = Function('return (' + t + ')')(); } catch (e2) { } }
+    if (!cfg || !cfg.databaseURL) { S.fbErr = 'Paste the firebaseConfig object. It must include databaseURL.'; return; } try { localStorage.setItem('balik-fb-config', JSON.stringify(cfg)); } catch (e) { } location.reload(); },
+  clearFb: () => { try { localStorage.removeItem('balik-fb-config'); } catch (e) { } location.reload(); },
+  copyLink: () => { const link = shareLink(); try { navigator.clipboard.writeText(link).then(() => { toast(S.role === 'both' ? 'customer' : S.role, 'Link copied', link); render(); }, () => { }); } catch (e) { } },
   demo: () => { S.demoOpen = !S.demoOpen; },
   clearQ: () => { S.cust.q = ''; },
   goHome: () => { S.role = wide() ? 'both' : 'customer'; const c = S.cust; c.screen = 'home'; c.cat = null; c.q = ''; c.zoom = null; c.pay = null; c.addrSheet = false; c.help = false; S.modal = null; S.demoOpen = false; setTimeout(() => resetScroll('c-home')); },
@@ -1846,25 +1873,25 @@ const A = {
   openJob: id => { S.prov.bid = id; S.prov.screen = 'job'; },
   setEta: m => { S.prov.eta = Number(m); },
   declineReq: id => { const b = bk(id), p = prov(b.pid); b.status = 'declined'; logB(b, `${p.name} tapped Not available`);
-    if (b.cid === 'me') { pushAlert('customer', `${p.name.split(' ')[0]} can't take this one`, 'You were not charged. See the nearest providers on stand-by.', b.id, 'bad'); toast('customer', `${p.name.split(' ')[0]} is not available`, 'You were not charged.'); }
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} can't take this one`, 'You were not charged. See the nearest providers on stand-by.', b.id, 'bad'); toast('customer', `${p.name.split(' ')[0]} is not available`, 'You were not charged.'); }
     S.prov.screen = 'jobs'; },
   acceptReq: id => { const b = bk(id), p = prov(b.pid);
     b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = now() + S.settings.hold * MIN;
     logB(b, b.when === 'later' ? `Accepted for ${fmtT(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
-    if (b.cid === 'me') { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtT(b.slotAt) + '. Confirm and pay.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtT(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtT(b.slotAt) + '. Confirm and pay.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtT(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
   depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart');
-    if (b.cid === 'me') { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
   arrive: id => arrive(bk(id)),
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
   setAway: h => { const p = prov(S.prov.id); p.status = 'yellow'; p.awayFrom = now(); p.backAt = now() + Number(h) * HOUR; toast('provider', 'Away until ' + fmtT(p.backAt), 'You switch back to green automatically.'); },
   lateUpdate: arg => { const [id, m] = arg.split(':'); const b = bk(id), p = prov(b.pid); b.late.replies.push(Number(m)); b.late.seen = true; logB(b, `Provider sent late update: +${m} min`);
-    if (b.cid === 'me') { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, `New arrival about ${fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is running ${m} min late`, 'Our team is following up.'); }
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, `New arrival about ${fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is running ${m} min late`, 'Our team is following up.'); }
     toast('admin', 'Provider replied · ' + b.id, '+' + m + ' min'); b.late.dismissedUntil = Date.now() + 1; },
   lateCancel: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; }
     logB(b, 'Provider cancelled while late · customer refunded · penalty point'); p.status = 'green';
-    if (b.cid === 'me') { pushAlert('customer', 'Booking cancelled · full refund', `${p.name.split(' ')[0]} couldn't make it. ${peso(b.gross)} is being refunded.`, b.id, 'bad'); toast('customer', 'Full refund on the way', `${p.name.split(' ')[0]} couldn't make it.`); }
+    if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', `${p.name.split(' ')[0]} couldn't make it. ${peso(b.gross)} is being refunded.`, b.id, 'bad'); toast('customer', 'Full refund on the way', `${p.name.split(' ')[0]} couldn't make it.`); }
     S.prov.screen = 'jobs'; },
   addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
@@ -1876,13 +1903,13 @@ const A = {
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: 'A-' + (202 + S.applications.length), name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
   assign: arg => { const [id, pid] = arg.split(':'); const b = bk(id), p = prov(pid); b.pid = pid; b.status = 'requested'; b.respondBy = now() + S.settings.respond * MIN; logB(b, `${biz(b.bizId).name} assigned ${p.name}`);
     notifyProviderOfRequest(b, p); S.prov.id = pid; S.prov.screen = 'jobs';
-    if (b.cid === 'me') { pushAlert('customer', 'Therapist assigned', `${p.name} from ${biz(b.bizId).name} will send an arrival time.`, b.id); toast('customer', 'Therapist assigned', p.name + ' will reply with an arrival time.'); }
+    if (b.cid) { pushAlert('customer', 'Therapist assigned', `${p.name} from ${biz(b.bizId).name} will send an arrival time.`, b.id); toast('customer', 'Therapist assigned', p.name + ' will reply with an arrival time.'); }
     toast('business', 'Assigned to ' + p.name, 'They got an app alert and SMS.'); },
   invite: () => { const b = biz(S.biz.id), v = S.biz.invite; b.invited.push({ name: v.name.trim(), phone: v.phone.trim(), stage: 'sent', sentAt: now() }); sendSms(v.phone, `Balik: ${b.name} invited you to join their team. Add your photo, ID and TIN: balik.ph/join`); toast('business', 'Invite sent', 'SMS sent to ' + v.phone); S.biz.invite = { name: '', phone: '' }; },
   bizConfirm: k => { S.biz.confirm = k || ''; },
@@ -1890,11 +1917,11 @@ const A = {
   bizRemoveStaff: id => { const b = biz(S.biz.id), p = prov(id); b.staff = b.staff.filter(x => x !== id); p.active = false; p.status = 'red'; p.biz = null; S.biz.confirm = ''; if (S.biz.editStaff === id) S.biz.editStaff = null; toast('business', 'Removed ' + p.name, 'They no longer appear under ' + b.name + '.'); },
   bizResend: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; v.sentAt = now(); sendSms(v.phone, `Balik: reminder — ${b.name} invited you. balik.ph/join`); toast('business', 'Invite re-sent', v.phone); },
   bizCancelInvite: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; if (v.appId) { const a = S.applications.find(x => x.id === v.appId); if (a && a.status === 'pending') a.status = 'withdrawn'; } b.invited.splice(Number(k), 1); toast('business', 'Invite cancelled', v.name); },
-  bizSimSignup: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; const id = 'A-' + (300 + S.applications.length);
+  bizSimSignup: k => { const b = biz(S.biz.id), v = b.invited[Number(k)]; const id = uniqueId('A-', x => S.applications.some(a => a.id === x));
     S.applications.unshift({ id, staffOf: b.id, photo: v.photo || null, photoKey: v.photoKey || 'sample', name: v.name, cat: b.cat, years: 5, past: 'Therapist, invited by ' + b.name, why: 'Invited by ' + b.name + ' to join as staff.', area: b.area, idOk: true, selfie: true, tin: '6' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0').replace(/(\d{2})(\d{3})(\d{3})/, '$1-$2-$3') + '-000', cert: null, at: now(), status: 'pending' });
     v.stage = 'review'; v.appId = id; toast('business', v.name + ' finished sign-up', 'Waiting for Balik approval.'); toast('admin', 'New staff application', v.name + ' · ' + b.name); },
   bizDecline: id => { const r = bk(id); r.status = 'declined'; logB(r, biz(r.bizId).name + ' declined: no therapist available');
-    if (r.cid === 'me') { pushAlert('customer', biz(r.bizId).name + " can't take this one", 'You were not charged. See other providers nearby.', r.id, 'bad'); toast('customer', 'Spa unavailable', 'You were not charged. Try someone nearby.'); }
+    if (r.cid) { pushAlert('customer', biz(r.bizId).name + " can't take this one", 'You were not charged. See other providers nearby.', r.id, 'bad'); toast('customer', 'Spa unavailable', 'You were not charged. Try someone nearby.'); }
     toast('business', 'Request declined', r.id); },
   bizStmt: k => { S.modal = { kind: 'stmt', k: Number(k) }; },
   bizAddSvc: () => { const b = biz(S.biz.id); b.services.push({ name: '', mins: 60, price: 700, on: false }); const j = b.services.length - 1; setTimeout(() => { const el = document.getElementById('bm-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
@@ -1903,21 +1930,21 @@ const A = {
   admOpenJob: id => { S.admin.tab = 'jobs'; S.admin.sel = id; S.admin.jobFilter = 'all'; S.admin.jobQ = ''; },
   admJobFilter: f => { S.admin.jobFilter = f; S.admin.sel = null; },
   admConfirm: k => { S.admin.confirm = k || ''; },
-  admMsg: id => { const b = bk(id), m = S.admin.msg.trim(); logB(b, 'Balik → customer: ' + m); if (b.cid === 'me') { pushAlert('customer', 'Message from Balik', m, b.id); toast('customer', 'Message from Balik', m); } S.admin.msg = ''; toast('admin', 'Sent to ' + b.customer, m.slice(0, 60)); },
+  admMsg: id => { const b = bk(id), m = S.admin.msg.trim(); logB(b, 'Balik → customer: ' + m); if (b.cid) { pushAlert('customer', 'Message from Balik', m, b.id); toast('customer', 'Message from Balik', m); } S.admin.msg = ''; toast('admin', 'Sent to ' + b.customer, m.slice(0, 60)); },
   admNote: id => { const b = bk(id); logB(b, 'Note: ' + S.admin.note.trim()); S.admin.note = ''; },
   admCancelJob: id => { const b = bk(id), p = b.pid ? prov(b.pid) : null; const paid = !!b.paidAt; S.admin.sel = id; b.status = 'cancelled'; b.refunded = paid; if (b.late) b.late.resolved = true; if (p && ['paid', 'departed', 'arrived'].includes(S.bookings.find(x => x.id === id).status)) p.status = 'green'; if (p) p.status = p.status === 'red' ? 'red' : 'green';
     logB(b, 'Cancelled by Balik' + (paid ? ' · full refund ' + peso(b.gross) : ''));
-    if (b.cid === 'me') { pushAlert('customer', 'Booking cancelled by Balik', paid ? peso(b.gross) + ' is being refunded.' : 'You were not charged.', b.id, 'bad'); toast('customer', 'Booking cancelled', paid ? 'Full refund on the way.' : 'You were not charged.'); }
+    if (b.cid) { pushAlert('customer', 'Booking cancelled by Balik', paid ? peso(b.gross) + ' is being refunded.' : 'You were not charged.', b.id, 'bad'); toast('customer', 'Booking cancelled', paid ? 'Full refund on the way.' : 'You were not charged.'); }
     if (p) pushAlert('provider:' + p.id, 'Job cancelled by Balik', b.id, b.id, 'bad'); S.admin.confirm = ''; toast('admin', 'Cancelled ' + b.id, paid ? 'Refund issued.' : ''); },
-  admRefundDone: id => { const b = bk(id); S.admin.sel = id; b.refunded = true; logB(b, 'Refunded after dispute · ' + peso(b.gross)); if (b.cid === 'me') { pushAlert('customer', 'Refund issued', peso(b.gross) + ' for ' + b.id + '.', b.id); } S.admin.confirm = ''; toast('admin', 'Refund issued', b.id + ' · ' + peso(b.gross)); },
+  admRefundDone: id => { const b = bk(id); S.admin.sel = id; b.refunded = true; logB(b, 'Refunded after dispute · ' + peso(b.gross)); if (b.cid) { pushAlert('customer', 'Refund issued', peso(b.gross) + ' for ' + b.id + '.', b.id); } S.admin.confirm = ''; toast('admin', 'Refund issued', b.id + ' · ' + peso(b.gross)); },
   admEditProv: id => { S.admin.provEdit = id || null; },
   admResetPts: id => { const p = prov(id); p.points = 0; pushAlert('provider:' + id, 'Penalty points reset', 'Balik reset your penalty points to 0.', null, 'good'); toast('admin', 'Points reset', p.name); },
   admSuspend: id => { const p = prov(id); if (p.active === false) { p.active = true; toast('admin', 'Reactivated ' + p.name, 'They appear to customers again.'); pushAlert('provider:' + id, 'Account reactivated', 'You can take requests again.', null, 'good'); }
     else { p.active = false; p.status = 'red'; toast('admin', 'Suspended ' + p.name, 'Hidden from customers.'); pushAlert('provider:' + id, 'Account suspended', 'Contact Balik support.', null, 'bad'); } S.admin.confirm = ''; },
   admCustJobs: name => { S.admin.tab = 'jobs'; S.admin.jobFilter = 'all'; S.admin.jobQ = name; S.admin.sel = null; },
-  admCustSusp: key => { if (key === 'me') { S.customer.suspended = !S.customer.suspended; toast('admin', S.customer.suspended ? 'Customer suspended' : 'Customer reactivated', S.customer.name); if (S.customer.suspended) pushAlert('customer', 'Account on hold', 'Please contact Balik support.', null, 'bad'); }
-    else { const f = S.admin.custFlags || (S.admin.custFlags = {}); f[key] = { suspended: !(f[key] && f[key].suspended) }; toast('admin', f[key].suspended ? 'Customer suspended' : 'Customer reactivated', key); } },
-  admCustId: () => { S.customer.idOk = true; toast('admin', 'ID marked verified', S.customer.name); },
+  admCustSusp: key => { const C = S.customers || (S.customers = {}); const r = C[key] || (C[key] = { cid: key, name: key.startsWith('n:') ? key.slice(2) : key }); r.suspended = !r.suspended;
+    toast('admin', r.suspended ? 'Customer suspended' : 'Customer reactivated', r.name); if (!key.startsWith('n:')) pushAlert('customer:' + key, r.suspended ? 'Account on hold' : 'Account reactivated', r.suspended ? 'Please contact Balik support.' : 'You can book again.', null, r.suspended ? 'bad' : 'good'); },
+  admCustId: key => { const r = (S.customers || {})[key]; if (r) { r.idOk = true; toast('admin', 'ID marked verified', r.name); pushAlert('customer:' + key, 'ID verified', 'Providers now see a Verified badge on your requests.', null, 'good'); } },
   admReview: arg => { const [pid, k] = arg.split(':'); const r = prov(pid).reviews[Number(k)]; r.hidden = !r.hidden; toast('admin', r.hidden ? 'Review hidden' : 'Review visible', prov(pid).name); },
   askInfo: id => { const a = S.applications.find(x => x.id === id); a.asked = true; sendSms(a.name, 'Balik: please send a clearer ID photo and your past employer contact.'); toast('admin', 'Info requested', a.name); },
   runPayout: who => { const t = now(); const rows = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded && (who === 'ind' ? !b.bizId : b.bizId === who)); rows.forEach(b => { b.ledger.paidAt = t; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName); });
@@ -1933,17 +1960,17 @@ const A = {
   adminTab: t => { S.admin.tab = t; },
   admSel: id => { S.admin.sel = id; },
   admCall: id => { const p = prov(bk(id).pid); bk(id).late.seen = true; logB(bk(id), 'Admin called provider'); toast('admin', 'Call ' + p.name, p.phone + ' · logged on the job'); },
-  admNotify: id => { const b = bk(id), p = prov(b.pid); logB(b, 'Admin notified customer'); if (b.cid === 'me') { pushAlert('customer', 'Update from Balik', `${p.name.split(' ')[0]} is delayed. We are with them and will update you shortly.`, b.id); toast('customer', 'Update from Balik', 'Your provider is delayed. We are following up.'); } toast('admin', 'Customer notified', b.id); },
+  admNotify: id => { const b = bk(id), p = prov(b.pid); logB(b, 'Admin notified customer'); if (b.cid) { pushAlert('customer', 'Update from Balik', `${p.name.split(' ')[0]} is delayed. We are with them and will update you shortly.`, b.id); toast('customer', 'Update from Balik', 'Your provider is delayed. We are following up.'); } toast('admin', 'Customer notified', b.id); },
   admReassign: id => { const b = bk(id), p = prov(b.pid);
     const alt = S.providers.filter(x => x.id !== p.id && x.cat === p.cat && x.status === 'green' && !S.bookings.some(y => y.pid === x.id && ['offered', 'paid', 'departed', 'arrived'].includes(y.status))).sort((x, y) => haversine(x, b) - haversine(y, b))[0];
     b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; } logB(b, 'Admin reassigned · original job cancelled and refunded'); p.status = 'green';
-    if (!alt) { toast('admin', 'No one on stand-by nearby', 'Refunded the customer instead.'); if (b.cid === 'me') pushAlert('customer', 'Booking cancelled · full refund', 'No one else was free nearby. You were refunded.', b.id, 'bad'); return; }
+    if (!alt) { toast('admin', 'No one on stand-by nearby', 'Refunded the customer instead.'); if (b.cid) pushAlert('customer', 'Booking cancelled · full refund', 'No one else was free nearby. You were refunded.', b.id, 'bad'); return; }
     const nb = newBooking({ customer: b.customer, cid: b.cid, address: b.address, lat: b.lat, lng: b.lng, pid: alt.id, bizId: alt.biz, services: b.services.map(s => ({ ...s })), gross: b.gross, mins: b.mins, status: 'requested', respondBy: now() + S.settings.respond * MIN });
     logB(nb, 'Created by admin as a reassignment of ' + b.id); notifyProviderOfRequest(nb, alt);
-    if (b.cid === 'me') { S.cust.bid = nb.id; S.cust.screen = 'request'; pushAlert('customer', 'We found someone closer', `${alt.name} was asked to take over. Your first payment is refunded.`, nb.id); toast('customer', 'Reassigned to ' + alt.name, 'Your first payment is refunded.'); }
+    if (b.cid) { if (b.cid === (S.customer.cid || 'me')) { S.cust.bid = nb.id; S.cust.screen = 'request'; } pushAlert('customer', 'We found someone closer', `${alt.name} was asked to take over. Your first payment is refunded.`, nb.id); toast('customer', 'Reassigned to ' + alt.name, 'Your first payment is refunded.'); }
     S.prov.id = alt.id; S.prov.screen = 'jobs'; toast('admin', 'Reassigned to ' + alt.name, fmtKm(haversine(alt, b)) + ' from the customer'); },
-  admRefund: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; } p.status = 'green'; logB(b, 'Admin cancelled and refunded'); if (b.cid === 'me') { pushAlert('customer', 'Booking cancelled · full refund', peso(b.gross) + ' is being refunded.', b.id, 'bad'); toast('customer', 'Full refund on the way', peso(b.gross)); } toast('admin', 'Refunded', b.id); },
-  approve: id => { const a = S.applications.find(x => x.id === id); a.status = 'approved'; const nid = 'p' + (S.providers.length + 1); const sb = a.staffOf ? biz(a.staffOf) : null;
+  admRefund: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; } p.status = 'green'; logB(b, 'Admin cancelled and refunded'); if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', peso(b.gross) + ' is being refunded.', b.id, 'bad'); toast('customer', 'Full refund on the way', peso(b.gross)); } toast('admin', 'Refunded', b.id); },
+  approve: id => { const a = S.applications.find(x => x.id === id); a.status = 'approved'; const nid = 'p' + (Math.max(...S.providers.map(x => parseInt(x.id.slice(1)) || 0)) + 1); const sb = a.staffOf ? biz(a.staffOf) : null;
     const base = { cubao: [14.6196, 121.0536] }; const ll = base.cubao;
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Balik.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by Balik.'); }
@@ -2006,14 +2033,183 @@ document.addEventListener('change', e => {
 let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => { if (wide() !== lastW || isPhone() !== lastP) { lastW = wide(); lastP = isPhone(); render(); } });
 
 /* =============== Clock / automation =============== */
+/* =============== Live sync: customer, provider, business and admin on different devices =============== */
+// Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
+// without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
+const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications'];
+const SHARED_MAP = ['customers'];
+const SHARED_ONE = ['settings', 'fin'];
+const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
+const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
+window.__balikSync = SYNC;
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
+function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
+SYNC.room = roomFromUrl() || lsGet('balik-room') || 'demo';
+lsSet('balik-room', SYNC.room);
+function fbConfig() {
+  if (window.BALIK_FIREBASE && window.BALIK_FIREBASE.databaseURL) return window.BALIK_FIREBASE;
+  try { const c = JSON.parse(lsGet('balik-fb-config') || 'null'); if (c && c.databaseURL) return c; } catch (e) { }
+  return null;
+}
+const sortFns = {
+  providers: (a, b) => (parseInt(a.id.slice(1)) || 0) - (parseInt(b.id.slice(1)) || 0),
+  businesses: (a, b) => a.id < b.id ? -1 : 1,
+  bookings: (a, b) => b.createdAt - a.createdAt,
+  alerts: (a, b) => b.at - a.at, sms: (a, b) => b.at - a.at, applications: (a, b) => (b.at || 0) - (a.at || 0)
+};
+function recordsOf(name) {
+  const out = {};
+  if (SHARED_MAP.includes(name)) Object.entries(S[name] || {}).forEach(([k, v]) => { out[k] = JSON.stringify(v); });
+  else (S[name] || []).forEach(r => { if (r && r.id) out[r.id] = JSON.stringify(r); });
+  return out;
+}
+function snapshotPaths() {
+  const paths = {};
+  SHARED_LIST.concat(SHARED_MAP).forEach(n => { const cur = recordsOf(n); Object.entries(cur).forEach(([k, v]) => { paths[n + '/' + k] = v; }); });
+  SHARED_ONE.forEach(n => { paths[n] = JSON.stringify(S[n]); });
+  return paths;
+}
+function markSynced() { SHARED_LIST.concat(SHARED_MAP).forEach(n => { SYNC.last[n] = recordsOf(n); }); SHARED_ONE.forEach(n => { SYNC.last[n] = JSON.stringify(S[n]); }); }
+function diffPaths() {
+  const paths = {};
+  SHARED_LIST.concat(SHARED_MAP).forEach(n => {
+    const cur = recordsOf(n), last = SYNC.last[n] || {};
+    Object.keys(cur).forEach(k => { if (cur[k] !== last[k]) paths[n + '/' + k] = cur[k]; });
+    Object.keys(last).forEach(k => { if (!(k in cur)) paths[n + '/' + k] = null; });
+    SYNC.last[n] = cur;
+  });
+  SHARED_ONE.forEach(n => { const v = JSON.stringify(S[n]); if (v !== SYNC.last[n]) { paths[n] = v; SYNC.last[n] = v; } });
+  return paths;
+}
+function pushNow() {
+  if (!SYNC.adapter || !SYNC.ready) return;
+  const p = diffPaths();
+  if (Object.keys(p).length) SYNC.adapter.update(p).catch(e => { SYNC.status = 'Sync error: ' + (e && e.message || e); });
+}
+function schedulePush() { if (!SYNC.adapter || !SYNC.ready) return; clearTimeout(SYNC.pushT); SYNC.pushT = setTimeout(pushNow, 60); }
+function myTargets() { return { ['customer:' + (S.customer.cid || 'me')]: 'customer', ['provider:' + S.prov.id]: 'provider', ['business:' + S.biz.id]: 'business' }; }
+function applyRemote(root) {
+  if (!root) return false;
+  let changed = false;
+  const mine = myTargets();
+  const myPhone = (prov(S.prov.id) || {}).phone;
+  SHARED_LIST.concat(SHARED_MAP).forEach(n => {
+    const remote = root[n] || {}, last = SYNC.last[n] || {}, local = recordsOf(n);
+    const keys = new Set(Object.keys(remote).concat(Object.keys(local)));
+    let differs = false; const merged = {};
+    keys.forEach(k => {
+      const localChanged = local[k] !== last[k];       // edited here and not pushed yet
+      const v = localChanged ? local[k] : remote[k];
+      if (v != null) merged[k] = v;
+      if (v !== local[k]) differs = true;
+      if (!localChanged && remote[k] != null && last[k] == null && local[k] == null) {   // brand-new record from another device
+        try {
+          const r = JSON.parse(remote[k]);
+          if (n === 'alerts' && mine[r.to] && SYNC.ready) toast(mine[r.to], r.title, r.body);
+          if (n === 'sms' && SYNC.ready) { if (r.to === myPhone) toast('provider', 'SMS · Balik', r.text, true); if (r.kind === 'late') toast('admin', 'SMS · Late arrival', r.text, true); }
+        } catch (e) { }
+      }
+    });
+    SYNC.last[n] = Object.assign({}, remote);
+    if (differs) {
+      changed = true;
+      const vals = Object.entries(merged).map(([k, v]) => { try { return [k, JSON.parse(v)]; } catch (e) { return null; } }).filter(Boolean);
+      if (SHARED_MAP.includes(n)) S[n] = Object.fromEntries(vals);
+      else S[n] = vals.map(x => x[1]).sort(sortFns[n]);
+    }
+  });
+  SHARED_ONE.forEach(n => {
+    const remote = root[n]; if (remote == null) return;
+    const localChanged = JSON.stringify(S[n]) !== SYNC.last[n];
+    if (!localChanged && remote !== SYNC.last[n]) { try { S[n] = JSON.parse(remote); changed = true; } catch (e) { } }
+    if (!localChanged) SYNC.last[n] = remote;
+  });
+  if (root.meta && typeof root.meta.skip === 'number' && root.meta.skip !== skip) { skip = root.meta.skip; changed = true; }
+  SYNC.presence = root.presence || {};
+  return changed;
+}
+function isLeader() {
+  if (!SYNC.adapter) return true;
+  const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
+  return alive[0] === DEVICE;
+}
+function devicesOnline() { const t = Date.now(); return new Set(Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE])).size; }
+
+/* adapters */
+function localAdapter(room) {
+  const key = 'balik-room-' + room; let bc = null, cb = null;
+  try { bc = new BroadcastChannel('balik-' + room); bc.onmessage = () => cb && cb(read()); } catch (e) { }
+  const read = () => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } };
+  return {
+    kind: 'local',
+    get: () => Promise.resolve(read()),
+    onChange: f => { cb = f; window.addEventListener('storage', e => { if (e.key === key) f(read()); }); },
+    update: paths => { const root = read() || {}; Object.entries(paths).forEach(([p, v]) => { const ks = p.split('/'); let o = root; for (let i = 0; i < ks.length - 1; i++) o = o[ks[i]] = o[ks[i]] || {}; if (v == null) delete o[ks[ks.length - 1]]; else o[ks[ks.length - 1]] = v; });
+      try { localStorage.setItem(key, JSON.stringify(root)); } catch (e) { return Promise.reject(e); } if (bc) bc.postMessage(1); return Promise.resolve(); },
+    reset: () => { try { localStorage.removeItem(key); } catch (e) { } return Promise.resolve(); }
+  };
+}
+function loadScript(src) { return new Promise((ok, bad) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => bad(new Error('Could not load ' + src)); document.head.appendChild(s); }); }
+async function firebaseAdapter(cfg, room) {
+  const V = '10.14.1';
+  if (!window.firebase) { await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-app-compat.js`); await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-database-compat.js`); }
+  const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
+  const ref = app.database().ref('rooms/' + room);
+  ref.child('presence/' + DEVICE).onDisconnect().remove();
+  return {
+    kind: 'firebase',
+    get: () => ref.get().then(s => s.val()),
+    onChange: f => ref.on('value', s => f(s.val())),
+    update: paths => ref.update(paths),
+    reset: () => ref.remove()
+  };
+}
+async function startSync() {
+  const cfg = fbConfig();
+  try {
+    if (cfg) { SYNC.status = 'Connecting to Firebase…'; render(); SYNC.adapter = await firebaseAdapter(cfg, SYNC.room); SYNC.mode = 'live'; }
+    else { SYNC.adapter = localAdapter(SYNC.room); SYNC.mode = 'tabs'; }
+  } catch (e) { SYNC.adapter = localAdapter(SYNC.room); SYNC.mode = 'tabs'; SYNC.cfgErr = String(e && e.message || e); }
+  try {
+    if (lsGet('balik-reseed') === '1') { lsSet('balik-reseed', null); await SYNC.adapter.reset(); }
+    const root = await SYNC.adapter.get();
+    if (!root || !root.meta) {
+      await SYNC.adapter.update(Object.assign(snapshotPaths(), { 'meta/skip': skip, 'meta/createdAt': Date.now(), 'meta/by': DEVICE }));
+      markSynced();
+    } else {
+      SHARED_LIST.concat(SHARED_MAP).forEach(n => { SYNC.last[n] = {}; });
+      SHARED_ONE.forEach(n => { SYNC.last[n] = JSON.stringify(S[n]); });
+      // take the room's data as the truth for shared records
+      SHARED_LIST.forEach(n => { S[n] = []; }); SHARED_MAP.forEach(n => { S[n] = {}; });
+      SHARED_LIST.concat(SHARED_MAP).forEach(n => { SYNC.last[n] = {}; });
+      applyRemote(root);
+      SHARED_ONE.forEach(n => { if (root[n]) { try { S[n] = JSON.parse(root[n]); SYNC.last[n] = root[n]; } catch (e) { } } });
+    }
+    if (!S.customers[S.customer.cid || 'me'] && S.customer.signedIn) S.customers[S.customer.cid || 'me'] = custRecordFromLocal();
+    SYNC.ready = true;
+    SYNC.status = SYNC.mode === 'live' ? 'Live' : 'This device only';
+    SYNC.adapter.onChange(r => { if (applyRemote(r)) render(); });
+    const beat = () => SYNC.adapter.update({ ['presence/' + DEVICE]: Date.now() }).catch(() => { });
+    beat(); setInterval(beat, 10000);
+    pushNow(); render();
+  } catch (e) { SYNC.status = 'Offline: ' + (e && e.message || e); SYNC.adapter = null; render(); }
+}
+function custRecordFromLocal() { const c = S.customer; return { cid: c.cid || 'me', name: c.name, email: c.email, phone: c.phone, addr: c.addr, idOk: !!c.idOk, suspended: false, createdAt: now() }; }
+const myCust = () => S.customers[S.customer.cid || 'me'] || {};
+function uniqueId(prefix, exists) { let id; do { id = prefix + (2000 + Math.floor(Math.random() * 7999)); } while (exists(id)); return id; }
+
 load();
+if (!S.customers) S.customers = { me: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', idOk: false, suspended: false, createdAt: simStart - 40 * DAY } };
+if (!S.customer.cid) S.customer.cid = 'me';
 let lastTick = now();
 function tick(force = false) {
   const n = now(), dt = Math.max(0, n - lastTick); lastTick = n; let changed = force;
-  S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
-  S.bookings.forEach(b => {
+  const lead = isLeader();
+  if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
+  if (lead) S.bookings.forEach(b => {
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true;
-      if (b.cid === 'me') { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
+      if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
     if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; logB(b, 'Customer did not confirm in time'); changed = true; pushAlert('provider:' + b.pid, 'Offer expired', b.id + ' · the customer did not confirm.', b.id); }
     if (['paid', 'departed'].includes(b.status) && !b.arrivedAt && b.promisedAt && n > b.promisedAt + S.settings.lateTrigger * MIN && !b.late) {
       const p = prov(b.pid);
@@ -2024,7 +2220,7 @@ function tick(force = false) {
       pushAlert('provider:' + p.id, "You're past your arrival time", 'Check in or send a new time.', b.id, 'bad');
       toast('admin', 'SMS · Late arrival', text, true);
       toast('provider', 'Late arrival alert', 'Promised ' + fmtT(b.promisedAt) + '. Check in or update your time.');
-      if (S.settings.tellCustomer && b.cid === 'me') { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, 'Our team has been alerted and is following up.', b.id); toast('customer', `${p.name.split(' ')[0]} is running late`, 'Our team is following up.'); }
+      if (S.settings.tellCustomer && b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, 'Our team has been alerted and is following up.', b.id); toast('customer', `${p.name.split(' ')[0]} is running late`, 'Our team is following up.'); }
     }
     if (b.late && !b.late.penalty && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && n > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; prov(b.pid).points++; logB(b, `Penalty point: more than ${S.settings.penaltyAfter} min late`); changed = true; }
     if (b.status === 'arrived' && n >= b.endAt) { endService(b, true); changed = true; }
@@ -2037,6 +2233,7 @@ function tick(force = false) {
   }
 }
 render();
+startSync();
 setInterval(() => tick(false), 1000);
 })();
 </script>
