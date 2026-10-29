@@ -483,7 +483,7 @@ const CITIES = [
   ['Boracay (Malay)', 11.9674, 121.9248], ['Bohol (Panglao)', 9.5794, 123.7458], ['Puerto Princesa', 9.7392, 118.7353], ['Davao City', 7.1907, 125.4553], ['Cagayan de Oro', 8.4542, 124.6319]
 ];
 const ADDR_KINDS = ['Hotel', 'Business trip', 'Vacation rental', 'Other'];
-const allAddrs = () => ADDRS.concat(S.customer.extraAddrs || []);
+const allAddrs = () => ADDRS.concat(S.loc && S.loc.here ? [{ id: 'here', kind: 'GPS', label: 'Current location', line: 'Where you are now (GPS)', short: 'Current location', lat: S.loc.here.lat, lng: S.loc.here.lng }] : [], S.customer.extraAddrs || []);
 function addrForm(where) {
   const n = S.cust.newAddr; if (!n) return `<button class="opt" data-act="newAddr" style="border-style:dashed">${ic('plus', 20)}<div class="col grow"><b>Add an address for a trip</b><span class="small muted">Hotel, business trip or holiday stay. Book a pro where you are.</span></div></button>`;
   const ok = n.line.trim().length >= 4 && n.city;
@@ -499,7 +499,7 @@ function addrForm(where) {
     <button class="btn primary sm" data-act="saveAddr" data-arg="${where}" ${ok ? '' : 'disabled'}>Save and use this address</button></div>`;
 }
 function addrOpt(a, act, on) {
-  const x = !ADDRS.some(z => z.id === a.id);
+  const x = !ADDRS.some(z => z.id === a.id) && a.id !== 'here';
   return `<div class="row" style="gap:6px"><button class="opt grow" data-act="${act}" data-arg="${a.id}" aria-pressed="${on}">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}${x ? ` <span class="pill accent" style="height:20px">${esc(a.kind || 'Trip')}</span>` : ''}</b><span class="small muted">${esc(a.line)}${a.from || a.to ? ` · ${esc(a.from || '…')} → ${esc(a.to || '…')}` : ''}</span></div></button>${x ? `<button class="iconbtn" data-act="rmAddr" data-arg="${a.id}" aria-label="Remove ${esc(a.label)}">${ic('x', 16)}</button>` : ''}</div>`;
 }
 const CATS = [
@@ -969,6 +969,7 @@ function custAccount() {
       <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div><span class="pill good">Verified</span></div>
       <div class="li">${ic('phone', 20)}<div class="col grow"><b>Mobile</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">Verified</span></div>
       <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
+      ${locRow('c')}${installRow()}
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
@@ -990,6 +991,7 @@ function custSplash() {
       <button class="btn mango block" data-act="startSignup">Book a home service</button>
       <button class="btn ghost-light block" data-act="goPro">I'm a pro · start earning</button>
       <button class="btn link-light" data-act="demoSignIn">I already have an account</button>
+      ${!isStandalone() && installEvt ? `<button class="btn link-light" data-act="installApp">${ic('phone', 16)} Install the app</button>` : ''}
       <span class="tiny" style="text-align:center;opacity:.65">Verified customers and providers · Pay in app</span>
     </div></div>`;
 }
@@ -1254,6 +1256,7 @@ function provAccount() {
     <div class="card" style="align-items:center;text-align:center">${avatar(me.name, me.hue, 96)}<label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} Change photo<input type="file" accept="image/*" class="sr" data-file="providers.${i}.photo" data-compress="1" id="p-photo"></label><b style="font-size:18px">${esc(me.name)}</b><span class="small muted">${catName(me.cat)} · ${me.years} yrs · ${esc(me.area)}</span>${me.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
     <div class="card"><span class="eyebrow">Your household goal</span><label class="field">Monthly goal (₱)<input id="p-goal" class="input num" type="number" min="0" step="1000" data-bind="providers.${i}.goal" value="${me.goal}"></label><span class="small muted">We show your progress on the Jobs screen.</span></div>
     <div class="list">
+      ${locRow('p')}${installRow()}
       <div class="li">${ic('shield', 20)}<div class="col grow"><b>Government ID & selfie</b><span class="small muted">Verified</span></div><span class="pill good">Done</span></div>
       <div class="li">${ic('receipt', 20)}<div class="col grow"><b>TIN</b><span class="small muted num">${esc(me.tin)}</span></div><span class="pill good">Done</span></div>
       <div class="li">${ic('bag', 20)}<div class="col grow"><b>Work history</b><span class="small muted">${esc(me.past)}</span></div></div>
@@ -1843,6 +1846,52 @@ function stampPhoto(src, b) {
   return c.toDataURL('image/jpeg', 0.72);
 }
 
+
+/* =============== Installed app: location permission and install prompt =============== */
+const isStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
+const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent || '');
+let installEvt = null;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; if (typeof render === 'function') render(); });
+window.addEventListener('appinstalled', () => { installEvt = null; S.loc.asked = false; S.loc.ask = true; render(); });
+function locInit() {
+  if (!S.loc) S.loc = { status: 'unknown', asked: false, shareProv: true, here: null, ask: false };
+  try { navigator.permissions && navigator.permissions.query({ name: 'geolocation' }).then(p => { S.loc.status = p.state === 'prompt' ? (S.loc.status === 'denied' ? 'denied' : 'unknown') : p.state; if (p.state === 'granted') refreshHere(); render(); p.onchange = () => { S.loc.status = p.state; if (p.state === 'granted') refreshHere(); render(); }; }).catch(() => { }); } catch (e) { }
+  // First launch of the installed app asks for location once
+  if (isStandalone() && !S.loc.asked) S.loc.ask = true;
+}
+function refreshHere(cb) {
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos => { S.loc.status = 'granted'; S.loc.here = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6), t: Date.now() }; if (S.loc.shareProv) S.prov.gps = true; cb && cb(true); render(); },
+    err => { if (err && err.code === 1) S.loc.status = 'denied'; cb && cb(false); render(); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 });
+}
+function locSheet() {
+  if (!S.loc || !S.loc.ask) return '';
+  const denied = S.loc.status === 'denied';
+  return `<div class="demo-sheet" data-ov="loc" style="z-index:120"><div class="sheet" data-stop="1" style="gap:14px"><div class="grab"></div>
+    <div class="row" style="gap:12px"><span style="width:52px;height:52px;border-radius:16px;background:var(--mango);color:var(--mango-ink);display:grid;place-items:center;flex-shrink:0">${ic('pin', 26)}</span>
+      <div class="col" style="gap:2px"><h3 style="font-size:19px">Turn on location sharing</h3><span class="small muted">Balik uses your phone's GPS while you use the app.</span></div></div>
+    <div class="list">
+      <div class="li">${ic('home', 20)}<div class="col grow"><b class="small">Customers</b><span class="small muted">Find pros near where you are now, including on trips, and see the provider coming on a live map.</span></div></div>
+      <div class="li">${ic('route', 20)}<div class="col grow"><b class="small">Providers</b><span class="small muted">Your live position is shared with the customer only while you're on the way to a paid booking. It stops at check-in.</span></div></div>
+      <div class="li">${ic('shield', 20)}<div class="col grow"><b class="small">Privacy</b><span class="small muted">Location is never shown on your profile or to other users. You can turn it off any time in Account.</span></div></div>
+    </div>
+    ${denied ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><span class="small"><b>Location is blocked for Balik.</b> ${isIOS() ? 'Open Settings › Privacy & Security › Location Services, then allow it for Safari Websites or the Balik app.' : 'Open your phone Settings › Apps › Balik (or Chrome) › Permissions › Location and choose Allow.'} Then tap Try again.</span></div>` : ''}
+    <button class="btn primary block" data-act="locAllow">${ic('pin', 18)} ${denied ? 'Try again' : 'Allow location'}</button>
+    <button class="btn ghost block" data-act="locLater">Not now</button>
+  </div></div>`;
+}
+function locRow(who) {
+  const st = S.loc.status, on = st === 'granted' && (who === 'p' ? S.loc.shareProv : true);
+  const sub = st === 'granted' ? (who === 'p' ? (S.loc.shareProv ? 'On · shared with the customer only while you are on the way' : 'Off · customers see an estimated position') : 'On · "Current location" is available as an address') : st === 'denied' ? 'Blocked in phone settings' : 'Not turned on yet';
+  return `<button class="li" data-act="${st === 'granted' && who === 'p' ? 'locToggleProv' : 'locAsk'}">${ic('pin', 20)}<div class="col grow"><b>Location sharing (GPS)</b><span class="small muted">${sub}</span></div><span class="pill ${on ? 'good' : 'outline'}">${on ? 'On' : 'Off'}</span></button>`;
+}
+function installRow() {
+  if (isStandalone()) return '';
+  if (installEvt) return `<button class="li" data-act="installApp">${ic('phone', 20)}<div class="col grow"><b>Install the Balik app</b><span class="small muted">Adds Balik to your home screen and turns on location sharing</span></div>${ic('chev', 16)}</button>`;
+  if (isIOS()) return `<div class="li">${ic('phone', 20)}<div class="col grow"><b>Install the Balik app</b><span class="small muted">In Safari tap Share, then "Add to Home Screen"</span></div></div>`;
+  return '';
+}
+
 function render() {
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
@@ -1850,7 +1899,7 @@ function render() {
   const fid = ae && ae.id;
   const scrolls = {}; document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = el.scrollTop; });
   const prevOv = new Set([...document.querySelectorAll('[data-ov]')].map(el => el.dataset.ov));
-  document.getElementById('app').innerHTML = shell();
+  document.getElementById('app').innerHTML = shell() + locSheet();
   document.querySelectorAll('[data-ov]').forEach(el => { if (prevOv.has(el.dataset.ov)) { el.style.animation = 'none'; el.querySelectorAll('.sheet').forEach(x => x.style.animation = 'none'); } });
   document.querySelectorAll('[data-scroll]').forEach(el => { if (scrolls[el.dataset.scroll] != null) { el.style.scrollBehavior = 'auto'; el.scrollTop = scrolls[el.dataset.scroll]; el.style.scrollBehavior = ''; } });
   if (keep) {
@@ -2056,7 +2105,7 @@ const A = {
     logB(b, b.when === 'later' ? `Accepted for ${fmtT(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtT(b.slotAt) + '. Confirm and pay.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtT(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
-  depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart');
+  depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
   arrive: id => { S.prov.cam = id; S.prov.camShot = null; S.prov.camErr = ''; },
   camClose: () => { stopCam(); S.prov.cam = null; S.prov.camShot = null; },
@@ -2066,7 +2115,12 @@ const A = {
     S.prov.camShot = stampPhoto({ w: o.v.videoWidth, h: o.v.videoHeight, draw: (g, W, H) => g.drawImage(o.v, 0, 0, W, H) }, b); stopCam(); },
   camDemo: () => { const b = bk(S.prov.cam); if (!b) return; S.prov.camShot = stampPhoto({ w: 4, h: 3, draw: (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#C9D3DE'); gr.addColorStop(1, '#8A97A6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#5B4636'; g.fillRect(W * .36, H * .16, W * .28, H * .7); g.fillStyle = '#E8C36A'; g.beginPath(); g.arc(W * .6, H * .52, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 26px Arial'; g.fillText('Unit door · demo frame', W * .3, H * .1); } }, b); },
   camConfirm: () => { const b = bk(S.prov.cam); if (!b || !S.prov.camShot) return; b.checkin = { photo: S.prov.camShot, at: now(), live: true }; logB(b, 'Check-in photo taken with live camera'); stopCam(); S.prov.cam = null; S.prov.camShot = null; arrive(b); },
-  toggleGps: () => { S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
+  locAllow: () => { S.loc.asked = true; refreshHere(ok => { if (ok) { S.loc.ask = false; S.prov.gps = !!S.loc.shareProv; toast(S.role === 'provider' ? 'provider' : 'customer', 'Location sharing on', 'Thanks. You can change this in Account.'); } }); },
+  locLater: () => { S.loc.asked = true; S.loc.ask = false; },
+  locAsk: () => { S.loc.ask = true; },
+  locToggleProv: () => { S.loc.shareProv = !S.loc.shareProv; S.prov.gps = S.loc.shareProv; toast('provider', S.loc.shareProv ? 'Location sharing on' : 'Location sharing off', S.loc.shareProv ? 'Shared with the customer only while you are on the way.' : 'Customers will see an estimated position.'); },
+  installApp: () => { if (!installEvt) return; installEvt.prompt(); installEvt.userChoice.then(c => { if (c && c.outcome === 'accepted') { S.loc.asked = false; S.loc.ask = true; } installEvt = null; render(); }).catch(() => { }); },
+  toggleGps: () => { if (S.loc.status !== 'granted') { S.loc.ask = true; return; } S.loc.shareProv = !S.prov.gps; S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
   setAway: h => { const p = prov(S.prov.id); p.status = 'yellow'; p.awayFrom = now(); p.backAt = now() + Number(h) * HOUR; toast('provider', 'Away until ' + fmtT(p.backAt), 'You switch back to green automatically.'); },
@@ -2384,7 +2438,10 @@ const myCust = () => S.customers[S.customer.cid || 'me'] || {};
 function uniqueId(prefix, exists) { let id; do { id = prefix + (2000 + Math.floor(Math.random() * 7999)); } while (exists(id)); return id; }
 
 load();
-S.prov.cam = null; S.prov.camShot = null; S.prov.gps = false;
+S.prov.cam = null; S.prov.camShot = null;
+if (!S.loc) S.loc = { status: 'unknown', asked: false, shareProv: true, here: null, ask: false };
+S.prov.gps = S.loc.status === 'granted' && S.loc.shareProv; S.loc.ask = false;
+locInit();
 if (!S.customers) S.customers = { me: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', idOk: false, suspended: false, createdAt: simStart - 40 * DAY } };
 if (!S.customer.cid) S.customer.cid = 'me';
 let lastTick = now();
