@@ -16,6 +16,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 <style>
 /* Layout: a sticky prototype bar over a stage. Customer and provider apps render as phones side by side;
    business and admin render as desktop web consoles. One shared, live data model drives every view. */
@@ -192,10 +194,16 @@ button.li:hover{background:var(--surface-2)}
 .pcard .right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .status-line{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
 .tl{display:inline-flex;flex-direction:row;align-items:center;gap:4px;padding:4px 6px;border-radius:999px;background:linear-gradient(180deg,#2A303B,#151920);flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
-.tl i{width:11px;height:11px;border-radius:50%;background:#3A404C;display:block;box-shadow:inset 0 1px 2px rgba(0,0,0,.5)}
+.tl i{width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);display:block;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
 .tl i.on.r{background:radial-gradient(circle at 35% 35%,#FF9A9C,#F05A5E 60%);box-shadow:0 0 8px 1px #F05A5E}
 .tl i.on.y{background:radial-gradient(circle at 35% 35%,#FFE38A,#F2B300 60%);box-shadow:0 0 8px 1px #F2B300}
 .tl i.on.g{background:radial-gradient(circle at 35% 35%,#8BF0BB,#2FCB7A 60%);box-shadow:0 0 8px 1px #2FCB7A}
+.lmap{height:230px;border-radius:12px;overflow:hidden;background:var(--surface-2);position:relative;z-index:0}
+.mk{background:none;border:0}.mkp{width:46px;height:46px;border-radius:50%;border:3px solid #F4B740;box-shadow:0 3px 10px rgba(0,0,0,.35);overflow:hidden;display:grid;place-items:center;background:#12355B;color:#fff;font-weight:700}.mkp img{width:100%;height:100%;object-fit:cover}
+.livedot{width:9px;height:9px;border-radius:50%;background:var(--line-2);display:inline-block}.livedot.on{background:#2FCB7A;box-shadow:0 0 0 0 rgba(47,203,122,.6);animation:pulse 1.6s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(47,203,122,.6)}70%{box-shadow:0 0 0 9px rgba(47,203,122,0)}100%{box-shadow:0 0 0 0 rgba(47,203,122,0)}}
+.camview{width:100%;flex:1;min-height:260px;max-height:62vh;border-radius:14px;overflow:hidden;background:#000;display:block}.camview video{width:100%;height:100%;object-fit:cover;display:block}
+.shutter{width:76px;height:76px;border-radius:50%;border:4px solid #fff;background:transparent;align-self:center;display:grid;place-items:center;padding:0;cursor:pointer}.shutter span{width:60px;height:60px;border-radius:50%;background:#fff;display:block}.shutter:active span{transform:scale(.92)}
 .tl.m{gap:6px;padding:6px 9px}.tl.m i{width:15px;height:15px}
 .tl.m i.on.r{box-shadow:0 0 12px 2px #F05A5E}.tl.m i.on.y{box-shadow:0 0 12px 2px #F2B300}.tl.m i.on.g{box-shadow:0 0 12px 2px #2FCB7A}
 .status-line{gap:8px}.status-line.big{font-size:14px}
@@ -467,6 +475,33 @@ const ADDRS = [
   { id: 'office', label: 'Office', line: '14F High Street South, Bonifacio Global City, Taguig', short: 'BGC, Taguig', lat: 14.5508, lng: 121.0510 },
   { id: 'parents', label: "Parents' house", line: '27 Brixton St, Kapitolyo, Pasig', short: 'Kapitolyo, Pasig', lat: 14.5701, lng: 121.0571 }
 ];
+// Cities for trip and travel addresses (approximate centre, refined by map search when online)
+const CITIES = [
+  ['Makati', 14.5547, 121.0244], ['Taguig (BGC)', 14.5176, 121.0509], ['Pasig', 14.5764, 121.0851], ['Mandaluyong', 14.5794, 121.0359], ['Manila', 14.5995, 120.9842],
+  ['Quezon City', 14.6760, 121.0437], ['Pasay', 14.5378, 121.0014], ['Parañaque', 14.4793, 121.0198], ['Muntinlupa (Alabang)', 14.4231, 121.0396], ['Tagaytay', 14.1153, 120.9621],
+  ['Angeles / Clark', 15.1450, 120.5887], ['Baguio', 16.4023, 120.5960], ['Cebu City', 10.3157, 123.8854], ['Lapu-Lapu (Mactan)', 10.3103, 123.9494], ['Iloilo City', 10.7202, 122.5621],
+  ['Boracay (Malay)', 11.9674, 121.9248], ['Bohol (Panglao)', 9.5794, 123.7458], ['Puerto Princesa', 9.7392, 118.7353], ['Davao City', 7.1907, 125.4553], ['Cagayan de Oro', 8.4542, 124.6319]
+];
+const ADDR_KINDS = ['Hotel', 'Business trip', 'Vacation rental', 'Other'];
+const allAddrs = () => ADDRS.concat(S.customer.extraAddrs || []);
+function addrForm(where) {
+  const n = S.cust.newAddr; if (!n) return `<button class="opt" data-act="newAddr" style="border-style:dashed">${ic('plus', 20)}<div class="col grow"><b>Add an address for a trip</b><span class="small muted">Hotel, business trip or holiday stay. Book a pro where you are.</span></div></button>`;
+  const ok = n.line.trim().length >= 4 && n.city;
+  return `<div class="card tight" style="gap:10px;border-color:var(--accent)">
+    <div class="row between"><b>New trip address</b><button class="iconbtn" data-act="cancelAddr" aria-label="Cancel">${ic('x', 18)}</button></div>
+    <div class="row" style="flex-wrap:wrap;gap:6px">${ADDR_KINDS.map(k => `<button class="chip" data-act="addrKind" data-arg="${k}" aria-pressed="${n.kind === k}">${k}</button>`).join('')}</div>
+    <label class="field">Name for this place<input id="na-label-${where}" class="input" data-bind="cust.newAddr.label" value="${esc(n.label)}" placeholder="e.g. Shangri-La Mactan"></label>
+    <label class="field">Address<input id="na-line-${where}" class="input" data-bind="cust.newAddr.line" value="${esc(n.line)}" placeholder="Hotel or building, room or unit, street"></label>
+    <label class="field">City<select id="na-city-${where}" class="select" data-bind="cust.newAddr.city"><option value="">Choose a city</option>${CITIES.map(c => `<option ${n.city === c[0] ? 'selected' : ''}>${esc(c[0])}</option>`).join('')}</select></label>
+    <div class="row" style="gap:8px"><label class="field grow">Staying from<input id="na-from-${where}" class="input" type="date" data-bind="cust.newAddr.from" value="${esc(n.from)}"></label><label class="field grow">Until<input id="na-to-${where}" class="input" type="date" data-bind="cust.newAddr.to" value="${esc(n.to)}"></label></div>
+    <button class="btn ghost xs" data-act="addrHere" style="align-self:flex-start">${ic('pin', 14)} ${n.gps ? 'Using your current location ✓' : 'Use my current location'}</button>
+    <span class="tiny muted">Pros see this address only after you pay. Trip addresses can be removed any time.</span>
+    <button class="btn primary sm" data-act="saveAddr" data-arg="${where}" ${ok ? '' : 'disabled'}>Save and use this address</button></div>`;
+}
+function addrOpt(a, act, on) {
+  const x = !ADDRS.some(z => z.id === a.id);
+  return `<div class="row" style="gap:6px"><button class="opt grow" data-act="${act}" data-arg="${a.id}" aria-pressed="${on}">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}${x ? ` <span class="pill accent" style="height:20px">${esc(a.kind || 'Trip')}</span>` : ''}</b><span class="small muted">${esc(a.line)}${a.from || a.to ? ` · ${esc(a.from || '…')} → ${esc(a.to || '…')}` : ''}</span></div></button>${x ? `<button class="iconbtn" data-act="rmAddr" data-arg="${a.id}" aria-label="Remove ${esc(a.label)}">${ic('x', 16)}</button>` : ''}</div>`;
+}
 const CATS = [
   { id: 'hair', name: 'Hair', icon: 'scissors' },
   { id: 'nails', name: 'Nails', icon: 'sparkle' },
@@ -500,28 +535,28 @@ function mkProv(o) {
 S.providers = [
   mkProv({ id: 'p1', name: 'Liza Reyes', cat: 'massage', area: 'Bel-Air, Makati', lat: 14.5640, lng: 121.0300, years: 9, past: 'Hotel spa therapist, Makati (2011–2020)', story: 'Came back in 2026 after four years caring for her mother. Hilot and deep-tissue specialist.', returning: true, rating: 4.9, count: 128, dist: [86, 10, 3, 1, 0], week: [6.5, 7.2, 6.0, 5.1, 6.4, 3.2, 0], ytd: 118400, phone: '+63 917 555 0101', tin: '412-118-903-000', hue: 262,
     services: [{ name: 'Swedish massage', mins: 60, price: 650, on: true }, { name: 'Hilot (traditional)', mins: 90, price: 900, on: true }, { name: 'Foot reflexology', mins: 45, price: 450, on: true }],
-    reviews: [{ by: 'Jasmine T.', stars: 5, text: 'Strong, careful hands. Arrived early and brought fresh linens.', photos: ['#C9B6E4', '#E7D3C1'], ago: '2 days ago' }, { by: 'Carlo M.', stars: 5, text: 'Best hilot I have had outside a spa. Very professional.', photos: ['#B9D7C9'], ago: '1 week ago' }] }),
+    reviews: [{ by: 'Jasmine T.', stars: 5, text: 'Strong, careful hands. Arrived early and brought fresh linens.', photos: [], ago: '2 days ago' }, { by: 'Carlo M.', stars: 5, text: 'Best hilot I have had outside a spa. Very professional.', photos: [], ago: '1 week ago' }] }),
   mkProv({ id: 'p2', name: 'Ana Dizon', cat: 'nails', area: 'Poblacion, Makati', lat: 14.5651, lng: 121.0305, years: 6, past: 'Nail technician, Glorietta salon (2015–2021)', story: 'Back to work so her two kids can stay in their school. Known for clean gel work.', returning: true, rating: 4.8, count: 94, dist: [80, 14, 4, 1, 1], week: [6.1, 6.0, 6.3, 6.6, 6.0, 0, 0], ytd: 86200, phone: '+63 917 555 0102', tin: '388-204-117-000', hue: 340,
     services: [{ name: 'Classic manicure', mins: 40, price: 250, on: true }, { name: 'Classic pedicure', mins: 50, price: 300, on: true }, { name: 'Gel manicure', mins: 60, price: 550, on: true }],
-    reviews: [{ by: 'Bea L.', stars: 5, text: 'Neat and gentle. The gel lasted three weeks.', photos: ['#F3C6D3', '#F6E2E8'], ago: '1 day ago' }] }),
+    reviews: [{ by: 'Bea L.', stars: 5, text: 'Neat and gentle. The gel lasted three weeks.', photos: [], ago: '1 day ago' }] }),
   mkProv({ id: 'p3', name: 'Jun Villanueva', cat: 'hair', area: 'Legazpi Village, Makati', lat: 14.5546, lng: 121.0174, years: 11, past: 'Barber, Ayala Ave barbershop (2008–2019)', story: 'Lost his chair when the shop closed. Now cuts at home for families and seniors.', returning: true, rating: 4.7, count: 61, dist: [75, 16, 6, 2, 1], status: 'yellow', week: [5.2, 6.0, 4.5, 6.0, 5.0, 2.0, 0], ytd: 64800, phone: '+63 917 555 0103', tin: '201-554-990-000', hue: 210,
     services: [{ name: "Men's haircut", mins: 40, price: 300, on: true }, { name: 'Haircut + hot towel shave', mins: 60, price: 450, on: true }, { name: "Kids' haircut", mins: 30, price: 250, on: true }],
-    reviews: [{ by: 'Ramon D.', stars: 5, text: 'Patient with my dad who uses a wheelchair.', photos: ['#C4D3E8'], ago: '3 days ago' }] }),
+    reviews: [{ by: 'Ramon D.', stars: 5, text: 'Patient with my dad who uses a wheelchair.', photos: [], ago: '3 days ago' }] }),
   mkProv({ id: 'p4', name: 'Carmela Santos', cat: 'hair', area: 'BGC, Taguig', lat: 14.5512, lng: 121.0489, years: 14, past: 'Senior stylist, BGC salon (2009–2023)', story: 'Former senior stylist. Color and cuts for busy professionals.', returning: false, cert: 'TESDA Hairdressing NC II', rating: 4.9, count: 212, dist: [90, 7, 2, 1, 0], week: [7.0, 6.8, 7.1, 6.5, 6.9, 4.0, 0], ytd: 538600, phone: '+63 917 555 0104', tin: '177-330-482-000', hue: 25,
     services: [{ name: "Women's haircut", mins: 45, price: 500, on: true }, { name: 'Blow-dry & style', mins: 30, price: 400, on: true }, { name: 'Hair color', mins: 120, price: 1800, on: true }],
-    reviews: [{ by: 'Isabel R.', stars: 5, text: 'Exactly the color I showed her. Cleaned up perfectly.', photos: ['#E6C9A8', '#D9B48F', '#F0DCC6'], ago: '4 days ago' }] }),
+    reviews: [{ by: 'Isabel R.', stars: 5, text: 'Exactly the color I showed her. Cleaned up perfectly.', photos: [], ago: '4 days ago' }] }),
   mkProv({ id: 'p5', name: 'Rowena Cruz', cat: 'massage', type: 'staff', biz: 'b1', area: 'San Antonio Village, Makati', lat: 14.5662, lng: 121.0151, years: 7, past: 'Massage therapist, Pasay spa (2014–2021)', story: 'Joined Lunas Wellness Spa through Balik after three years away.', returning: true, rating: 4.8, count: 77, dist: [82, 12, 4, 1, 1], week: [6.0, 6.5, 6.2, 6.1, 6.0, 0, 0], ytd: 0, phone: '+63 917 555 0105', tin: '320-771-405-000', hue: 160,
     services: [{ name: 'Swedish massage', mins: 60, price: 700, on: true }, { name: 'Aromatherapy', mins: 60, price: 850, on: true }],
-    reviews: [{ by: 'Mina S.', stars: 5, text: 'Calm and very skilled.', photos: ['#BFE0D2'], ago: '5 days ago' }] }),
+    reviews: [{ by: 'Mina S.', stars: 5, text: 'Calm and very skilled.', photos: [], ago: '5 days ago' }] }),
   mkProv({ id: 'p6', name: 'Grace Ramos', cat: 'massage', type: 'staff', biz: 'b1', area: 'Palanan, Makati', lat: 14.5570, lng: 121.0060, years: 5, past: 'Spa attendant & therapist, Manila Bay hotel (2016–2021)', story: 'Back part-time while her youngest is in school.', returning: true, rating: 4.7, count: 40, dist: [74, 18, 5, 2, 1], status: 'yellow', week: [4.0, 5.0, 6.0, 3.5, 6.0, 0, 0], ytd: 0, points: 1, phone: '+63 917 555 0106', tin: '455-102-338-000', hue: 190,
     services: [{ name: 'Swedish massage', mins: 60, price: 700, on: true }, { name: 'Hilot (traditional)', mins: 90, price: 950, on: true }],
     reviews: [{ by: 'Pia N.', stars: 4, text: 'Good pressure, a little late.', photos: [], ago: '1 week ago' }] }),
   mkProv({ id: 'p7', name: 'Paolo Bautista', cat: 'pet', area: 'Highway Hills, Mandaluyong', lat: 14.5794, lng: 121.0359, years: 8, past: 'Groomer, pet shop chain (2012–2020)', story: 'Grooms dogs and cats at home. Brings his own table and dryer.', returning: true, rating: 4.9, count: 58, dist: [88, 9, 2, 1, 0], week: [6.2, 6.0, 6.4, 6.0, 6.1, 5.0, 0], ytd: 97300, phone: '+63 917 555 0107', tin: '290-336-812-000', hue: 120,
     services: [{ name: 'Small dog full groom', mins: 75, price: 700, on: true }, { name: 'Bath, nails & ears', mins: 45, price: 400, on: true }, { name: 'Cat grooming', mins: 60, price: 650, on: true }],
-    reviews: [{ by: 'Kat V.', stars: 5, text: 'My shih tzu was relaxed the whole time.', photos: ['#E9DDB8', '#D6E3C3'], ago: '2 days ago' }] }),
+    reviews: [{ by: 'Kat V.', stars: 5, text: 'My shih tzu was relaxed the whole time.', photos: [], ago: '2 days ago' }] }),
   mkProv({ id: 'p8', name: 'Teresa Lim', cat: 'skin', area: 'Rockwell, Makati', lat: 14.5649, lng: 121.0366, years: 10, past: 'Esthetician, skin clinic (2010–2020)', story: 'Waxing and facials with clinic-grade hygiene.', returning: true, rating: 4.8, count: 83, dist: [84, 11, 3, 1, 1], status: 'red', week: [6.0, 6.2, 6.0, 0, 0, 0, 0], ytd: 132500, phone: '+63 917 555 0108', tin: '366-918-200-000', hue: 300,
     services: [{ name: 'Underarm wax', mins: 20, price: 300, on: true }, { name: 'Brazilian wax', mins: 40, price: 900, on: true }, { name: 'Deep-cleansing facial', mins: 60, price: 800, on: true }],
-    reviews: [{ by: 'Joy A.', stars: 5, text: 'Quick and painless. Very hygienic.', photos: ['#F0D9CF'], ago: '6 days ago' }] })
+    reviews: [{ by: 'Joy A.', stars: 5, text: 'Quick and painless. Very hygienic.', photos: [], ago: '6 days ago' }] })
 ];
 // Show the yellow-light providers as away until a time after "now"
 S.providers.forEach(p => { if (p.status === 'yellow') p.backAt = simStart + 90 * MIN; });
@@ -539,7 +574,7 @@ S.applications = [{ id: 'A-201', photoKey: 'lorie', name: 'Dolores "Lorie" Mendo
 const prov = id => S.providers.find(p => p.id === id);
 const biz = id => S.businesses.find(b => b.id === id);
 const bk = id => S.bookings.find(b => b.id === id);
-const addr = () => ADDRS.find(a => a.id === S.customer.addr);
+const addr = () => allAddrs().find(a => a.id === S.customer.addr) || ADDRS[0];
 const distTo = o => haversine(addr(), o);
 const tierIdx = p => p.tierOverride != null ? p.tierOverride : (p.points <= 0 ? 0 : p.points <= 2 ? 1 : 2);
 const tierRate = p => S.settings.tiers[tierIdx(p)].rate;
@@ -748,11 +783,8 @@ function ratingBlock(o) {
 }
 function reviewsBlock(o) {
   const all = o.reviews.filter(r => !r.hidden);
-  const photos = all.flatMap(r => r.photos).slice(0, 8);
-  return `${photos.length ? `<div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Photo reviews</h3><span class="small muted">${photos.length} photos</span></div>
-    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px">${photos.slice(0, 4).map(c => c.startsWith('data:') ? `<span class="photo" style="height:72px;background-image:url(${c})"></span>` : photo(c, 72)).join('')}</div></div>` : ''}
-    ${all.slice(0, 3).map(r => `<div class="card tight"><div class="row between"><b class="small">${esc(r.by)}</b><span class="tiny muted">${esc(r.ago)}</span></div>${starsH(r.stars)}${r.tags && r.tags.length ? `<div class="row" style="flex-wrap:wrap;gap:6px">${r.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}${r.text ? `<p class="small">${esc(r.text)}</p>` : ''}
-    ${r.photos.length ? `<div class="row" style="gap:6px">${r.photos.map(c => c.startsWith('data:') ? `<span class="photo" style="width:56px;height:56px;background-image:url(${c})"></span>` : `<span style="width:56px">${photo(c, 56)}</span>`).join('')}</div>` : ''}</div>`).join('')}`;
+  return `${all.slice(0, 3).map(r => `<div class="card tight"><div class="row between"><b class="small">${esc(r.by)}</b><span class="tiny muted">${esc(r.ago)}</span></div>${starsH(r.stars)}${r.tags && r.tags.length ? `<div class="row" style="flex-wrap:wrap;gap:6px">${r.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}${r.text ? `<p class="small">${esc(r.text)}</p>` : ''}
+    </div>`).join('')}`;
 }
 
 function custProfile() {
@@ -893,7 +925,8 @@ function custTrack() {
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
       <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
-      ${['paid', 'departed', 'arrived'].includes(b.status) ? mapSvg(b, p) : ''}
+      ${['paid', 'departed', 'arrived'].includes(b.status) ? liveMap(b, p, 'c') : ''}
+      ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Arrival check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Check-in photo taken by ${esc(first)} at arrival" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;background:#0E1520"></div>` : ''}
       <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div><span class="pill">No direct chat</span></div></div>
       ${b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : ''}
       ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted">Need to reach ${esc(first)}? Tap Help and our team relays it.</p></div>` : ''}
@@ -912,11 +945,6 @@ function custReview() {
       <span class="small" style="text-align:center;font-weight:600">${words[r.stars]}</span>
       <div class="row" style="flex-wrap:wrap;gap:8px;justify-content:center">${TAGS.map(t => `<button class="chip" data-act="toggleTag" data-arg="${t}" aria-pressed="${r.tags.includes(t)}">${t}</button>`).join('')}</div>
       <label class="field">Your review<textarea id="c-rev-text" class="textarea" data-bind="cust.review.text" placeholder="What did you like? What could be better?">${esc(r.text)}</textarea></label>
-      <div class="col" style="gap:8px"><span class="field">Photos (shown on ${esc(p.name.split(' ')[0])}'s profile)</span>
-        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px">
-          ${r.photos.map((src, i) => `<span class="photo" style="height:72px;background-image:url(${src})"><button class="iconbtn" data-act="rmPhoto" data-arg="${i}" aria-label="Remove photo" style="position:absolute;top:2px;right:2px;width:24px;height:24px;background:rgba(0,0,0,.55);color:#fff">${ic('x', 12)}</button></span>`).join('')}
-          ${r.photos.length < 4 ? `<label style="height:72px;border:1.5px dashed var(--line-2);border-radius:10px;display:grid;place-items:center;color:var(--muted);cursor:pointer">${ic('camera', 22)}<input type="file" accept="image/*" class="sr" data-file="cust.review.photos" id="c-rev-file"></label>` : ''}
-        </div></div>
     </div>`;
   const f = `<button class="btn primary block" data-act="submitReview">Submit review</button><button class="btn ghost sm" data-act="toBookings">Later</button>`;
   return [h, f];
@@ -988,7 +1016,7 @@ function custSignup() {
     cta = `<button class="btn primary block" data-act="suNext" ${!(eDone && pDone) ? 'disabled' : ''}>Continue</button>`;
   } else {
     body = `<h2 style="font-size:22px">Where should pros come?</h2><p class="small muted">Step 3 of 3 · Distances to providers are measured from this address. You can add more later.</p>
-      ${ADDRS.map(a => `<button class="opt" data-act="suAddr" data-arg="${a.id}" aria-pressed="${s.addr === a.id}">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}</b><span class="small muted">${esc(a.line)}</span></div></button>`).join('')}`;
+      ${allAddrs().map(a => addrOpt(a, 'suAddr', s.addr === a.id)).join('')}${addrForm('su')}`;
     cta = `<button class="btn primary block" data-act="suDone" ${!s.addr ? 'disabled' : ''}>Start booking</button>`;
   }
   return `${bar('Sign up', 'suBack')}<div class="scroll" data-scroll="c-su">${steps}${body}</div><div class="footer-bar">${cta}</div>`;
@@ -1006,8 +1034,8 @@ function custOverlays() {
         <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="openProvider" data-arg="${p.id}">View profile & book</button><button class="btn secondary sm" data-act="closeZoom">Close</button></div></div>
     </div></div>`;
   }
-  if (c.addrSheet) o += `<div class="overlay" data-act="closeSheets"><div class="sheet" data-stop="1"><div class="grab"></div><h3 style="font-size:17px">Measure distance from</h3>
-    ${ADDRS.map(a => `<button class="opt" data-act="setAddr" data-arg="${a.id}" aria-pressed="${S.customer.addr === a.id}">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}</b><span class="small muted">${esc(a.line)}</span></div></button>`).join('')}
+  if (c.addrSheet) o += `<div class="overlay" data-ov="addr" data-act="closeSheets"><div class="sheet" data-stop="1"><div class="grab"></div><h3 style="font-size:17px">Measure distance from</h3><p class="small muted">Travelling? Add your hotel or trip address and book a pro there.</p>
+    <div class="col" style="gap:8px;overflow-y:auto">${allAddrs().map(a => addrOpt(a, 'setAddr', S.customer.addr === a.id)).join('')}${addrForm('sheet')}</div>
     <p class="tiny muted">Every provider list and arrival estimate updates to this address.</p></div></div>`;
   if (c.pay) {
     const b = bk(c.pay.bid);
@@ -1119,7 +1147,8 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack')}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
-    ${['paid', 'departed'].includes(b.status) ? mapSvg(b, me) : ''}
+    ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
+    ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Your check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Your check-in photo" style="width:100%;border-radius:10px;max-height:220px;object-fit:contain;background:#0E1520"></div>` : ''}
     <div class="list"><div class="li"><span class="muted small" style="width:80px">Service</span><b class="grow small">${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</b></div>
       <div class="li"><span class="muted small" style="width:80px">Address</span><span class="grow small">${esc(b.address)}</span></div>
       <div class="li"><span class="muted small" style="width:80px">Promise</span><span class="grow small">${b.promisedAt ? 'Arrive by ' + fmtT(b.promisedAt) : (b.when === 'later' ? fmtT(b.slotAt) : b.eta + ' min after payment')}</span></div></div>
@@ -1274,6 +1303,7 @@ function provApply() {
   return `${bar('Become a provider', 'apBack')}<div class="scroll" data-scroll="p-ap">${steps}${body}</div><div class="footer-bar">${cta}</div>`;
 }
 function provOverlays() {
+  if (S.prov.cam) return camSheet();
   const me = prov(S.prov.id);
   const late = S.bookings.find(b => b.pid === me.id && b.late && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && !b.late.dismissed);
   if (!late) return '';
@@ -1434,6 +1464,7 @@ function admJobs() {
       ${list.slice(0, 60).map(b => { const p = b.pid ? prov(b.pid) : null; const diff = b.arrivedAt && b.promisedAt ? Math.round((b.arrivedAt - b.promisedAt) / MIN) : null; return `<tr class="click ${sel && sel.id === b.id ? 'sel' : ''}" data-act="admSel" data-arg="${b.id}"><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td>${p ? esc(p.name) : esc(biz(b.bizId).name)}</td><td>${statusPill(b.status)}${b.refunded ? ' <span class="pill bad">Refunded</span>' : ''}</td><td class="num mono">${b.eta ? b.eta + 'm' : '—'}</td><td class="mono">${b.paidAt ? fmtT(b.paidAt) : '—'}</td><td>${diff == null ? '—' : diff <= 0 ? '<span style="color:var(--good)">On time</span>' : `<span style="color:${diff > S.settings.penaltyAfter ? 'var(--bad)' : 'var(--warn)'}">+${diff} min</span>`}</td><td class="num">${peso(b.gross)}</td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No jobs match.</div></td></tr>'}
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
+      ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
       <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
       ${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Referral fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div><span class="tiny muted">${sel.ledger.paidAt ? 'Paid out ' + fmtD(sel.ledger.paidAt) : 'Not yet paid out'}</span>` : ''}
       <div class="divider"></div>
@@ -1494,8 +1525,8 @@ function admCustomers() {
       <td class="num">${c.jobs}</td><td class="num">${peso(c.spent)}</td><td class="mono small">${c.last ? fmtD(c.last) : '—'}</td><td>${susp ? '<span class="pill bad">Suspended</span>' : '<span class="pill good">Active</span>'}</td>
       <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admCustJobs" data-arg="${esc(c.name)}">Bookings</button><button class="btn ${susp ? 'primary' : 'ghost'} xs" style="${susp ? '' : 'color:var(--bad)'}" data-act="admCustSusp" data-arg="${esc(c.key)}">${susp ? 'Reactivate' : 'Suspend'}</button>${reg && !r.idOk ? `<button class="btn ghost xs" data-act="admCustId" data-arg="${esc(c.key)}">Mark ID verified</button>` : ''}</div></td></tr>`; }).join('')}
     </tbody></table></div></div>
-    <div class="panel"><div class="panel-h"><h3>Review moderation · ${reviews.length}</h3><span class="small muted">Photo reviews appear on provider profiles</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>By</th><th>Rating</th><th>Review</th><th>Photos</th><th>Status</th><th></th></tr></thead><tbody>
-    ${reviews.map(({ p, r, k }) => `<tr style="${r.hidden ? 'opacity:.55' : ''}"><td>${esc(p.name)}</td><td>${esc(r.by)}<br><span class="tiny muted">${esc(r.ago)}</span></td><td>${starsH(r.stars)}</td><td class="small" style="max-width:280px">${esc(r.text || '—')}</td><td>${r.photos.length}</td><td>${r.hidden ? '<span class="pill bad">Hidden</span>' : '<span class="pill good">Visible</span>'}</td><td><button class="btn ${r.hidden ? 'secondary' : 'ghost'} xs" data-act="admReview" data-arg="${p.id}:${k}">${r.hidden ? 'Show' : 'Hide'}</button></td></tr>`).join('')}
+    <div class="panel"><div class="panel-h"><h3>Review moderation · ${reviews.length}</h3><span class="small muted">Text reviews appear on provider profiles</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>By</th><th>Rating</th><th>Review</th><th>Status</th><th></th></tr></thead><tbody>
+    ${reviews.map(({ p, r, k }) => `<tr style="${r.hidden ? 'opacity:.55' : ''}"><td>${esc(p.name)}</td><td>${esc(r.by)}<br><span class="tiny muted">${esc(r.ago)}</span></td><td>${starsH(r.stars)}</td><td class="small" style="max-width:280px">${esc(r.text || '—')}</td><td>${r.hidden ? '<span class="pill bad">Hidden</span>' : '<span class="pill good">Visible</span>'}</td><td><button class="btn ${r.hidden ? 'secondary' : 'ghost'} xs" data-act="admReview" data-arg="${p.id}:${k}">${r.hidden ? 'Show' : 'Hide'}</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function admFinance() {
@@ -1686,13 +1717,141 @@ function shell() {
 }
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
 
+/* =============== Live maps (Leaflet + CARTO/OSM tiles, SVG fallback) and check-in camera =============== */
+const KEEP = {};      // DOM nodes that must survive re-renders (maps, camera)
+const ROUTES = {};    // booking id -> road route [[lat, lng], ...]
+const hasLeaflet = () => typeof window.L !== 'undefined' && !!window.L.map;
+function alongRoute(pts, f) {
+  if (pts.length < 2) return pts[0];
+  const seg = []; let tot = 0;
+  for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]); seg.push(d); tot += d; }
+  let goal = tot * f;
+  for (let i = 0; i < seg.length; i++) { if (goal <= seg[i]) { const t = seg[i] ? goal / seg[i] : 0; return [pts[i][0] + (pts[i + 1][0] - pts[i][0]) * t, pts[i][1] + (pts[i + 1][1] - pts[i][1]) * t]; } goal -= seg[i]; }
+  return pts[pts.length - 1];
+}
+function provPos(b, p) {
+  const dest = [b.lat, b.lng], base = [p.lat, p.lng];
+  if (['arrived', 'ended', 'reviewed'].includes(b.status)) return { pos: dest, live: false };
+  if (b.live && b.status === 'departed' && Date.now() - b.live.t < 90000) return { pos: [b.live.lat, b.live.lng], live: true };
+  if (b.status !== 'departed') return { pos: base, live: false };
+  const f = Math.min(0.97, Math.max(0, (now() - b.departedAt) / Math.max(MIN, b.promisedAt - b.departedAt)));
+  return { pos: alongRoute(ROUTES[b.id] || [base, dest], f), live: false };
+}
+function fetchRoute(b, p) {
+  if (ROUTES[b.id] || ROUTES['_' + b.id]) return; ROUTES['_' + b.id] = 1;
+  try {
+    fetch(`https://router.project-osrm.org/route/v1/driving/${p.lng},${p.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`)
+      .then(r => r.json()).then(j => { const r = j && j.routes && j.routes[0]; if (r) { ROUTES[b.id] = r.geometry.coordinates.map(([x, y]) => [y, x]); updateMaps(true); } }).catch(() => { });
+  } catch (e) { }
+}
+// who: 'c' (customer sees the provider coming) or 'p' (provider sees where to go)
+function liveMap(b, p, who) {
+  if (!hasLeaflet()) return mapSvg(b, p);
+  fetchRoute(b, p);
+  const pp = provPos(b, p), first = p.name.split(' ')[0];
+  const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}&travelmode=driving`;
+  const info = who === 'p'
+    ? `<div class="row between" style="gap:8px;flex-wrap:wrap"><div class="col" style="gap:2px;min-width:0"><span class="eyebrow">Go to</span><b class="small">${esc(b.address)}</b></div>
+        <div class="row" style="gap:6px"><a class="btn secondary xs" href="${gmaps}" target="_blank" rel="noopener">${ic('route', 14)} Navigate</a>${b.status === 'departed' ? `<button class="btn ${S.prov.gps ? 'primary' : 'ghost'} xs" data-act="toggleGps">${S.prov.gps ? 'GPS sharing on' : 'Share my GPS'}</button>` : ''}</div></div>`
+    : `<div class="row between small"><span class="row" style="gap:6px"><span class="livedot ${b.status === 'departed' ? 'on' : ''}"></span>${b.status === 'departed' ? (pp.live ? `Live GPS · ${esc(first)}'s phone` : `${esc(first)} is on the way`) : b.status === 'arrived' ? `${esc(first)} is at your door` : `${esc(first)} is getting ready`}</span>${b.status === 'departed' ? `<span class="muted">arrives by <b class="num">${fmtT(b.promisedAt)}</b></span>` : ''}</div>`;
+  return `<div class="card tight lmapcard" style="gap:10px"><div data-keep="map|${who}|${b.id}" class="lmap"></div>${info}</div>`;
+}
+const pinIcon = () => L.divIcon({ className: 'mk', iconSize: [34, 42], iconAnchor: [17, 40], html: `<svg width="34" height="42" viewBox="0 0 34 42"><path d="M17 41C17 41 32 26 32 16A15 15 0 0 0 2 16C2 26 17 41 17 41Z" fill="#12355B" stroke="#fff" stroke-width="2.5"/><path d="M10.5 18.5 17 12.5l6.5 6v6.5h-13Z" fill="#F4B740"/></svg>` });
+const provIcon = p => { const src = photoOf(p); return L.divIcon({ className: 'mk', iconSize: [46, 46], iconAnchor: [23, 23], html: `<span class="mkp">${src ? `<img src="${src}" alt="">` : esc(p.name[0])}</span>` }); };
+function makeKeep(k) {
+  const [kind, who, bid] = k.split('|');
+  if (kind === 'map') {
+    const el = document.createElement('div'); el.className = 'lmap';
+    return { el, kind, who, bid, init() {
+      const b = bk(bid), p = b && prov(b.pid); if (!b || !p) return;
+      const m = L.map(el, { zoomControl: false, attributionControl: true, scrollWheelZoom: false });
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', { maxZoom: 19, subdomains: 'abcd', attribution: '© OpenStreetMap contributors © CARTO' }).addTo(m);
+      m.attributionControl.setPrefix(false); L.control.zoom({ position: 'topright' }).addTo(m);
+      this.m = m; this.line = L.polyline([], { color: '#12355B', weight: 5, opacity: .7 }).addTo(m);
+      this.dest = L.marker([b.lat, b.lng], { icon: pinIcon(), zIndexOffset: 100 }).addTo(m);
+      this.me = L.marker([p.lat, p.lng], { icon: provIcon(p), zIndexOffset: 200 }).addTo(m);
+      this.fit = false; this.upd(true);
+    }, upd(force) {
+      if (!this.m) return; const b = bk(bid), p = b && prov(b.pid); if (!b || !p) return;
+      const pp = provPos(b, p); this.me.setLatLng(pp.pos);
+      const route = ROUTES[b.id] || [[p.lat, p.lng], [b.lat, b.lng]];
+      this.line.setLatLngs(b.status === 'departed' || b.status === 'paid' ? route : []);
+      if (!this.fit || force) { this.m.fitBounds(L.latLngBounds(route.concat([pp.pos])), { padding: [34, 34], maxZoom: 16 }); this.fit = true; }
+    } };
+  }
+  if (kind === 'cam') {
+    const el = document.createElement('div'); el.className = 'camview';
+    const v = document.createElement('video'); v.setAttribute('playsinline', ''); v.muted = true; v.autoplay = true; el.appendChild(v);
+    return { el, kind, v, init() {
+      const md = navigator.mediaDevices;
+      if (!md || !md.getUserMedia) { S.prov.camErr = 'This browser cannot open the camera here.'; render(); return; }
+      md.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false })
+        .then(st => { this.stream = st; v.srcObject = st; v.play().catch(() => { }); S.prov.camErr = ''; })
+        .catch(e => { S.prov.camErr = (e && e.name === 'NotAllowedError') ? 'Camera permission was blocked. Allow camera access for this site and try again.' : 'No camera found on this device.'; render(); });
+    } };
+  }
+  return null;
+}
+function mountKeeps() {
+  document.querySelectorAll('[data-keep]').forEach(ph => {
+    const k = ph.dataset.keep; let o = KEEP[k], fresh = false;
+    if (!o) { o = makeKeep(k); if (!o) return; KEEP[k] = o; fresh = true; }
+    ph.replaceWith(o.el);
+    if (fresh) { try { o.init(); } catch (e) { } } else if (o.m) { o.m.invalidateSize(); o.upd(); }
+  });
+}
+function updateMaps(force) { Object.values(KEEP).forEach(o => { if (o.kind === 'map' && o.m && document.body.contains(o.el)) { try { o.upd(force); } catch (e) { } } }); }
+function stopCam() { Object.keys(KEEP).forEach(k => { const o = KEEP[k]; if (o.kind === 'cam') { if (o.stream) o.stream.getTracks().forEach(t => t.stop()); delete KEEP[k]; } }); }
+// provider GPS sharing while on the way
+let gpsWatch = null, gpsLast = 0;
+function syncGps() {
+  const b = S.bookings.find(x => x.pid === S.prov.id && x.status === 'departed');
+  const want = !!(S.prov.gps && b && navigator.geolocation);
+  if (want && gpsWatch == null) {
+    gpsWatch = navigator.geolocation.watchPosition(pos => {
+      const j = S.bookings.find(x => x.pid === S.prov.id && x.status === 'departed'); if (!j) return;
+      if (Date.now() - gpsLast < 4000) return; gpsLast = Date.now();
+      j.live = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6), t: Date.now() };
+      save(); schedulePush(); updateMaps();
+    }, () => { S.prov.gps = false; toast('provider', 'GPS unavailable', 'Location permission was blocked, so the customer sees an estimated position.'); render(); }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+  }
+  if (!want && gpsWatch != null) { navigator.geolocation.clearWatch(gpsWatch); gpsWatch = null; }
+}
+function camSheet() {
+  const b = bk(S.prov.cam); if (!b) return '';
+  const shot = S.prov.camShot;
+  return `<div class="overlay" data-ov="cam" style="align-items:stretch;z-index:40"><div class="sheet" style="border-radius:0;max-height:100%;height:100%;gap:12px;background:#0E1520;color:#fff">
+    <div class="row between"><div class="col" style="gap:2px"><span class="eyebrow" style="color:#F4B740">Arrival check-in · ${b.id}</span><b style="font-size:18px">Take a photo at the customer's door</b></div><button class="iconbtn" data-act="camClose" aria-label="Close" style="color:#fff">${ic('x', 22)}</button></div>
+    <span class="small" style="opacity:.8">Live camera only. Files from your gallery can't be used. The photo is time-stamped and sent to the customer and Balik.</span>
+    ${shot ? `<img src="${shot}" alt="Check-in photo preview" class="camview" style="object-fit:contain">`
+      : (S.prov.camErr ? `<div class="camview" style="display:grid;place-items:center;text-align:center;padding:20px"><div class="col" style="gap:10px;align-items:center">${ic('camera', 34)}<span class="small">${esc(S.prov.camErr)}</span><button class="btn secondary xs" data-act="camRetry">Try again</button></div></div>`
+      : `<div data-keep="cam|x|${b.id}" class="camview"></div>`)}
+    <div class="col" style="gap:8px;margin-top:auto">
+      ${shot ? `<button class="btn primary block" data-act="camConfirm">${ic('check', 18)} Use photo & check in</button><button class="btn secondary block" data-act="camRetake">Retake</button>`
+        : S.prov.camErr ? `<button class="btn secondary block" data-act="camDemo">Test build only: use a demo camera frame</button>`
+        : `<button class="shutter" data-act="camShot" aria-label="Take photo"><span></span></button>`}
+    </div></div></div>`;
+}
+function stampPhoto(src, b) {
+  const W = 720, H = Math.round(W * src.h / src.w), c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'); src.draw(g, W, H);
+  g.fillStyle = 'rgba(14,21,32,.72)'; g.fillRect(0, H - 64, W, 64);
+  g.fillStyle = '#F4B740'; g.font = 'bold 22px Arial, sans-serif'; g.fillText('Balik check-in · ' + b.id, 18, H - 36);
+  g.fillStyle = '#fff'; g.font = '18px Arial, sans-serif';
+  const loc = b.live ? ` · GPS ${b.live.lat.toFixed(4)}, ${b.live.lng.toFixed(4)}` : '';
+  g.fillText(`${fmtD(now())} ${fmtT(now())} · ${prov(b.pid).name}${loc}`, 18, H - 12);
+  return c.toDataURL('image/jpeg', 0.72);
+}
+
 function render() {
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
   const keep = ae && ae.id && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file'].includes(ae.type))) ? ae : null;
   const fid = ae && ae.id;
   const scrolls = {}; document.querySelectorAll('[data-scroll]').forEach(el => { scrolls[el.dataset.scroll] = el.scrollTop; });
+  const prevOv = new Set([...document.querySelectorAll('[data-ov]')].map(el => el.dataset.ov));
   document.getElementById('app').innerHTML = shell();
+  document.querySelectorAll('[data-ov]').forEach(el => { if (prevOv.has(el.dataset.ov)) { el.style.animation = 'none'; el.querySelectorAll('.sheet').forEach(x => x.style.animation = 'none'); } });
   document.querySelectorAll('[data-scroll]').forEach(el => { if (scrolls[el.dataset.scroll] != null) { el.style.scrollBehavior = 'auto'; el.scrollTop = scrolls[el.dataset.scroll]; el.style.scrollBehavior = ''; } });
   if (keep) {
     const nu = document.getElementById(keep.id);
@@ -1704,10 +1863,12 @@ function render() {
       keep.focus({ preventScroll: true });
     } else if (nu) nu.focus({ preventScroll: true });
   } else if (fid) { const el = document.getElementById(fid); if (el) el.focus({ preventScroll: true }); }
+  mountKeeps();
+  syncGps();
   save();
   if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v4';
+const STORE = 'balik-demo-v5';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -1762,7 +1923,7 @@ function endService(b, auto = false) {
   postLedger(b);
   if (b.cid) {
     pushAlert('customer', 'Service ended · rate your provider', `How was ${p.name.split(' ')[0]}? Leave stars and a review.`, b.id, 'good');
-    toast('customer', 'Service ended', `Rate ${p.name.split(' ')[0]} and add photos.`);
+    toast('customer', 'Service ended', `Rate ${p.name.split(' ')[0]} and leave a short review.`);
     if (S.cust.bid === b.id && ['track', 'request'].includes(S.cust.screen)) { S.cust.screen = 'review'; S.cust.review = { stars: 5, tags: ['On time'], text: '', photos: [] }; }
   }
   if (S.prov.id === p.id && auto) toast('provider', "You're back on green", 'The service time ended. Change your status if you need to.');
@@ -1773,7 +1934,7 @@ function arrive(b) {
   logB(b, `Arrived · ${Math.round((b.arrivedAt - b.promisedAt) / MIN) <= 0 ? 'on time' : Math.round((b.arrivedAt - b.promisedAt) / MIN) + ' min after promise'}`);
   if (b.late) { b.late.resolved = true; if (!b.late.penalty && b.arrivedAt > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; p.points++; logB(b, 'Penalty point added (late arrival)'); } }
   logB(b, `In service ${fmtT(b.arrivedAt)}–${fmtT(b.endAt)}`);
-  if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
+  if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.${b.checkin ? ' Check-in photo attached.' : ''}`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
   S.prov.screen = 'job'; S.prov.bid = b.id;
 }
 
@@ -1798,7 +1959,22 @@ const A = {
   setPay: m => { S.customer.pay = m; },
   addrSheet: () => { S.cust.addrSheet = true; },
   setAddr: id => { S.customer.addr = id; S.cust.addrSheet = false; toast('customer', 'Distances updated', 'Now measured from ' + addr().label + '.'); },
-  closeSheets: () => { S.cust.addrSheet = false; S.cust.help = false; },
+  closeSheets: () => { S.cust.addrSheet = false; S.cust.help = false; S.cust.newAddr = null; },
+  newAddr: () => { S.cust.newAddr = { kind: 'Hotel', label: '', line: '', city: '', from: '', to: '', gps: null }; },
+  cancelAddr: () => { S.cust.newAddr = null; },
+  addrKind: k => { S.cust.newAddr.kind = k; },
+  addrHere: () => { if (!navigator.geolocation) { toast('customer', 'Location unavailable', 'Choose the city instead.'); return; }
+    navigator.geolocation.getCurrentPosition(pos => { const n = S.cust.newAddr; if (!n) return; n.gps = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) };
+      if (!n.city) { let best = null, bd = 1e9; CITIES.forEach(c => { const d = Math.hypot(c[1] - n.gps.lat, c[2] - n.gps.lng); if (d < bd) { bd = d; best = c[0]; } }); n.city = best; }
+      toast('customer', 'Location found', 'Pros will be measured from where you are now.'); render(); }, () => { toast('customer', 'Location blocked', 'Allow location access, or choose the city.'); render(); }, { enableHighAccuracy: true, timeout: 15000 }); },
+  saveAddr: where => { const n = S.cust.newAddr; if (!n || !n.city || n.line.trim().length < 4) return; const c = CITIES.find(x => x[0] === n.city);
+    const a = { id: 'x' + Date.now().toString(36), kind: n.kind, label: n.label.trim() || n.kind, line: n.line.trim() + ', ' + n.city, short: n.city, lat: n.gps ? n.gps.lat : c[1], lng: n.gps ? n.gps.lng : c[2], from: n.from, to: n.to, approx: !n.gps };
+    (S.customer.extraAddrs || (S.customer.extraAddrs = [])).push(a); S.cust.newAddr = null;
+    if (where === 'su') S.cust.signup.addr = a.id; else { S.customer.addr = a.id; S.cust.addrSheet = false; }
+    const rec = S.customers && S.customers[S.customer.cid]; if (rec) rec.addrs = S.customer.extraAddrs.slice();
+    toast('customer', 'Address saved', a.label + ' · distances now measured from ' + n.city + '.');
+    if (a.approx) { try { fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=' + encodeURIComponent(a.line + ', Philippines')).then(r => r.json()).then(j => { if (j && j[0]) { a.lat = +(+j[0].lat).toFixed(6); a.lng = +(+j[0].lon).toFixed(6); a.approx = false; render(); } }).catch(() => { }); } catch (e) { } } },
+  rmAddr: id => { S.customer.extraAddrs = (S.customer.extraAddrs || []).filter(a => a.id !== id); if (S.customer.addr === id) S.customer.addr = 'home'; if (S.cust.signup && S.cust.signup.addr === id) S.cust.signup.addr = null; const rec = S.customers && S.customers[S.customer.cid]; if (rec) rec.addrs = S.customer.extraAddrs.slice(); },
   sendRequest,
   openBooking: id => { const b = bk(id); S.cust.bid = id; S.cust.screen = ['paid', 'departed', 'arrived', 'ended'].includes(b.status) ? 'track' : b.status === 'reviewed' ? 'track' : 'request'; },
   toBookings: () => { S.cust.screen = 'bookings'; },
@@ -1826,9 +2002,9 @@ const A = {
   rmPhoto: i => { S.cust.review.photos.splice(Number(i), 1); },
   submitReview: () => {
     const r = S.cust.review, b = bk(S.cust.bid), p = prov(b.pid);
-    b.review = { stars: r.stars, tags: r.tags.slice(), text: r.text, photos: r.photos.slice() }; b.status = 'reviewed';
+    b.review = { stars: r.stars, tags: r.tags.slice(), text: r.text, photos: [] }; b.status = 'reviewed';
     logB(b, `Customer rated ${r.stars}★${r.photos.length ? ' with ' + r.photos.length + ' photo(s)' : ''}`);
-    p.reviews.unshift({ by: 'Maria S.', stars: r.stars, text: r.text, tags: r.tags.slice(), photos: r.photos.slice(), ago: 'Just now' });
+    p.reviews.unshift({ by: 'Maria S.', stars: r.stars, text: r.text, tags: r.tags.slice(), photos: [], ago: 'Just now' });
     p.rating = Math.round(((p.rating * p.count) + r.stars) / (p.count + 1) * 10) / 10; p.count++;
     pushAlert('provider:' + p.id, `New ${r.stars}★ review`, r.text || 'Maria S. rated your service.', b.id, 'good');
     toast('provider', `New ${r.stars}★ review`, r.text ? r.text.slice(0, 60) : 'Maria S. rated your service.');
@@ -1882,7 +2058,15 @@ const A = {
     S.prov.screen = 'job'; S.prov.bid = id; },
   depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart');
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
-  arrive: id => arrive(bk(id)),
+  arrive: id => { S.prov.cam = id; S.prov.camShot = null; S.prov.camErr = ''; },
+  camClose: () => { stopCam(); S.prov.cam = null; S.prov.camShot = null; },
+  camRetry: () => { stopCam(); S.prov.camErr = ''; },
+  camRetake: () => { S.prov.camShot = null; },
+  camShot: () => { const o = Object.values(KEEP).find(x => x.kind === 'cam'); const b = bk(S.prov.cam); if (!o || !b || !o.v.videoWidth) { toast('provider', 'Camera not ready', 'Wait a moment for the picture, then tap again.'); return; }
+    S.prov.camShot = stampPhoto({ w: o.v.videoWidth, h: o.v.videoHeight, draw: (g, W, H) => g.drawImage(o.v, 0, 0, W, H) }, b); stopCam(); },
+  camDemo: () => { const b = bk(S.prov.cam); if (!b) return; S.prov.camShot = stampPhoto({ w: 4, h: 3, draw: (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#C9D3DE'); gr.addColorStop(1, '#8A97A6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#5B4636'; g.fillRect(W * .36, H * .16, W * .28, H * .7); g.fillStyle = '#E8C36A'; g.beginPath(); g.arc(W * .6, H * .52, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 26px Arial'; g.fillText('Unit door · demo frame', W * .3, H * .1); } }, b); },
+  camConfirm: () => { const b = bk(S.prov.cam); if (!b || !S.prov.camShot) return; b.checkin = { photo: S.prov.camShot, at: now(), live: true }; logB(b, 'Check-in photo taken with live camera'); stopCam(); S.prov.cam = null; S.prov.camShot = null; arrive(b); },
+  toggleGps: () => { S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
   setAway: h => { const p = prov(S.prov.id); p.status = 'yellow'; p.awayFrom = now(); p.backAt = now() + Number(h) * HOUR; toast('provider', 'Away until ' + fmtT(p.backAt), 'You switch back to green automatically.'); },
@@ -2200,6 +2384,7 @@ const myCust = () => S.customers[S.customer.cid || 'me'] || {};
 function uniqueId(prefix, exists) { let id; do { id = prefix + (2000 + Math.floor(Math.random() * 7999)); } while (exists(id)); return id; }
 
 load();
+S.prov.cam = null; S.prov.camShot = null; S.prov.gps = false;
 if (!S.customers) S.customers = { me: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', idOk: false, suspended: false, createdAt: simStart - 40 * DAY } };
 if (!S.customer.cid) S.customer.cid = 'me';
 let lastTick = now();
@@ -2230,6 +2415,7 @@ function tick(force = false) {
   else {
     document.querySelectorAll('[data-clock]').forEach(el => el.textContent = fmtT(n));
     document.querySelectorAll('[data-cd]').forEach(el => el.textContent = mmss(Number(el.dataset.cd) - n));
+    updateMaps();
   }
 }
 render();
