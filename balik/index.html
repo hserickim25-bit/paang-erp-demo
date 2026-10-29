@@ -523,6 +523,9 @@ const S = {
   providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], modal: null,
   settings: {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
+    credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
+      bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
+      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } },
     respond: 5, hold: 5, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
     alertBiz: true, tellCustomer: true
@@ -530,7 +533,7 @@ const S = {
 };
 
 function mkProv(o) {
-  return Object.assign({ type: 'individual', biz: null, status: 'green', backAt: null, points: 0, greenToday: 0, goal: 20000, cert: null, idOk: true, tierOverride: null, radius: 6, history: [] }, o);
+  return Object.assign({ type: 'individual', biz: null, status: 'green', backAt: null, points: 0, credits: 5, creditLog: [], creditWeeks: [], greenToday: 0, goal: 20000, cert: null, idOk: true, tierOverride: null, radius: 6, history: [] }, o);
 }
 S.providers = [
   mkProv({ id: 'p1', name: 'Liza Reyes', cat: 'massage', area: 'Bel-Air, Makati', lat: 14.5640, lng: 121.0300, years: 9, past: 'Hotel spa therapist, Makati (2011–2020)', story: 'Came back in 2026 after four years caring for her mother. Hilot and deep-tissue specialist.', returning: true, rating: 4.9, count: 128, dist: [86, 10, 3, 1, 0], week: [6.5, 7.2, 6.0, 5.1, 6.4, 3.2, 0], ytd: 118400, phone: '+63 917 555 0101', tin: '412-118-903-000', hue: 262,
@@ -576,8 +579,60 @@ const biz = id => S.businesses.find(b => b.id === id);
 const bk = id => S.bookings.find(b => b.id === id);
 const addr = () => allAddrs().find(a => a.id === S.customer.addr) || ADDRS[0];
 const distTo = o => haversine(addr(), o);
-const tierIdx = p => p.tierOverride != null ? p.tierOverride : (p.points <= 0 ? 0 : p.points <= 2 ? 1 : 2);
-const tierRate = p => S.settings.tiers[tierIdx(p)].rate;
+/* ---------- reward credits (replaces penalty points) ---------- */
+const CR = () => S.settings.credit;
+const clampCr = v => Math.max(CR().min, Math.min(CR().max, v));
+const bandIdx = c => { const bs = CR().bands; for (let i = 0; i < bs.length; i++) if (c <= bs[i].max) return i; return bs.length - 1; };
+const tierIdx = p => p.tierOverride != null ? p.tierOverride : bandIdx(p.credits == null ? CR().start : p.credits);
+const tierRate = p => CR().bands[Math.min(tierIdx(p), CR().bands.length - 1)].rate;
+const weekStartOf = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; };
+const weekKeyOf = t => { const d = new Date(weekStartOf(t)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
+const weekLabel = k => { const d = new Date(k + 'T00:00:00'); const e = new Date(d.getTime() + 6 * DAY); const f = x => x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); return f(d) + ' – ' + f(e); };
+const sgn = n => (n > 0 ? '+' : n < 0 ? '−' : '±') + Math.abs(n);
+const urlRef = () => { try { return (new URL(location.href).searchParams.get('ref') || '').toUpperCase(); } catch (e) { return ''; } };
+const shareUrl = p => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('ref', refCode(p)); return u.toString(); } catch (e) { return 'https://balik.ph/?ref=' + refCode(p); } };
+const refCode = p => (p.name.split(' ')[0] || 'PRO').toUpperCase().replace(/[^A-Z]/g, '') + '-' + p.id.toUpperCase();
+const provByRef = code => { const c = String(code || '').trim().toUpperCase(); return c ? S.providers.find(p => refCode(p) === c) : null; };
+function addCredit(p, pts, text, bid, kind, uniq) {
+  if (!p || !pts) return;
+  p.creditLog = p.creditLog || [];
+  const wk = weekKeyOf(now());
+  if (uniq && p.creditLog.some(e => e.uniq === uniq)) return;
+  p.creditLog.unshift({ id: 'cr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now(), pts, text, bid: bid || null, kind, uniq: uniq || null, week: wk, applied: false });
+  pushAlert('provider:' + p.id, `${sgn(pts)} reward credit${Math.abs(pts) > 1 ? 's' : ''}`, `${text}. Counted in Sunday's update.`, bid || null, pts > 0 ? 'good' : 'bad');
+}
+function jobDays(p, ws) {
+  const cnt = [0, 0, 0, 0, 0, 0, 0];
+  S.bookings.forEach(b => { if (b.pid === p.id && b.arrivedAt && ['arrived', 'ended', 'reviewed'].includes(b.status) && b.arrivedAt >= ws && b.arrivedAt < ws + 7 * DAY) cnt[Math.floor((b.arrivedAt - ws) / DAY)]++; });
+  return cnt.filter(x => x >= CR().dailyJobs).length;
+}
+function weekAuto(p) {
+  const R0 = CR().rules, hrs = weekTotal(p), tgt = S.settings.weeklyTarget, items = [];
+  items.push(hrs >= tgt ? { pts: R0.hours, kind: 'hours', text: `${hrs.toFixed(1)} h on green this week (${tgt}+ h)` } : { pts: R0.under, kind: 'under', text: `${hrs.toFixed(1)} of ${tgt} h on green this week` });
+  const d = jobDays(p, weekStartOf(now()));
+  if (d >= CR().dailyDays) items.push({ pts: R0.daily, kind: 'daily', text: `${CR().dailyJobs}+ services a day on ${d} days` });
+  return items;
+}
+const pendingOf = p => (p.creditLog || []).filter(e => !e.applied);
+function projected(p) {
+  const items = pendingOf(p).concat(CR().lastClosed === weekKeyOf(now()) ? [] : weekAuto(p)), sum = items.reduce((a, e) => a + e.pts, 0), cur = p.credits == null ? CR().start : p.credits;
+  return { items, sum, cur, after: clampCr(cur + sum) };
+}
+function closeWeekFor(p, wk) {
+  p.creditWeeks = p.creditWeeks || []; p.creditLog = p.creditLog || [];
+  if (p.creditWeeks.some(w => w.week === wk)) return null;
+  const auto = weekAuto(p), evs = pendingOf(p);
+  const all = auto.concat(evs), sum = all.reduce((a, e) => a + e.pts, 0);
+  const before = p.credits == null ? CR().start : p.credits, rateBefore = tierRate(p);
+  evs.forEach(e => { e.applied = true; });
+  auto.forEach(a => p.creditLog.unshift(Object.assign({ id: 'cr' + Math.random().toString(36).slice(2, 9), at: now(), week: wk, applied: true, auto: true }, a)));
+  p.credits = clampCr(before + sum);
+  const rec = { week: wk, at: now(), before, sum, after: p.credits, rate: tierRate(p), rateBefore, n: all.length };
+  p.creditWeeks.unshift(rec);
+  pushAlert('provider:' + p.id, 'Sunday update · reward credits', `${before} → ${p.credits} credits (${sgn(sum)}). Platform fee from Monday: ${rec.rate}%.`, null, sum >= 0 ? 'good' : 'bad');
+  return rec;
+}
+function closeWeekAll(wk) { let n = 0; S.providers.forEach(p => { if (p.active !== false && closeWeekFor(p, wk)) n++; }); CR().lastClosed = wk; return n; }
 const payeeOf = b => b.bizId ? biz(b.bizId) : prov(b.pid);
 const weekHours = p => { const w = p.week.slice(); const t = todayIdx(); for (let i = t + 1; i < 7; i++) w[i] = 0; w[t] = Math.min(24, (p.week[t] * 0.4) + p.greenToday); return w; };
 const weekTotal = p => weekHours(p).reduce((a, b) => a + b, 0);
@@ -626,6 +681,13 @@ function seedHistory() {
   });
 }
 seedHistory(); SEEDING = false;
+(function seedCredits() {
+  const lastWk = weekKeyOf(now() - 7 * DAY), wk = weekKeyOf(now());
+  const set = { p1: [7, 6], p2: [5, 5], p3: [9, 8], p4: [4, 5], p5: [6, 6], p6: [5, 4], p7: [8, 7], p8: [5, 5] };
+  S.providers.forEach(p => { const v = set[p.id] || [5, 5]; p.credits = v[0]; p.creditWeeks = [{ week: lastWk, at: now() - 2 * DAY, before: v[1], sum: v[0] - v[1], after: v[0], rate: CR().bands[bandIdx(v[0])].rate, rateBefore: CR().bands[bandIdx(v[1])].rate, n: 2 }]; p.creditLog = []; });
+  const l = prov('p1'); if (l) { l.creditLog.unshift({ id: 'crs1', at: now() - 26 * HOUR, pts: 1, text: 'Shared Balik on Facebook', kind: 'share', uniq: 'share:' + wk, week: wk, applied: false }, { id: 'crs2', at: now() - 50 * HOUR, pts: 1, text: 'Referral · new customer Ana V.', kind: 'referral', uniq: 'ref:seed', week: wk, applied: false }); }
+  CR().lastWeek = wk;
+})();
 
 /* ---------- alerts, sms, toasts ---------- */
 function pushAlert(to, title, body, bid, kind = 'info') { if (to === 'customer') { const b = bid && bk(bid); to = 'customer:' + ((b && b.cid) || S.customer.cid || 'me'); } S.alerts.unshift({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, title, body, bid: bid || null, kind, at: now(), read: false }); }
@@ -1005,6 +1067,7 @@ function custSignup() {
       <label class="field">Full name<input id="su-name" class="input" autocomplete="name" data-bind="cust.signup.name" value="${esc(s.name)}" placeholder="Maria Santos"></label>
       <label class="field">Email<input id="su-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="cust.signup.email" value="${esc(s.email)}" placeholder="you@example.com"></label>
       <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="su-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="cust.signup.phone" value="${esc(s.phone)}" placeholder="917 555 0142"></div></label>
+      <label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="su-ref" class="input" data-bind="cust.signup.ref" value="${esc(s.ref || '')}" placeholder="e.g. LIZA-P1" autocapitalize="characters">${s.ref && !provByRef(s.ref) ? '<span class="tiny" style="color:var(--warn)">Code not found. You can still continue.</span>' : s.ref ? `<span class="tiny" style="color:var(--good)">Referred by ${esc(provByRef(s.ref).name)}</span>` : ''}</label>
       <label class="check"><input type="checkbox" id="su-terms" data-bind="cust.signup.terms" ${s.terms ? 'checked' : ''}>I agree to the Terms and Privacy Policy (Data Privacy Act of 2012).</label>`;
     cta = `<button class="btn primary block" data-act="suSend" ${!(s.name.trim() && emailOk && phoneOk && s.terms) ? 'disabled' : ''}>Send verification codes</button>`;
   } else if (s.step === 2) {
@@ -1106,8 +1169,8 @@ function provJobs() {
       <div class="row between"><span class="eyebrow" style="color:inherit;opacity:.7">Household goal · ${new Date(n).toLocaleString('en-US', { month: 'long' })}</span><button class="btn xs" data-act="provTab" data-arg="account" style="background:transparent;color:inherit;border-color:rgba(255,255,255,.35)">Edit</button></div>
       <div class="row" style="align-items:baseline;gap:8px"><span class="num" style="font-size:30px;font-weight:600">${peso(goalBase)}</span><span class="small" style="opacity:.7">of ${peso(me.goal)}</span></div>
       <div class="progress" style="background:rgba(255,255,255,.18)"><span style="width:${Math.min(100, goalBase / me.goal * 100)}%;background:var(--good-dot)"></span></div>
-      <span class="small" style="opacity:.75">${staff ? 'Job value you delivered for ' + esc(biz(me.biz).name) : 'Take-home after referral fee and tax withheld'} · ${today.length} job${today.length === 1 ? '' : 's'} today</span></div>
-    <button class="card" data-act="provTab" data-arg="status" style="text-align:left"><div class="row between"><b>Stand-by this week</b><span class="num small">${wk.toFixed(1)} / ${S.settings.weeklyTarget} h</span></div><div class="progress good"><span style="width:${Math.min(100, wk / S.settings.weeklyTarget * 100)}%"></span></div><span class="small muted">${daysMet(me)} of ${S.settings.minDays} days with ${S.settings.dayTarget} h+ · ${me.points} penalty point${me.points === 1 ? '' : 's'} · referral fee ${tierRate(me)}%</span></button>
+      <span class="small" style="opacity:.75">${staff ? 'Job value you delivered for ' + esc(biz(me.biz).name) : 'Take-home after platform fee and tax withheld'} · ${today.length} job${today.length === 1 ? '' : 's'} today</span></div>
+    <button class="card" data-act="provTab" data-arg="status" style="text-align:left"><div class="row between"><b>Stand-by this week</b><span class="num small">${wk.toFixed(1)} / ${S.settings.weeklyTarget} h</span></div><div class="progress good"><span style="width:${Math.min(100, wk / S.settings.weeklyTarget * 100)}%"></span></div><span class="small muted">${me.credits} reward credits · platform fee ${tierRate(me)}%</span></button>
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Recent jobs</h3><div class="list">${myLedger(me).slice(0, 4).map(b => `<div class="li"><div class="col grow"><b class="small">${esc(b.services[0].name)}</b><span class="tiny muted">${fmtD(b.endedAt)} · ${esc(b.customer)} · ${b.review ? starsH(b.review.stars) : ''}</span></div><b class="num small">${peso(staff ? b.gross : b.ledger.net, 2)}</b></div>`).join('') || '<div class="empty">No jobs yet.</div>'}</div></div>
   </div>`;
 }
@@ -1124,10 +1187,10 @@ function provRequest() {
       <div class="li"><span class="muted small" style="width:90px">Service</span><b class="grow">${esc(b.services.map(s => s.name + ' · ' + s.mins + ' min').join(', '))}</b></div>
       <div class="li"><span class="muted small" style="width:90px">Where</span><span class="grow small">${esc(b.address)} · <b class="num">${fmtKm(haversine(me, b))}</b> from your base</span></div>
       <div class="li"><span class="muted small" style="width:90px">Customer</span><span class="grow small">Email &amp; phone verified · ${b.bizId ? 'via ' + esc(biz(b.bizId).name) : 'direct'}</span></div>
-      <div class="li"><span class="muted small" style="width:90px">${b.bizId ? 'Job value' : 'You receive'}</span><b class="grow num">${b.bizId ? peso(b.gross) : peso(net) + ' <span class="small muted" style="font-family:var(--font)">after ' + tierRate(me) + '% referral fee</span>'}</b></div>
+      <div class="li"><span class="muted small" style="width:90px">${b.bizId ? 'Job value' : 'You receive'}</span><b class="grow num">${b.bizId ? peso(b.gross) : peso(net) + ' <span class="small muted" style="font-family:var(--font)">after ' + tierRate(me) + '% platform fee</span>'}</b></div>
     </div>
     ${b.when === 'later' ? `<div class="card tight"><b>Requested for ${fmtT(b.slotAt)}</b><span class="small muted">Accepting promises arrival at that time.</span></div>` :
-    `<div class="col" style="gap:8px"><span class="eyebrow">Accept with arrival time</span><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">${[10, 20, 30, 40, 50, 60].map(m => `<button class="chip" style="height:46px;padding:0;font-family:var(--mono);font-weight:600" data-act="setEta" data-arg="${m}" aria-pressed="${S.prov.eta === m}">${m}</button>`).join('')}</div><span class="small muted">Minutes after the customer pays. They see this time before paying. Arriving more than ${S.settings.penaltyAfter} min after it adds a penalty point.</span></div>`}
+    `<div class="col" style="gap:8px"><span class="eyebrow">Accept with arrival time</span><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">${[10, 20, 30, 40, 50, 60].map(m => `<button class="chip" style="height:46px;padding:0;font-family:var(--mono);font-weight:600" data-act="setEta" data-arg="${m}" aria-pressed="${S.prov.eta === m}">${m}</button>`).join('')}</div><span class="small muted">Minutes after the customer pays. They see this time before paying. Arriving more than ${S.settings.penaltyAfter} min after it costs 1 reward credit, and cancelling after you accept costs ${Math.abs(CR().rules.acceptCancel)}.</span></div>`}
     <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Your answer goes to the customer instantly. There is no chat between you and the customer.</p></div>
   </div>`;
   const f = `<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:10px"><button class="btn danger" data-act="declineReq" data-arg="${b.id}">Not available</button><button class="btn primary" data-act="acceptReq" data-arg="${b.id}">Accept${b.when === 'later' ? '' : ' · ' + S.prov.eta + ' min'}</button></div>`;
@@ -1149,6 +1212,7 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack')}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
+    ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
     ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Your check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Your check-in photo" style="width:100%;border-radius:10px;max-height:220px;object-fit:contain;background:#0E1520"></div>` : ''}
     <div class="list"><div class="li"><span class="muted small" style="width:80px">Service</span><b class="grow small">${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</b></div>
@@ -1156,10 +1220,10 @@ function provJob() {
       <div class="li"><span class="muted small" style="width:80px">Promise</span><span class="grow small">${b.promisedAt ? 'Arrive by ' + fmtT(b.promisedAt) : (b.when === 'later' ? fmtT(b.slotAt) : b.eta + ' min after payment')}</span></div></div>
     ${led ? `<div class="card tight"><span class="eyebrow">Payout for this job</span>
       <div class="row between small"><span>Customer paid</span><span class="num">${peso(b.gross, 2)}</span></div>
-      <div class="row between small"><span>Referral fee (${led.rate}%)</span><span class="num">−${peso(led.fee, 2)}</span></div>
+      <div class="row between small"><span>Platform fee (${led.rate}%)</span><span class="num">−${peso(led.fee, 2)}</span></div>
       <div class="row between small"><span>Tax withheld (RR 16-2023)</span><span class="num">${led.wht ? '−' + peso(led.wht, 2) : '₱0.00'}</span></div>
       <div class="divider"></div><div class="row between"><b>${led.payee === 'business' ? 'Paid to ' + esc(led.payeeName) : 'You receive'}</b><b class="num">${peso(led.net, 2)}</b></div></div>` : ''}
-    <p class="tiny muted">Every time stamp on this job is saved to your record and used to set your referral fee rate.</p>
+    <p class="tiny muted">Every time stamp on this job is saved to your record and used to set your platform fee rate.</p>
   </div>`;
   return [h, f];
 }
@@ -1183,8 +1247,8 @@ function provStatus() {
       <div class="row between"><b>Stand-by this week</b><span class="num small">${weekTotal(me).toFixed(1)} / ${S.settings.weeklyTarget} h · ${daysMet(me)}/${S.settings.minDays} days</span></div>
       <div class="wbars">${w.map((x, i) => `<div class="b ${x >= tgt ? 'met' : x > 0 ? 'part' : ''} ${i === t ? 'today' : ''}" style="height:${Math.max(3, x / max * 100)}%" title="${x.toFixed(1)} h"></div>`).join('')}<div class="line" style="bottom:${tgt / max * 100}%"></div></div>
       <div class="wlabels">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}</div>
-      <span class="small muted">Dashed line = ${tgt} h. Reach ${tgt} h of green on ${S.settings.minDays} days (${S.settings.weeklyTarget} h) each week to avoid a penalty point.</span>
-      <span class="small" style="color:var(--accent);font-weight:600">Penalties & referral fee ${ic('chev', 14)}</span></button>
+      <span class="small muted">Dashed line = ${tgt} h. Reach ${S.settings.weeklyTarget} h of green this week for +1 reward credit (under: −1).</span>
+      <span class="small" style="color:var(--accent);font-weight:600">Reward credits & platform fee ${ic('chev', 14)}</span></button>
   </div>`;
 }
 function records(p) {
@@ -1195,23 +1259,41 @@ function records(p) {
   return { jobs: done.length, onTime: done.length ? onTime / done.length * 100 : 100, hrs, late };
 }
 function provPerf() {
-  const me = prov(S.prov.id), r = records(me), ti = tierIdx(me);
-  const pens = S.bookings.filter(b => b.pid === me.id && b.late && b.late.penalty);
-  return `${bar('Penalties & referral fee', 'provStatusBack')}<div class="scroll" data-scroll="p-perf">
+  const me = prov(S.prov.id), r = records(me), ti = tierIdx(me), pr = projected(me), C = CR(), R0 = C.rules;
+  const nextRate = CR().bands[bandIdx(pr.after)].rate;
+  const rule = (icn, txt, pts) => `<div class="li"><span style="color:${pts > 0 ? 'var(--good)' : 'var(--bad)'}">${ic(icn, 18)}</span><span class="small grow">${txt}</span><b class="num" style="color:${pts > 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pts)}</b></div>`;
+  const evs = (me.creditLog || []).slice(0, 25);
+  return `${bar('Reward credits & platform fee', 'provStatusBack')}<div class="scroll" data-scroll="p-perf">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent"><span class="eyebrow" style="color:inherit;opacity:.7">Penalty points</span><span class="num" style="font-size:30px;font-weight:600">${me.points}</span><span class="tiny" style="opacity:.7">this period</span></div>
-      <div class="card" style="background:var(--good-soft);border-color:transparent;color:var(--good)"><span class="eyebrow" style="color:inherit">Referral fee</span><span class="num" style="font-size:30px;font-weight:600">${tierRate(me)}%</span><span class="tiny">${S.settings.tiers[ti].label}${me.tierOverride != null ? ' · set by Balik' : ''}</span></div></div>
-    <div class="card"><span class="eyebrow">You get a penalty point for</span>
-      <div class="row" style="align-items:flex-start">${ic('clock', 18)}<p class="small">Under <b>${S.settings.weeklyTarget} h of green</b> in a week (${S.settings.dayTarget} h a day on ${S.settings.minDays} days)</p></div>
-      <div class="row" style="align-items:flex-start">${ic('alert', 18)}<p class="small">Arriving <b>more than ${S.settings.penaltyAfter} min after</b> the arrival time you promised</p></div></div>
-    <div class="list">${S.settings.tiers.map((t, i) => `<div class="li" style="${i === ti ? 'background:var(--accent-soft)' : ''}"><b class="grow">${t.label}</b><span class="small muted" style="width:80px">${t.points} pts</span><b class="num">${t.rate}%</b></div>`).join('')}</div>
+      <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent"><span class="eyebrow" style="color:inherit;opacity:.7">Reward credits</span><span class="num" style="font-size:32px;font-weight:600">${pr.cur}<span style="font-size:15px;opacity:.6"> / ${C.max}</span></span><span class="tiny" style="opacity:.75">${CR().bands[bandIdx(pr.cur)].label}</span></div>
+      <div class="card" style="background:var(--good-soft);border-color:transparent;color:var(--good)"><span class="eyebrow" style="color:inherit">Platform fee now</span><span class="num" style="font-size:32px;font-weight:600">${tierRate(me)}%</span><span class="tiny">${me.tierOverride != null ? 'Set by Balik' : 'Updates every Sunday'}</span></div></div>
+    <div class="card" style="gap:10px;border-color:var(--accent)"><div class="row between"><span class="eyebrow">This week so far · ${weekLabel(weekKeyOf(now()))}</span><b class="num" style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</b></div>
+      <div class="list">${pr.items.map(e => `<div class="li"><span class="small grow">${esc(e.text)}${e.kind === 'hours' || e.kind === 'under' || e.kind === 'daily' ? ' <span class="tiny muted">(so far)</span>' : ''}</span><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(e.pts)}</b></div>`).join('')}</div>
+      <span class="small">If the week ended now: <b>${pr.cur} → ${pr.after} credits</b>, platform fee <b>${nextRate}%</b> from Monday.</span></div>
+    <div class="card" style="gap:10px"><span class="eyebrow">Share Balik and earn ${sgn(R0.share)} a week</span>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+        <button class="btn secondary sm" data-act="shareTo" data-arg="facebook">Facebook</button><button class="btn secondary sm" data-act="shareTo" data-arg="instagram">Instagram</button><button class="btn secondary sm" data-act="shareTo" data-arg="tiktok">TikTok</button></div>
+      <div class="row between" style="gap:8px"><div class="col" style="gap:2px;min-width:0"><span class="tiny muted">Your referral code</span><b class="num">${refCode(me)}</b></div><button class="btn ghost xs" data-act="copyRef">Copy referral link</button></div>
+      <span class="tiny muted">Each customer or provider who joins with your code adds ${sgn(R0.referral)}.</span></div>
+    <div class="card" style="gap:6px"><span class="eyebrow">How credits work · measured Monday to Sunday</span>
+      <div class="list">
+        ${rule('clock', `${S.settings.weeklyTarget}+ hours on green in the week`, R0.hours)}
+        ${rule('check', `${C.dailyJobs}+ services a day${C.dailyDays >= 7 ? ', every day' : ` on ${C.dailyDays}+ days`}`, R0.daily)}
+        ${rule('share', 'Share Balik on Facebook, Instagram or TikTok (once a week)', R0.share)}
+        ${rule('user', 'Each customer or provider who joins with your code', R0.referral)}
+        ${rule('alert', `Late arrival (more than ${S.settings.penaltyAfter} min after your promise)`, R0.late)}
+        ${rule('clock', `Under ${S.settings.weeklyTarget} hours on green in the week`, R0.under)}
+        ${rule('x', 'Accepting a request, then cancelling', R0.acceptCancel)}
+        ${rule('x', 'Cancelling after the customer has paid', R0.paidCancel)}
+      </div><span class="tiny muted">New providers start with ${C.start} credits. Credits update every Sunday and stay between ${C.min} and ${C.max}.</span></div>
+    <div class="list">${CR().bands.map((t, i) => `<div class="li" style="${i === ti ? 'background:var(--accent-soft)' : ''}"><b class="grow">${t.label}</b><span class="small muted" style="width:110px">${t.min}${t.max >= C.max ? '+' : '–' + t.max} credits</span><b class="num">${t.rate}%</b></div>`).join('')}</div>
     <div class="card"><span class="eyebrow">Your job record</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center">
         <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.jobs}</span><span class="tiny muted">jobs</span></div>
         <div class="col"><span class="num" style="font-size:20px;font-weight:600">${pct(r.onTime)}</span><span class="tiny muted">on-time arrival</span></div>
-        <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.hrs.toFixed(1)}</span><span class="tiny muted">service hours</span></div></div>
-      <p class="tiny muted">Balik reviews these records with your points when setting your referral fee.</p></div>
-    <div class="col" style="gap:8px"><h3 style="font-size:15px">History</h3><div class="list">${pens.map(b => `<div class="li"><div class="col grow"><b class="small">Late arrival · ${b.id}</b><span class="tiny muted">${fmtD(b.promisedAt)} · promised ${fmtT(b.promisedAt)}, arrived ${b.arrivedAt ? fmtT(b.arrivedAt) : '—'}</span></div><span class="pill bad">+1</span></div>`).join('') || '<div class="empty">No penalties. Keep it up.</div>'}</div></div>
+        <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.hrs.toFixed(1)}</span><span class="tiny muted">service hours</span></div></div></div>
+    ${(me.creditWeeks || []).length ? `<div class="col" style="gap:8px"><h3 style="font-size:15px">Sunday updates</h3><div class="list">${me.creditWeeks.slice(0, 8).map(w => `<div class="li"><div class="col grow"><b class="small">${weekLabel(w.week)}</b><span class="tiny muted">${w.before} → ${w.after} credits · fee ${w.rateBefore}% → ${w.rate}%</span></div><span class="pill ${w.sum >= 0 ? 'good' : 'bad'}">${sgn(w.sum)}</span></div>`).join('')}</div></div>` : ''}
+    <div class="col" style="gap:8px"><h3 style="font-size:15px">Credit history</h3><div class="list">${evs.map(e => `<div class="li"><div class="col grow"><b class="small">${esc(e.text)}</b><span class="tiny muted">${fmtD(e.at)} · ${e.applied ? 'applied' : 'counts on Sunday'}</span></div><span class="pill ${e.pts > 0 ? 'good' : 'bad'}">${sgn(e.pts)}</span></div>`).join('') || '<div class="empty">No credit changes yet.</div>'}</div></div>
   </div>`;
 }
 function provServices() {
@@ -1239,7 +1321,7 @@ function provEarnings() {
     <div class="card" style="gap:4px"><span class="eyebrow">${new Date(n).toLocaleString('en-US', { month: 'long' })} · ${staff ? 'job value delivered' : 'take-home'}</span><span class="num" style="font-size:34px;font-weight:600;letter-spacing:-.03em">${peso(staff ? g : net, 2)}</span><span class="small muted">${month.length} completed jobs</span></div>
     <div class="list">
       <div class="li"><span class="grow">Customer payments</span><b class="num">${peso(g, 2)}</b></div>
-      <div class="li"><span class="grow">Referral fee <span class="muted small">(${tierRate(me)}% now)</span></span><b class="num">−${peso(fee, 2)}</b></div>
+      <div class="li"><span class="grow">Platform fee <span class="muted small">(${tierRate(me)}% now)</span></span><b class="num">−${peso(fee, 2)}</b></div>
       <div class="li"><span class="grow">Tax withheld <span class="muted small">(1% of ½ gross)</span></span><b class="num">−${peso(wht, 2)}</b></div>
       <div class="li"><b class="grow">${staff ? 'Paid to ' + esc(payee.name) : 'Paid to you'}</b><b class="num">${peso(net, 2)}</b></div></div>
     <div class="card"><div class="row between"><b>Withholding tax status</b>${ytd > thr ? '<span class="pill warn">Withholding applies</span>' : '<span class="pill good">Below threshold</span>'}</div>
@@ -1261,7 +1343,7 @@ function provAccount() {
       <div class="li">${ic('receipt', 20)}<div class="col grow"><b>TIN</b><span class="small muted num">${esc(me.tin)}</span></div><span class="pill good">Done</span></div>
       <div class="li">${ic('bag', 20)}<div class="col grow"><b>Work history</b><span class="small muted">${esc(me.past)}</span></div></div>
       <div class="li">${ic('doc', 20)}<div class="col grow"><b>Certificates</b><span class="small muted">${me.cert ? esc(me.cert) : 'Optional · none uploaded'}</span></div>${me.cert ? '<span class="pill accent">Certified</span>' : '<span class="pill outline">Optional</span>'}</div>
-      <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Penalties & referral fee</b><span class="small muted">${me.points} points · ${tierRate(me)}%</span></div>${ic('chev', 16)}</button>
+      <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Reward credits & platform fee</b><span class="small muted">${me.credits} credits · ${tierRate(me)}% fee</span></div>${ic('chev', 16)}</button>
     </div>
     <div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${me.id}">Mark all read</button></div>${alertList('provider:' + me.id)}</div>
     <button class="btn secondary block" data-act="startApply">${ic('user', 18)} Preview the new-provider application</button>
@@ -1293,13 +1375,14 @@ function provApply() {
   } else if (a.step === 3) {
     body = `<h2 style="font-size:22px">Where you start from</h2><p class="small muted">Step 3 of 4 · Customers see their distance from your base address.</p>
       <label class="field">Base area<input id="ap-area" class="input" data-bind="prov.apply.area" value="${esc(a.area)}" placeholder="e.g. Cubao, Quezon City"></label>
+      <label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="ap-ref" class="input" data-bind="prov.apply.ref" value="${esc(a.ref || '')}" placeholder="Code from the pro who invited you"></label>
       <label class="field">Join as<select id="ap-type" class="select" data-bind="prov.apply.type"><option value="individual" ${a.type === 'individual' ? 'selected' : ''}>Individual</option><option value="staff" ${a.type === 'staff' ? 'selected' : ''}>Staff of a business (invite code)</option></select></label>
       <label class="field">Certificate (optional)<input id="ap-cert" class="input" data-bind="prov.apply.cert" value="${esc(a.cert)}" placeholder="e.g. TESDA NC II"></label>`;
     cta = `<button class="btn primary block" data-act="apNext" ${!a.area ? 'disabled' : ''}>Continue</button>`;
   } else {
     body = `<h2 style="font-size:22px">Payouts & taxes</h2><p class="small muted">Step 4 of 4</p>
       <label class="field">Payout account<select id="ap-pay" class="select" data-bind="prov.apply.payout"><option>GCash</option><option>Maya</option><option>Bank account</option></select></label>
-      <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Balik keeps only a referral fee. If your yearly remittances pass ${peso(S.settings.whtThreshold)}, Balik withholds 1% of half the gross (BIR RR 16-2023) and gives you Form 2307. You file your own income tax.</p></div>
+      <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Balik keeps only a platform fee. If your yearly remittances pass ${peso(S.settings.whtThreshold)}, Balik withholds 1% of half the gross (BIR RR 16-2023) and gives you Form 2307. You file your own income tax.</p></div>
       <label class="check"><input type="checkbox" id="ap-ok" data-bind="prov.apply.ok" ${a.ok ? 'checked' : ''}>I confirm my details are true and agree to the provider terms.</label>`;
     cta = `<button class="btn primary block" data-act="apSubmit" ${!a.ok ? 'disabled' : ''}>Submit application</button>`;
   }
@@ -1314,7 +1397,7 @@ function provOverlays() {
   return `<div class="overlay" style="align-items:stretch"><div class="sheet" style="border-radius:0;max-height:100%;padding:0;gap:0">
     <div style="background:var(--bad);color:#fff;padding:22px 18px;display:flex;flex-direction:column;gap:6px"><span class="eyebrow" style="color:inherit;opacity:.85">Late arrival alert</span><h2 style="font-size:22px">You're past your arrival time</h2><span class="small">Promised ${fmtT(late.promisedAt)} · ${over} min over · not checked in</span></div>
     <div style="padding:16px;display:flex;flex-direction:column;gap:12px">
-      <div class="card tight" style="background:var(--bad-soft);border-color:transparent"><p class="small">The operations team got an SMS and may call you. Arriving more than ${S.settings.penaltyAfter} min late adds a penalty point${late.late.penalty ? ' — <b>a point has been added</b>' : ''}.</p></div>
+      <div class="card tight" style="background:var(--bad-soft);border-color:transparent"><p class="small">The operations team got an SMS and may call you. Arriving more than ${S.settings.penaltyAfter} min late costs 1 reward credit${late.late.penalty ? ' — <b>1 credit has been deducted</b>' : ''}.</p></div>
       <div class="list"><div class="li"><b class="grow small">${esc(late.services[0].name)} · ${late.id}</b></div><div class="li"><span class="small">${esc(late.address)}</span></div></div>
       <span class="eyebrow">Tell the customer your new time</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">${[5, 10, 20].map(m => `<button class="btn secondary" data-act="lateUpdate" data-arg="${late.id}:${m}">+${m} min</button>`).join('')}</div>
@@ -1353,13 +1436,13 @@ function bizRequests(b, q) {
 function bizStaff(b) {
   const inv = S.biz.invite, cf = S.biz.confirm;
   const phoneOk = inv.phone.replace(/\D/g, '').length >= 10;
-  const staffRows = b.staff.map(id => prov(id)).filter(Boolean).map(p => { const r = records(p); const i = S.providers.indexOf(p); return `<tr style="${p.active === false ? 'opacity:.5' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${esc(p.phone)} · ${esc(p.area)}</span></div></div></td><td>${p.active === false ? '<span class="pill bad">Suspended by Balik</span>' : statusLine(p)}</td><td class="num">${weekTotal(p).toFixed(1)} / ${S.settings.weeklyTarget}</td><td class="num">${p.points ? `<span class="pill bad">${p.points}</span>` : '0'}</td><td class="num">${p.rating} · ${r.jobs} jobs</td>
+  const staffRows = b.staff.map(id => prov(id)).filter(Boolean).map(p => { const r = records(p); const i = S.providers.indexOf(p); return `<tr style="${p.active === false ? 'opacity:.5' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${esc(p.phone)} · ${esc(p.area)}</span></div></div></td><td>${p.active === false ? '<span class="pill bad">Suspended by Balik</span>' : statusLine(p)}</td><td class="num">${weekTotal(p).toFixed(1)} / ${S.settings.weeklyTarget}</td><td class="num">${p.credits} · ${tierRate(p)}%</td><td class="num">${p.rating} · ${r.jobs} jobs</td>
       <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="bizEditStaff" data-arg="${p.id}">Edit</button>${cf === 'rm:' + p.id ? `<button class="btn danger xs" data-act="bizRemoveStaff" data-arg="${p.id}">Confirm remove</button><button class="btn ghost xs" data-act="bizConfirm" data-arg="">Keep</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="bizConfirm" data-arg="rm:${p.id}">Remove</button>`}</div></td></tr>`; }).join('');
   const invRows = b.invited.map((v, k) => `<tr><td><div class="row">${avatar(v.name, 40, 34)}<div class="col"><b>${esc(v.name)}</b><span class="tiny muted num">${esc(v.phone)}</span></div></div></td><td colspan="4"><span class="pill ${v.stage === 'review' ? 'accent' : 'warn'}">${v.stage === 'review' ? 'Signed up · awaiting Balik approval' : 'Invite sent · waiting for ID & TIN'}</span>${v.sentAt ? ` <span class="tiny muted">sent ${fmtD(v.sentAt)} ${fmtT(v.sentAt)}</span>` : ''}</td>
       <td><div class="row" style="gap:6px;flex-wrap:wrap">${v.stage === 'review' ? '' : `<button class="btn secondary xs" data-act="bizResend" data-arg="${k}">Resend SMS</button><button class="btn ghost xs" data-act="bizSimSignup" data-arg="${k}" title="Demo: pretend the therapist finished sign-up">Demo: staff signs up</button>`}<button class="btn ghost xs" style="color:var(--bad)" data-act="bizCancelInvite" data-arg="${k}">Cancel</button></div></td></tr>`).join('');
   const ed = S.biz.editStaff ? prov(S.biz.editStaff) : null, ei = ed ? S.providers.indexOf(ed) : -1;
-  return `<div class="page-h"><div><h1>Staff</h1><p>Each therapist verifies their own ID and TIN, then Balik approves them. They appear to customers as "${esc(b.name)} · staff", and their stand-by hours and penalties count toward the spa's record.</p></div></div>
-    <div class="panel"><div class="panel-h"><h3>Team · ${b.staff.length} active, ${b.invited.length} invited</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Now</th><th class="num">Green this week</th><th class="num">Points</th><th class="num">Rating · jobs</th><th>Actions</th></tr></thead><tbody>
+  return `<div class="page-h"><div><h1>Staff</h1><p>Each therapist verifies their own ID and TIN, then Balik approves them. They appear to customers as "${esc(b.name)} · staff", and their stand-by hours and reward credits count toward the spa's record.</p></div></div>
+    <div class="panel"><div class="panel-h"><h3>Team · ${b.staff.length} active, ${b.invited.length} invited</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Now</th><th class="num">Green this week</th><th class="num">Credits · fee</th><th class="num">Rating · jobs</th><th>Actions</th></tr></thead><tbody>
     ${staffRows}${invRows}${!staffRows && !invRows ? '<tr><td colspan="6"><div class="empty">No staff yet. Invite your first therapist below.</div></td></tr>' : ''}
     </tbody></table></div></div>
     ${ed ? `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><h3>Edit ${esc(ed.name)}</h3><button class="btn secondary xs" data-act="bizEditStaff" data-arg="">Done</button></div><div class="panel-b">
@@ -1393,10 +1476,10 @@ function bizPeriods(b, count = 4) {
 function bizSettle(b) {
   const per = bizPeriods(b), cur = per[0];
   const cyc = c => `<button data-act="setCycle" data-arg="${c}" aria-pressed="${b.cycle === c}">${{ weekly: 'Weekly', biweekly: 'Twice a month', monthly: 'Monthly' }[c]}</button>`;
-  return `<div class="page-h"><div><h1>Settlement</h1><p>Staff job payouts are paid to the business account, not to staff, on the cycle you choose. Balik deducts only its referral fee and any tax withheld.</p></div><div class="seg">${cyc('weekly')}${cyc('biweekly')}${cyc('monthly')}</div></div>
+  return `<div class="page-h"><div><h1>Settlement</h1><p>Staff job payouts are paid to the business account, not to staff, on the cycle you choose. Balik deducts only its platform fee and any tax withheld.</p></div><div class="seg">${cyc('weekly')}${cyc('biweekly')}${cyc('monthly')}</div></div>
     <div class="kpis"><div class="kpi accent"><span class="l">Next payout to ${esc(b.bank)} · ${fmtD(cur.end)}</span><span class="v">${peso(cur.net, 2)}</span></div>
       <div class="kpi"><span class="l">Customer payments</span><span class="v">${peso(cur.gross, 2)}</span></div>
-      <div class="kpi"><span class="l">Referral fees</span><span class="v">${peso(cur.fee, 2)}</span></div>
+      <div class="kpi"><span class="l">Platform fees</span><span class="v">${peso(cur.fee, 2)}</span></div>
       <div class="kpi"><span class="l">Tax withheld (RR 16-2023)</span><span class="v">${peso(cur.wht, 2)}</span></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>This period by therapist · ${fmtD(cur.start)} – ${fmtD(cur.end - DAY)}</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Tax withheld</th><th class="num">Net</th></tr></thead><tbody>
       ${b.staff.map(id => { const p = prov(id), r = cur.rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${r.length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
@@ -1469,7 +1552,7 @@ function admJobs() {
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
       <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
-      ${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Referral fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div><span class="tiny muted">${sel.ledger.paidAt ? 'Paid out ' + fmtD(sel.ledger.paidAt) : 'Not yet paid out'}</span>` : ''}
+      ${sel.ledger ? `<div class="divider"></div><div class="row between small"><span>Platform fee ${sel.ledger.rate}%</span><span class="num">${peso(sel.ledger.fee, 2)}</span></div><div class="row between small"><span>Tax withheld</span><span class="num">${peso(sel.ledger.wht, 2)}</span></div><div class="row between small"><b>Net to ${esc(sel.ledger.payeeName)}</b><b class="num">${peso(sel.ledger.net, 2)}</b></div><span class="tiny muted">${sel.ledger.paidAt ? 'Paid out ' + fmtD(sel.ledger.paidAt) : 'Not yet paid out'}</span>` : ''}
       <div class="divider"></div>
       <label class="field">Message to customer (app alert)<textarea id="adm-msg" class="textarea" style="min-height:64px" data-bind="admin.msg" placeholder="e.g. Your provider is 10 minutes away.">${esc(S.admin.msg || '')}</textarea></label>
       <button class="btn secondary sm" data-act="admMsg" data-arg="${sel.id}" ${(S.admin.msg || '').trim() ? '' : 'disabled'}>${ic('send', 14)} Send to customer</button>
@@ -1483,7 +1566,7 @@ function admProviders() {
   const q = (S.admin.provQ || '').trim().toLowerCase();
   const list = S.providers.map((p, i) => ({ p, i })).filter(({ p }) => !q || [p.name, catName(p.cat), p.area, p.biz ? biz(p.biz).name : 'individual'].join(' ').toLowerCase().includes(q));
   const ed = S.admin.provEdit ? prov(S.admin.provEdit) : null, ei = ed ? S.providers.indexOf(ed) : -1;
-  return `<div class="page-h"><div><h1>Providers</h1><p>Applications, stand-by hours, penalties and job records. Referral fee follows penalty points unless you set a tier after reviewing the record.</p></div></div>
+  return `<div class="page-h"><div><h1>Providers</h1><p>Applications, stand-by hours, reward credits and job records. The platform fee follows each provider's reward credits, updated every Sunday, unless you set a fee band after reviewing the record.</p></div></div>
     <div class="panel"><div class="panel-h"><h3>Applications</h3><span class="small muted">Certificates optional · photo, experience and identity required</span></div>
     ${apps.length ? `<div class="tablewrap"><table><thead><tr><th>Photo</th><th>Applicant</th><th>Experience</th><th>Checks</th><th>Note</th><th></th></tr></thead><tbody>${apps.map(a => `<tr><td>${(a.photo || PHOTOS[a.photoKey]) ? `<button class="zoomav" data-act="zoom" data-arg="${a.id}" aria-label="Enlarge applicant photo" style="width:48px;height:48px"><span class="avatar ph" style="width:48px;height:48px"><img src="${a.photo || PHOTOS[a.photoKey]}" alt=""></span></button>` : '<span class="pill warn">No photo</span>'}</td><td><b>${esc(a.name)}</b><br><span class="tiny muted">${catName(a.cat)} · ${esc(a.area)}${a.staffOf ? ' · staff of ' + esc(biz(a.staffOf).name) : ''}</span></td><td>${a.years} yrs<br><span class="tiny muted">${esc(a.past)}</span></td><td><span class="pill ${a.idOk ? 'good' : 'warn'}">ID</span> <span class="pill ${a.selfie ? 'good' : 'warn'}">Selfie</span> <span class="pill ${a.tin ? 'good' : 'warn'}">TIN</span> ${a.cert ? '<span class="pill accent">Cert</span>' : ''}</td><td class="small" style="max-width:240px">${esc(a.why || '—')}</td><td>${a.status === 'pending' ? `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn primary xs" data-act="approve" data-arg="${a.id}">Approve</button><button class="btn secondary xs" data-act="askInfo" data-arg="${a.id}">Ask for info</button><button class="btn ghost xs" style="color:var(--bad)" data-act="reject" data-arg="${a.id}">Decline</button></div>${a.asked ? '<span class="tiny muted">Info requested by SMS</span>' : ''}` : `<span class="pill ${a.status === 'approved' ? 'good' : 'bad'}">${a.status}</span>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No applications.</div>'}</div>
     ${ed ? `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><div class="row">${avatar(ed.name, ed.hue, 40)}<h3>Edit ${esc(ed.name)}</h3></div><button class="btn secondary xs" data-act="admEditProv" data-arg="">Done</button></div><div class="panel-b">
@@ -1494,17 +1577,19 @@ function admProviders() {
         <label class="field">Base area<input id="ap-e-area" class="input" data-bind="providers.${ei}.area" value="${esc(ed.area)}"></label>
         <label class="field">TIN<input id="ap-e-tin" class="input num" data-bind="providers.${ei}.tin" value="${esc(ed.tin)}"></label>
         <label class="field">Years of experience<input id="ap-e-years" class="input num" type="number" min="0" data-bind="providers.${ei}.years" value="${ed.years}"></label>
-        <label class="field">Penalty points<input id="ap-e-points" class="input num" type="number" min="0" data-bind="providers.${ei}.points" value="${ed.points}"></label>
+        <label class="field">Reward credits (0–20)<input id="ap-e-credits" class="input num" type="number" min="0" max="20" data-bind="providers.${ei}.credits" value="${ed.credits}"></label>
         <label class="field">Certificate (optional)<input id="ap-e-cert" class="input" data-bind="providers.${ei}.cert" value="${esc(ed.cert || '')}" placeholder="e.g. TESDA NC II"></label>
       </div>
       <label class="check"><input type="checkbox" id="ap-e-ret" data-bind="providers.${ei}.returning" ${ed.returning ? 'checked' : ''}>Show "Returning pro" badge</label>
       <span class="small muted">Changes save automatically and show in every app.</span></div></div>` : ''}
-    <div class="panel"><div class="panel-h"><h3>All providers · this week</h3><label class="row" style="min-width:220px;height:36px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface)">${ic('search', 15)}<input id="adm-pq" class="grow" type="search" data-bind="admin.provQ" value="${esc(S.admin.provQ || '')}" placeholder="Search name, category, area" style="border:0;background:transparent;outline:none;height:100%;color:var(--fg)"></label></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Now</th><th class="num">Green h</th><th class="num">Late ${S.settings.penaltyAfter}+</th><th class="num">Jobs · on-time</th><th class="num">Points</th><th>Referral fee</th><th>Actions</th></tr></thead><tbody>
-    ${list.map(({ p, i }) => { const r = records(p); const below = weekTotal(p) < S.settings.weeklyTarget; const off = p.active === false; return `<tr style="${off ? 'opacity:.55' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${p.biz ? esc(biz(p.biz).name) : 'Individual'} · ${catName(p.cat)}${p.returning ? ' · returning' : ''}</span></div></div></td><td>${off ? '<span class="pill bad">Suspended</span>' : tlMini(p.status)}</td><td class="num" style="${below ? 'color:var(--warn)' : ''}">${weekTotal(p).toFixed(1)}</td><td class="num">${r.late}</td><td class="num">${r.jobs} · ${pct(r.onTime)}</td><td class="num">${p.points ? `<span class="pill bad">${p.points}</span>` : 0}</td>
-      <td><select id="tier-${p.id}" class="select" style="height:32px;font-size:13px;width:140px" data-bind="providers.${i}.tierOverride" data-type="tier"><option value="" ${p.tierOverride == null ? 'selected' : ''}>Auto · ${S.settings.tiers[p.points <= 0 ? 0 : p.points <= 2 ? 1 : 2].rate}%</option>${S.settings.tiers.map((t, k) => `<option value="${k}" ${p.tierOverride === k ? 'selected' : ''}>${t.label} · ${t.rate}%</option>`).join('')}</select></td>
-      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admEditProv" data-arg="${p.id}">Edit</button>${p.points ? `<button class="btn ghost xs" data-act="admResetPts" data-arg="${p.id}">Reset points</button>` : ''}${off ? `<button class="btn primary xs" data-act="admSuspend" data-arg="${p.id}">Reactivate</button>` : (S.admin.confirm === 'susp:' + p.id ? `<button class="btn danger xs" data-act="admSuspend" data-arg="${p.id}">Confirm suspend</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="susp:${p.id}">Suspend</button>`)}</div></td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No providers match.</div></td></tr>'}
+    <div class="panel"><div class="panel-h"><h3>All providers · this week</h3><label class="row" style="min-width:220px;height:36px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface)">${ic('search', 15)}<input id="adm-pq" class="grow" type="search" data-bind="admin.provQ" value="${esc(S.admin.provQ || '')}" placeholder="Search name, category, area" style="border:0;background:transparent;outline:none;height:100%;color:var(--fg)"></label></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Now</th><th class="num">Green h</th><th class="num">Late ${S.settings.penaltyAfter}+</th><th class="num">Jobs · on-time</th><th class="num">Credits</th><th class="num">This week</th><th>Platform fee</th><th>Actions</th></tr></thead><tbody>
+    ${list.map(({ p, i }) => { const r = records(p); const below = weekTotal(p) < S.settings.weeklyTarget; const off = p.active === false; return `<tr style="${off ? 'opacity:.55' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${p.biz ? esc(biz(p.biz).name) : 'Individual'} · ${catName(p.cat)}${p.returning ? ' · returning' : ''}</span></div></div></td><td>${off ? '<span class="pill bad">Suspended</span>' : tlMini(p.status)}</td><td class="num" style="${below ? 'color:var(--warn)' : ''}">${weekTotal(p).toFixed(1)}</td><td class="num">${r.late}</td><td class="num">${r.jobs} · ${pct(r.onTime)}</td><td class="num"><div class="row" style="gap:4px;justify-content:flex-end"><button class="btn ghost xs" style="width:26px;padding:0" data-act="admCredit" data-arg="${p.id}:-1" aria-label="Remove a credit">−</button><b>${p.credits}</b><button class="btn ghost xs" style="width:26px;padding:0" data-act="admCredit" data-arg="${p.id}:1" aria-label="Add a credit">+</button></div></td><td class="num">${(() => { const pr = projected(p); return `<span style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</span> <span class="tiny muted">→ ${pr.after}</span>`; })()}</td>
+      <td><select id="tier-${p.id}" class="select" style="height:32px;font-size:13px;width:140px" data-bind="providers.${i}.tierOverride" data-type="tier"><option value="" ${p.tierOverride == null ? 'selected' : ''}>Auto · ${CR().bands[bandIdx(p.credits)].rate}%</option>${CR().bands.map((t, k) => `<option value="${k}" ${p.tierOverride === k ? 'selected' : ''}>${t.label} · ${t.rate}%</option>`).join('')}</select></td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admEditProv" data-arg="${p.id}">Edit</button>${off ? `<button class="btn primary xs" data-act="admSuspend" data-arg="${p.id}">Reactivate</button>` : (S.admin.confirm === 'susp:' + p.id ? `<button class="btn danger xs" data-act="admSuspend" data-arg="${p.id}">Confirm suspend</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="susp:${p.id}">Suspend</button>`)}</div></td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No providers match.</div></td></tr>'}
     </tbody></table></div></div>
-    <div class="row"><button class="btn secondary sm" data-act="weekClose">Run weekly stand-by check now</button><span class="small muted">Adds a point to anyone under ${S.settings.weeklyTarget} h or ${S.settings.minDays} qualifying days.</span></div>`;
+    <div class="panel"><div class="panel-h"><h3>Sunday reward-credit update · ${weekLabel(weekKeyOf(now()))}</h3><span class="small muted">${CR().lastClosed === weekKeyOf(now()) ? 'Closed for this week' : 'Runs automatically at the end of Sunday'}</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th class="num">Credits now</th><th>Counted this week</th><th class="num">Change</th><th class="num">After Sunday</th><th class="num">Fee now → next</th></tr></thead><tbody>
+      ${S.providers.filter(p => p.active !== false).map(p => { const pr = projected(p); return `<tr><td><b>${esc(p.name)}</b></td><td class="num">${pr.cur}</td><td class="small" style="max-width:360px">${pr.items.map(e => `<span class="pill ${e.pts > 0 ? 'good' : 'bad'}" style="margin:2px 4px 2px 0">${sgn(e.pts)} ${esc(e.kind === 'hours' ? 'hours' : e.kind === 'under' ? 'under hours' : e.kind === 'daily' ? 'daily jobs' : e.kind === 'share' ? 'share' : e.kind === 'referral' ? 'referral' : e.kind === 'late' ? 'late' : e.kind === 'acceptCancel' ? 'accept-cancel' : e.kind === 'paidCancel' ? 'paid-cancel' : e.kind)}</span>`).join('')}</td><td class="num" style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</td><td class="num"><b>${pr.after}</b></td><td class="num">${tierRate(p)}% → ${p.tierOverride != null ? tierRate(p) : CR().bands[bandIdx(pr.after)].rate}%</td></tr>`; }).join('')}
+    </tbody></table></div><div class="panel-b"><div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn primary sm" data-act="weekCloseNow" ${CR().lastClosed === weekKeyOf(now()) ? 'disabled' : ''}>Run Sunday update now (test)</button><span class="small muted">Applies every counted item, keeps credits between ${CR().min} and ${CR().max}, and sets each provider's platform fee for next week.</span></div></div></div>`;
 }
 function customerRows() {
   const map = {};
@@ -1547,8 +1632,8 @@ function admFinance() {
   const withWht = Object.values(payees).filter(o => o.wht > 0);
   const issued = F.issued[qKey] || {};
   const rec = (done, label, form, act, arg) => `<div class="card tight" style="${done ? 'border-color:var(--good-dot)' : ''}"><div class="row between"><div class="col"><b class="small">${label}</b><span class="tiny muted">${form}</span></div>${done ? `<span class="pill good">${ic('check', 13)} ${fmtD(done.at)}</span>` : `<button class="btn primary xs" data-act="${act}" data-arg="${arg}" ${(F.ref || '').trim() ? '' : 'disabled'}>Record</button>`}</div>${done ? `<span class="tiny muted">Ref. ${esc(done.ref)}</span>` : ''}</div>`;
-  return `<div class="page-h"><div><h1>Finance & tax</h1><p>Balik earns only the referral fee. As an e-marketplace operator under BIR RR 16-2023, it withholds 1% of half the gross remittance once a payee's yearly remittances pass ${peso(S.settings.whtThreshold)}, remits it to BIR and issues Form 2307 to each payee.</p></div></div>
-    <div class="kpis"><div class="kpi"><span class="l">Customer payments · month</span><span class="v">${peso(s('gross'))}</span></div><div class="kpi accent"><span class="l">Referral fee revenue</span><span class="v">${peso(s('fee'), 2)}</span></div><div class="kpi"><span class="l">Tax withheld · ${monthKey}</span><span class="v">${peso(s('wht'), 2)}</span></div><div class="kpi"><span class="l">Waiting to be paid out</span><span class="v">${peso(unpaid.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div></div>
+  return `<div class="page-h"><div><h1>Finance & tax</h1><p>Balik earns only the platform fee. As an e-marketplace operator under BIR RR 16-2023, it withholds 1% of half the gross remittance once a payee's yearly remittances pass ${peso(S.settings.whtThreshold)}, remits it to BIR and issues Form 2307 to each payee.</p></div></div>
+    <div class="kpis"><div class="kpi"><span class="l">Customer payments · month</span><span class="v">${peso(s('gross'))}</span></div><div class="kpi accent"><span class="l">Platform fee revenue</span><span class="v">${peso(s('fee'), 2)}</span></div><div class="kpi"><span class="l">Tax withheld · ${monthKey}</span><span class="v">${peso(s('wht'), 2)}</span></div><div class="kpi"><span class="l">Waiting to be paid out</span><span class="v">${peso(unpaid.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Payout batches</h3></div><div class="panel-b">
       <div class="row between"><div class="col"><b>Individual providers · daily to GCash or bank</b><span class="small muted">${unpaidInd.length} jobs · ${peso(unpaidInd.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div><button class="btn primary sm" data-act="runPayout" data-arg="ind" ${unpaidInd.length ? '' : 'disabled'}>Run payout</button></div>
       <div class="divider"></div>
@@ -1587,7 +1672,7 @@ function admOverview() {
       <div class="kpi"><span class="l"><span class="dot green"></span>On stand-by now</span><span class="v">${green}</span></div>
       <div class="kpi"><span class="l">Jobs in progress</span><span class="v">${active}</span></div>
       <div class="kpi"><span class="l">Requests today · accepted</span><span class="v">${today.length} · ${pct(acc)}</span></div>
-      <div class="kpi"><span class="l">Referral fees · month</span><span class="v">${peso(fees)}</span></div></div>
+      <div class="kpi"><span class="l">Platform fees · month</span><span class="v">${peso(fees)}</span></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Job value per provider · ${new Date(n).toLocaleString('en-US', { month: 'long' })}</h3><span class="small muted">gross customer payments</span></div><div class="panel-b">
       ${perProv.map(({ p, v }) => `<div class="hbar"><span class="ellipsis">${esc(p.name)}${p.returning ? ' <span class="ret" style="font-size:10px">R</span>' : ''}</span><div class="track"><span style="width:${v / max * 100}%"></span></div><span class="num" style="text-align:right">${peso(v)}</span></div>`).join('')}
       <span class="tiny muted">R = returning professional</span></div></div>
@@ -1599,7 +1684,7 @@ function admLate() {
   return `<div class="page-h"><div><h1>Late arrival alerts</h1><p>When a promised arrival time passes without a check-in, an SMS goes to the on-duty admin numbers and an alert goes to the provider at the same moment.</p></div></div>
     ${lateSms[0] ? `<div class="panel" style="border-color:var(--bad)"><div class="panel-b"><div class="row" style="align-items:flex-start">${ic('phone', 20)}<div class="col grow"><span class="eyebrow" style="color:var(--bad)">Latest SMS to ${esc(S.settings.adminNumbers)} · ${fmtT(lateSms[0].at)}</span><span class="mono" style="font-size:13.5px">${esc(lateSms[0].text)}</span></div></div></div></div>` : ''}
     <div class="panel"><div class="tablewrap"><table><thead><tr><th>Job</th><th>Provider</th><th>Promised</th><th class="num">Over by</th><th>Provider alert</th><th>Provider reply</th><th>Actions</th></tr></thead><tbody>
-    ${list.map(b => { const p = prov(b.pid); const over = Math.round(((b.arrivedAt || now()) - b.promisedAt) / MIN); return `<tr style="${!b.late.resolved ? 'background:var(--bad-soft)' : ''}"><td class="mono">${b.id}</td><td>${esc(p.name)}${p.biz ? `<br><span class="tiny muted">${esc(biz(p.biz).name)}</span>` : ''}</td><td class="mono">${fmtT(b.promisedAt)}</td><td class="num"><b style="color:${over > S.settings.penaltyAfter ? 'var(--bad)' : ''}">${over} min</b>${b.late.penalty ? '<br><span class="pill bad" style="height:20px">Penalty</span>' : ''}</td><td>Delivered${b.late.seen ? ' · seen' : ''}</td><td>${b.late.replies.length ? b.late.replies.map(x => '+' + x + ' min').join(', ') : b.arrivedAt ? 'Checked in ' + fmtT(b.arrivedAt) : b.status === 'cancelled' ? 'Cancelled' : '<span style="color:var(--bad)">No reply</span>'}</td>
+    ${list.map(b => { const p = prov(b.pid); const over = Math.round(((b.arrivedAt || now()) - b.promisedAt) / MIN); return `<tr style="${!b.late.resolved ? 'background:var(--bad-soft)' : ''}"><td class="mono">${b.id}</td><td>${esc(p.name)}${p.biz ? `<br><span class="tiny muted">${esc(biz(p.biz).name)}</span>` : ''}</td><td class="mono">${fmtT(b.promisedAt)}</td><td class="num"><b style="color:${over > S.settings.penaltyAfter ? 'var(--bad)' : ''}">${over} min</b>${b.late.penalty ? '<br><span class="pill bad" style="height:20px">−1 credit</span>' : ''}</td><td>Delivered${b.late.seen ? ' · seen' : ''}</td><td>${b.late.replies.length ? b.late.replies.map(x => '+' + x + ' min').join(', ') : b.arrivedAt ? 'Checked in ' + fmtT(b.arrivedAt) : b.status === 'cancelled' ? 'Cancelled' : '<span style="color:var(--bad)">No reply</span>'}</td>
       <td>${b.late.resolved ? '<span class="pill good">Resolved</span>' : `<div class="row" style="flex-wrap:wrap;gap:6px"><button class="btn secondary xs" data-act="admCall" data-arg="${b.id}">Call provider</button><button class="btn secondary xs" data-act="admNotify" data-arg="${b.id}">Notify customer</button><button class="btn primary xs" data-act="admReassign" data-arg="${b.id}">Reassign nearest</button><button class="btn danger xs" data-act="admRefund" data-arg="${b.id}">Cancel & refund</button></div>`}</td></tr>`; }).join('') || '<tr><td colspan="7"><div class="empty">No late arrivals. Use "+10 min" in the top bar during a job to trigger one.</div></td></tr>'}
     </tbody></table></div></div>`;
 }
@@ -1607,12 +1692,20 @@ function admSettings() {
   const st = S.settings;
   const num = (id, path, v, label, unit) => `<label class="field">${label}<div class="row"><input id="${id}" class="input num" type="number" data-bind="${path}" value="${v}" style="max-width:140px">${unit ? `<span class="small muted">${unit}</span>` : ''}</div></label>`;
   return `<div class="page-h"><div><h1>Rules & settings</h1><p>Changes apply immediately across every app in this prototype.</p></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Referral fee tiers</h3><span class="pill warn">Draft rates · confirm before launch</span></div><div class="tablewrap"><table><thead><tr><th>Tier</th><th>Penalty points</th><th>Referral fee</th></tr></thead><tbody>
-      ${st.tiers.map((t, i) => `<tr><td><b>${t.label}</b></td><td>${t.points}</td><td><div class="row"><input id="tier-rate-${i}" class="input num" type="number" min="0" max="50" step="0.5" style="width:100px;height:36px" data-bind="settings.tiers.${i}.rate" value="${t.rate}"><span class="small muted">%</span></div></td></tr>`).join('')}
-    </tbody></table></div></div>
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Platform fee by reward credits</h3><span class="pill warn">Draft rates · confirm before launch</span></div><div class="tablewrap"><table><thead><tr><th>Band</th><th>Credits</th><th>Platform fee</th></tr></thead><tbody>
+      ${st.credit.bands.map((t, i) => `<tr><td><b>${t.label}</b></td><td>${t.min}${i === st.credit.bands.length - 1 ? '–' + st.credit.max : '–' + t.max}</td><td><div class="row"><input id="band-rate-${i}" class="input num" type="number" min="0" max="50" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.bands.${i}.rate" value="${t.rate}"><span class="small muted">%</span></div></td></tr>`).join('')}
+    </tbody></table></div>
+    <div class="panel-h" style="border-top:1px solid var(--line)"><h3>Reward credit rules</h3><span class="small muted">Measured Monday–Sunday · updated every Sunday</span></div><div class="panel-b"><div class="formgrid">
+      ${num('cr-start', 'settings.credit.start', st.credit.start, 'Credits at sign-up', 'credits')}${num('cr-max', 'settings.credit.max', st.credit.max, 'Maximum credits', 'credits')}
+      ${num('cr-hours', 'settings.credit.rules.hours', st.credit.rules.hours, 'Weekly green target met', 'credits')}${num('cr-under', 'settings.credit.rules.under', st.credit.rules.under, 'Weekly green target missed', 'credits')}
+      ${num('cr-daily', 'settings.credit.rules.daily', st.credit.rules.daily, 'Daily services target met', 'credits')}${num('cr-djobs', 'settings.credit.dailyJobs', st.credit.dailyJobs, 'Services a day', 'jobs')}
+      ${num('cr-ddays', 'settings.credit.dailyDays', st.credit.dailyDays, 'Days needed in the week', 'days')}${num('cr-share', 'settings.credit.rules.share', st.credit.rules.share, 'Shared on social media (weekly)', 'credits')}
+      ${num('cr-ref', 'settings.credit.rules.referral', st.credit.rules.referral, 'Each referred sign-up', 'credits')}${num('cr-late', 'settings.credit.rules.late', st.credit.rules.late, 'Late arrival', 'credits')}
+      ${num('cr-ac', 'settings.credit.rules.acceptCancel', st.credit.rules.acceptCancel, 'Accepted, then cancelled', 'credits')}${num('cr-pc', 'settings.credit.rules.paidCancel', st.credit.rules.paidCancel, 'Cancelled after payment', 'credits')}
+    </div></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>Stand-by & lateness</h3></div><div class="panel-b">
-      ${num('s-week', 'settings.weeklyTarget', st.weeklyTarget, 'Weekly green target', 'hours')}${num('s-day', 'settings.dayTarget', st.dayTarget, 'Hours that count as a full day', 'hours')}${num('s-days', 'settings.minDays', st.minDays, 'Days needed per week', 'days')}
-      ${num('s-pen', 'settings.penaltyAfter', st.penaltyAfter, 'Penalty after promised arrival', 'minutes')}${num('s-trig', 'settings.lateTrigger', st.lateTrigger, 'Send late alert after promised arrival', 'minutes')}
+      ${num('s-week', 'settings.weeklyTarget', st.weeklyTarget, 'Weekly green target', 'hours')}${num('s-day', 'settings.dayTarget', st.dayTarget, 'Hours that count as a full day', 'hours')}
+      ${num('s-pen', 'settings.penaltyAfter', st.penaltyAfter, 'Counts as late after promised arrival', 'minutes')}${num('s-trig', 'settings.lateTrigger', st.lateTrigger, 'Send late alert after promised arrival', 'minutes')}
       ${num('s-resp', 'settings.respond', st.respond, 'Time to answer a request', 'minutes')}</div></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Late alert routing</h3></div><div class="panel-b">
       <label class="field">On-duty admin SMS numbers<input id="s-nums" class="input" data-bind="settings.adminNumbers" value="${esc(st.adminNumbers)}"></label>
@@ -1892,7 +1985,13 @@ function installRow() {
   return '';
 }
 
+function normalizeCredits() {
+  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } };
+  if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
+  S.providers.forEach(p => { if (p.credits == null || isNaN(p.credits)) p.credits = S.settings.credit.start; p.credits = Math.max(S.settings.credit.min, Math.min(S.settings.credit.max, Math.round(p.credits))); if (!p.creditLog) p.creditLog = []; if (!p.creditWeeks) p.creditWeeks = []; if (p.tierOverride != null && p.tierOverride >= S.settings.credit.bands.length) p.tierOverride = null; });
+}
 function render() {
+  normalizeCredits();
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
   const keep = ae && ae.id && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file'].includes(ae.type))) ? ae : null;
@@ -1917,7 +2016,7 @@ function render() {
   save();
   if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v5';
+const STORE = 'balik-demo-v6';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -1981,7 +2080,7 @@ function arrive(b) {
   const p = prov(b.pid);
   b.status = 'arrived'; b.arrivedAt = now(); b.endAt = b.arrivedAt + b.mins * MIN;
   logB(b, `Arrived · ${Math.round((b.arrivedAt - b.promisedAt) / MIN) <= 0 ? 'on time' : Math.round((b.arrivedAt - b.promisedAt) / MIN) + ' min after promise'}`);
-  if (b.late) { b.late.resolved = true; if (!b.late.penalty && b.arrivedAt > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; p.points++; logB(b, 'Penalty point added (late arrival)'); } }
+  if (b.late) { b.late.resolved = true; if (!b.late.penalty && b.arrivedAt > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; addCredit(p, CR().rules.late, 'Late arrival · ' + b.id, b.id, 'late', 'late:' + b.id); logB(b, 'Reward credit −1 (late arrival)'); } }
   logB(b, `In service ${fmtT(b.arrivedAt)}–${fmtT(b.endAt)}`);
   if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.${b.checkin ? ' Check-in photo attached.' : ''}`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
   S.prov.screen = 'job'; S.prov.bid = b.id;
@@ -2066,14 +2165,14 @@ const A = {
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to === 'customer' && a.bid) { A.openBooking(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
   readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); },
-  startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null }; },
+  startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null, ref: urlRef() }; },
   suSend: () => { const s = S.cust.signup; s.eCode = String(100000 + Math.floor(Math.random() * 899999)); s.pCode = String(100000 + Math.floor(Math.random() * 899999)); s.eOtp = ''; s.pOtp = ''; s.step = 2;
   },
   suFill: () => { const s = S.cust.signup; s.eOtp = s.eCode; s.pOtp = s.pCode; },
   suNext: () => { S.cust.signup.step++; },
   suBack: () => { const s = S.cust.signup; if (s.step > 1) s.step--; else S.cust.signup = null; },
   suAddr: id => { S.cust.signup.addr = id; },
-  suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true; c.cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5); S.customers[c.cid] = custRecordFromLocal();
+  suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true; c.cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5); S.customers[c.cid] = custRecordFromLocal(); { const rp = provByRef(s.ref); if (rp) { S.customers[c.cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + c.cid); } }
     S.cust.signup = null; S.cust.screen = 'home'; toast('customer', 'Welcome to Balik, ' + c.name.split(' ')[0], 'Email and phone verified. You can book now.'); },
   demoSignIn: () => { const m = S.customers.me || {}; const c = S.customer; Object.assign(c, { cid: 'me', name: m.name || ME, email: m.email || c.email, phone: m.phone || c.phone, addr: m.addr || 'home', idOk: !!m.idOk }); c.signedIn = true; S.cust.screen = 'home'; toast('customer', 'Signed in', 'Welcome back, ' + c.name.split(' ')[0] + '.'); },
   signOut: () => { S.customer.signedIn = false; S.cust.signup = null; S.cust.screen = 'home'; },
@@ -2127,21 +2226,21 @@ const A = {
   lateUpdate: arg => { const [id, m] = arg.split(':'); const b = bk(id), p = prov(b.pid); b.late.replies.push(Number(m)); b.late.seen = true; logB(b, `Provider sent late update: +${m} min`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, `New arrival about ${fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is running ${m} min late`, 'Our team is following up.'); }
     toast('admin', 'Provider replied · ' + b.id, '+' + m + ' min'); b.late.dismissedUntil = Date.now() + 1; },
-  lateCancel: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; }
-    logB(b, 'Provider cancelled while late · customer refunded · penalty point'); p.status = 'green';
+  lateCancel: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.refunded = true; b.late.resolved = true; b.late.penalty = true; addCredit(p, CR().rules.paidCancel, 'Cancelled after the customer paid · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id);
+    logB(b, 'Provider cancelled after payment · customer refunded · reward credits −5'); p.status = 'green';
     if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', `${p.name.split(' ')[0]} couldn't make it. ${peso(b.gross)} is being refunded.`, b.id, 'bad'); toast('customer', 'Full refund on the way', `${p.name.split(' ')[0]} couldn't make it.`); }
     S.prov.screen = 'jobs'; },
   addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
-  startApply: () => { S.prov.apply = { step: 1, photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
+  startApply: () => { S.prov.apply = { step: 1, ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
   apNext: () => { S.prov.apply.step++; },
   apBack: () => { const a = S.prov.apply; if (a.step > 1) a.step--; else S.prov.apply = null; },
   apToggle: k => { S.prov.apply[k] = true; },
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
@@ -2176,7 +2275,21 @@ const A = {
     if (p) pushAlert('provider:' + p.id, 'Job cancelled by Balik', b.id, b.id, 'bad'); S.admin.confirm = ''; toast('admin', 'Cancelled ' + b.id, paid ? 'Refund issued.' : ''); },
   admRefundDone: id => { const b = bk(id); S.admin.sel = id; b.refunded = true; logB(b, 'Refunded after dispute · ' + peso(b.gross)); if (b.cid) { pushAlert('customer', 'Refund issued', peso(b.gross) + ' for ' + b.id + '.', b.id); } S.admin.confirm = ''; toast('admin', 'Refund issued', b.id + ' · ' + peso(b.gross)); },
   admEditProv: id => { S.admin.provEdit = id || null; },
-  admResetPts: id => { const p = prov(id); p.points = 0; pushAlert('provider:' + id, 'Penalty points reset', 'Balik reset your penalty points to 0.', null, 'good'); toast('admin', 'Points reset', p.name); },
+  admCredit: arg => { const [id, d] = arg.split(':'); const p = prov(id); const v = Number(d); const before = p.credits; p.credits = clampCr((p.credits == null ? CR().start : p.credits) + v);
+    if (p.credits !== before) { p.creditLog.unshift({ id: 'cr' + Math.random().toString(36).slice(2, 9), at: now(), pts: p.credits - before, text: 'Adjusted by Balik', kind: 'admin', week: weekKeyOf(now()), applied: true }); pushAlert('provider:' + id, 'Reward credits adjusted', `Balik set your credits to ${p.credits}. Platform fee: ${tierRate(p)}%.`, null, v > 0 ? 'good' : 'bad'); toast('admin', 'Credits ' + sgn(v), p.name + ' · ' + p.credits + ' credits'); } },
+  provCancelAsk: id => { S.prov.cancelAsk = id; },
+  provCancel: id => { const b = bk(id), p = prov(b.pid); const paid = !!b.paidAt; b.status = 'cancelled'; b.refunded = paid; S.prov.cancelAsk = null; if (b.late) b.late.resolved = true;
+    addCredit(p, paid ? CR().rules.paidCancel : CR().rules.acceptCancel, (paid ? 'Cancelled after the customer paid · ' : 'Accepted, then cancelled · ') + b.id, b.id, paid ? 'paidCancel' : 'acceptCancel', (paid ? 'pc:' : 'ac:') + b.id);
+    logB(b, paid ? 'Provider cancelled after payment · full refund · reward credits −5' : 'Provider cancelled after accepting · reward credits −3'); p.status = 'green';
+    if (b.cid) { pushAlert('customer', paid ? 'Booking cancelled · full refund' : 'Provider cancelled', paid ? peso(b.gross) + ' is being refunded. Sorry about this.' : 'Please choose another provider.', b.id, 'bad'); }
+    S.prov.screen = 'jobs'; toast('provider', 'Job cancelled', paid ? 'Customer refunded · −5 reward credits' : '−3 reward credits'); },
+  shareTo: net => { const p = prov(S.prov.id); const link = shareUrl(p); const txt = 'Book trusted home beauty, massage and pet-grooming pros on Balik: ';
+    if (net === 'facebook') { try { window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link), '_blank', 'noopener'); } catch (e) { } }
+    else if (navigator.share) { navigator.share({ title: 'Balik', text: txt, url: link }).catch(() => { }); }
+    else { try { navigator.clipboard.writeText(txt + link); } catch (e) { } try { window.open(net === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/', '_blank', 'noopener'); } catch (e) { } toast('provider', 'Link copied', 'Paste it into your ' + (net === 'instagram' ? 'Instagram' : 'TikTok') + ' post or message.'); }
+    p.shares = (p.shares || 0) + 1;
+    addCredit(p, CR().rules.share, 'Shared Balik on ' + ({ facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' })[net], null, 'share', 'share:' + weekKeyOf(now())); },
+  copyRef: () => { const p = prov(S.prov.id); try { navigator.clipboard.writeText(shareUrl(p)); } catch (e) { } toast('provider', 'Referral link copied', refCode(p)); },
   admSuspend: id => { const p = prov(id); if (p.active === false) { p.active = true; toast('admin', 'Reactivated ' + p.name, 'They appear to customers again.'); pushAlert('provider:' + id, 'Account reactivated', 'You can take requests again.', null, 'good'); }
     else { p.active = false; p.status = 'red'; toast('admin', 'Suspended ' + p.name, 'Hidden from customers.'); pushAlert('provider:' + id, 'Account suspended', 'Contact Balik support.', null, 'bad'); } S.admin.confirm = ''; },
   admCustJobs: name => { S.admin.tab = 'jobs'; S.admin.jobFilter = 'all'; S.admin.jobQ = name; S.admin.sel = null; },
@@ -2201,20 +2314,22 @@ const A = {
   admNotify: id => { const b = bk(id), p = prov(b.pid); logB(b, 'Admin notified customer'); if (b.cid) { pushAlert('customer', 'Update from Balik', `${p.name.split(' ')[0]} is delayed. We are with them and will update you shortly.`, b.id); toast('customer', 'Update from Balik', 'Your provider is delayed. We are following up.'); } toast('admin', 'Customer notified', b.id); },
   admReassign: id => { const b = bk(id), p = prov(b.pid);
     const alt = S.providers.filter(x => x.id !== p.id && x.cat === p.cat && x.status === 'green' && !S.bookings.some(y => y.pid === x.id && ['offered', 'paid', 'departed', 'arrived'].includes(y.status))).sort((x, y) => haversine(x, b) - haversine(y, b))[0];
-    b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; } logB(b, 'Admin reassigned · original job cancelled and refunded'); p.status = 'green';
+    b.status = 'cancelled'; b.late.resolved = true; b.late.penalty = true; addCredit(p, CR().rules.paidCancel, 'Paid job cancelled and reassigned · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); logB(b, 'Admin reassigned · original job cancelled and refunded · reward credits −5'); p.status = 'green';
     if (!alt) { toast('admin', 'No one on stand-by nearby', 'Refunded the customer instead.'); if (b.cid) pushAlert('customer', 'Booking cancelled · full refund', 'No one else was free nearby. You were refunded.', b.id, 'bad'); return; }
     const nb = newBooking({ customer: b.customer, cid: b.cid, address: b.address, lat: b.lat, lng: b.lng, pid: alt.id, bizId: alt.biz, services: b.services.map(s => ({ ...s })), gross: b.gross, mins: b.mins, status: 'requested', respondBy: now() + S.settings.respond * MIN });
     logB(nb, 'Created by admin as a reassignment of ' + b.id); notifyProviderOfRequest(nb, alt);
     if (b.cid) { if (b.cid === (S.customer.cid || 'me')) { S.cust.bid = nb.id; S.cust.screen = 'request'; } pushAlert('customer', 'We found someone closer', `${alt.name} was asked to take over. Your first payment is refunded.`, nb.id); toast('customer', 'Reassigned to ' + alt.name, 'Your first payment is refunded.'); }
     S.prov.id = alt.id; S.prov.screen = 'jobs'; toast('admin', 'Reassigned to ' + alt.name, fmtKm(haversine(alt, b)) + ' from the customer'); },
-  admRefund: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; if (!b.late.penalty) { b.late.penalty = true; p.points++; } p.status = 'green'; logB(b, 'Admin cancelled and refunded'); if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', peso(b.gross) + ' is being refunded.', b.id, 'bad'); toast('customer', 'Full refund on the way', peso(b.gross)); } toast('admin', 'Refunded', b.id); },
+  admRefund: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; b.late.penalty = true; addCredit(p, CR().rules.paidCancel, 'Paid job cancelled for lateness · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); p.status = 'green'; logB(b, 'Admin cancelled and refunded'); if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', peso(b.gross) + ' is being refunded.', b.id, 'bad'); toast('customer', 'Full refund on the way', peso(b.gross)); } toast('admin', 'Refunded', b.id); },
   approve: id => { const a = S.applications.find(x => x.id === id); a.status = 'approved'; const nid = 'p' + (Math.max(...S.providers.map(x => parseInt(x.id.slice(1)) || 0)) + 1); const sb = a.staffOf ? biz(a.staffOf) : null;
     const base = { cubao: [14.6196, 121.0536] }; const ll = base.cubao;
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Balik.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
+    { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by Balik.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
   reject: id => { const a = S.applications.find(x => x.id === id); a.status = 'declined'; if (a.staffOf) { const sb = biz(a.staffOf); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' was not approved', 'Contact Balik support for details.'); } },
-  weekClose: () => { let n = 0; S.providers.forEach(p => { if (weekTotal(p) < S.settings.weeklyTarget || daysMet(p) < S.settings.minDays) { p.points++; n++; p.history.push({ at: now(), text: 'Weekly stand-by below target' }); pushAlert('provider:' + p.id, 'Weekly stand-by below target', `${weekTotal(p).toFixed(1)} of ${S.settings.weeklyTarget} h · 1 penalty point added.`, null, 'bad'); } }); toast('admin', 'Weekly check done', n + ' provider(s) received a point.'); }
+  weekCloseNow: () => { const wk = weekKeyOf(now()); if (CR().lastClosed === wk) { toast('admin', 'Already updated', 'This week was already closed.'); return; } const n = closeWeekAll(wk); toast('admin', 'Sunday update done', n + ' provider(s) updated.'); },
+  weekClose: () => { let n = 0; S.providers.forEach(p => { if (weekTotal(p) < S.settings.weeklyTarget || daysMet(p) < S.settings.minDays) { p.points++; n++; p.history.push({ at: now(), text: 'Weekly stand-by below target' }); pushAlert('provider:' + p.id, 'Weekly stand-by below target', `${weekTotal(p).toFixed(1)} of ${S.settings.weeklyTarget} h · −1 reward credit counted for Sunday.`, null, 'bad'); } }); toast('admin', 'Weekly check done', n + ' provider(s) received a point.'); }
 };
 
 function sampleId() {
@@ -2448,6 +2563,7 @@ let lastTick = now();
 function tick(force = false) {
   const n = now(), dt = Math.max(0, n - lastTick); lastTick = n; let changed = force;
   const lead = isLeader();
+  if (lead) { const wk = weekKeyOf(n); if (CR().lastWeek && CR().lastWeek !== wk) { closeWeekAll(CR().lastWeek); changed = true; } if (CR().lastWeek !== wk) { CR().lastWeek = wk; } }
   if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
   if (lead) S.bookings.forEach(b => {
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true;
@@ -2464,7 +2580,7 @@ function tick(force = false) {
       toast('provider', 'Late arrival alert', 'Promised ' + fmtT(b.promisedAt) + '. Check in or update your time.');
       if (S.settings.tellCustomer && b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, 'Our team has been alerted and is following up.', b.id); toast('customer', `${p.name.split(' ')[0]} is running late`, 'Our team is following up.'); }
     }
-    if (b.late && !b.late.penalty && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && n > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; prov(b.pid).points++; logB(b, `Penalty point: more than ${S.settings.penaltyAfter} min late`); changed = true; }
+    if (b.late && !b.late.penalty && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && n > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; addCredit(prov(b.pid), CR().rules.late, 'Late arrival · ' + b.id, b.id, 'late', 'late:' + b.id); logB(b, `Reward credit −1: more than ${S.settings.penaltyAfter} min late`); changed = true; }
     if (b.status === 'arrived' && n >= b.endAt) { endService(b, true); changed = true; }
   });
   const before = S.toasts.length; S.toasts = S.toasts.filter(t => t.until > Date.now()); if (S.toasts.length !== before) changed = true;
