@@ -1308,8 +1308,14 @@ function provHeader(title) {
     <button class="pill ${st.cls === 'green' ? 'good' : st.cls === 'yellow' ? 'warn' : 'bad'}" data-act="provTab" data-arg="status" style="border:0;height:30px"><span class="dot ${st.cls}"></span>${st.cls === 'green' ? 'Stand by' : st.cls === 'yellow' ? 'Away' : 'Off today'}</button></header>`;
 }
 function myLedger(p, filter = () => true) { return S.bookings.filter(b => b.pid === p.id && b.ledger && filter(b)); }
+const LIVE_URL = 'https://hserickim25-bit.github.io/paang-erp-demo/balik/';
 function offlineBanner(role) {
   if (SYNC.mode === 'live') return '';
+  if (window.BALIK_PREVIEW) return `<div class="card tight" style="gap:6px;background:var(--warn-soft);border-color:transparent">
+    <b class="small" style="color:var(--warn)">${ic('alert', 15)} Preview only · not connected to other phones</b>
+    <span class="small">This Claude preview cannot reach the live server, so ${role === 'provider' ? 'requests sent from other phones never arrive here' : 'your request only reaches a provider inside this same preview'}. To test with two phones, open the live site on both phones:</span>
+    <a href="${LIVE_URL}" target="_blank" rel="noopener" class="small" style="color:var(--accent);font-weight:700;word-break:break-all;user-select:all">${LIVE_URL}</a>
+    <span class="tiny muted">To test here on one phone, tap ⚙ and switch between Customer and Provider.</span></div>`;
   return `<button class="card tight" data-act="demo" style="text-align:left;gap:6px;background:var(--warn-soft);border-color:transparent">
     <b class="small" style="color:var(--warn)">${ic('alert', 15)} Not connected to other phones yet</b>
     <span class="small">${role === 'provider' ? 'Requests sent from a customer on another phone cannot reach this phone until the live server (Firebase) is connected.' : 'Your request only reaches a provider using this same browser until the live server (Firebase) is connected.'} To test on one phone now, tap ⚙ and switch between Customer and Provider.</span>
