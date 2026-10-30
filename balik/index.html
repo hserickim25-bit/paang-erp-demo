@@ -98,6 +98,9 @@ button.brand:hover{background:var(--surface-2)}
 .aspick button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
 .aspick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}.aspick button[aria-pressed="true"] .muted{color:rgba(255,255,255,.75)}
 .aspick .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.aspick .dot.green{background:#22B573}.aspick .dot.yellow{background:#F2B43C}.aspick .dot.red{background:#E5484D}
+.apgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:560px}.apimg{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
+.apimg button{padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2);cursor:zoom-in;aspect-ratio:1;max-width:100%;width:100%}.apimg img{width:100%;height:100%;object-fit:cover;display:block}
+.apimg-none{aspect-ratio:1;border:1.5px dashed var(--line-2);border-radius:12px;display:grid;place-items:center;font-size:12px;color:var(--muted)}.apimg figcaption{display:flex;flex-direction:column;font-size:12px}.apimg figcaption span{color:var(--muted)}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -1779,11 +1782,12 @@ function adminPane() {
   const t = S.admin.tab;
   const openLate = S.bookings.filter(b => b.late && !b.late.resolved).length;
   const apps = S.applications.filter(a => a.status === 'pending').length;
+  const pendAll = apps + (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info').length;
   const nav = (id, l, icn, n, cls = 'bad') => `<button data-act="adminTab" data-arg="${id}" ${t === id ? 'aria-current="page"' : ''}>${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill ${cls}" style="height:20px">${n}</span>` : ''}</button>`;
-  const m = { overview: admOverview, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, finance: admFinance, settings: admSettings }[t]();
+  const m = { overview: admOverview, approvals: admApprovals, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, finance: admFinance, settings: admSettings }[t]();
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark"><img src="${LOGO_MARK}" alt=""></span><div class="col"><b>BalikHome Operations</b><span class="tiny muted">Admin console</span></div></div>
-    ${nav('overview', 'Overview', 'grid')}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('jobs', 'Requests & jobs', 'list')}<div class="sep"></div>
-    ${nav('providers', 'Providers', 'users', apps, 'accent')}${nav('customers', 'Customers & reviews', 'user')}${nav('finance', 'Finance & tax', 'receipt')}${nav('settings', 'Rules & settings', 'gear')}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
+    ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('jobs', 'Requests & jobs', 'list')}<div class="sep"></div>
+    ${nav('providers', 'Providers', 'users')}${nav('customers', 'Customers & reviews', 'user')}${nav('finance', 'Finance & tax', 'receipt')}${nav('settings', 'Rules & settings', 'gear')}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
 }
 function admLive() {
   const groups = [['green', 'On stand-by'], ['yellow', 'Away'], ['red', 'Off today']];
@@ -1858,6 +1862,26 @@ function admProviders() {
     <div class="panel"><div class="panel-h"><h3>Sunday reward-credit update · ${weekLabel(weekKeyOf(now()))}</h3><span class="small muted">${CR().lastClosed === weekKeyOf(now()) ? 'Closed for this week' : 'Runs automatically at the end of Sunday'}</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th class="num">Credits now</th><th>Counted this week</th><th class="num">Change</th><th class="num">After Sunday</th><th class="num">Fee now → next</th></tr></thead><tbody>
       ${S.providers.filter(p => p.active !== false).map(p => { const pr = projected(p); return `<tr><td><b>${esc(p.name)}</b></td><td class="num">${pr.cur}</td><td class="small" style="max-width:360px">${pr.items.map(e => `<span class="pill ${e.pts > 0 ? 'good' : 'bad'}" style="margin:2px 4px 2px 0">${sgn(e.pts)} ${esc(e.kind === 'hours' ? 'hours' : e.kind === 'under' ? 'under hours' : e.kind === 'daily' ? 'daily jobs' : e.kind === 'share' ? 'share' : e.kind === 'referral' ? 'referral' : e.kind === 'late' ? 'late' : e.kind === 'acceptCancel' ? 'accept-cancel' : e.kind === 'paidCancel' ? 'paid-cancel' : e.kind)}</span>`).join('')}</td><td class="num" style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</td><td class="num"><b>${pr.after}</b></td><td class="num">${tierRate(p)}% → ${p.tierOverride != null ? tierRate(p) : CR().bands[bandIdx(pr.after)].rate}%</td></tr>`; }).join('')}
     </tbody></table></div><div class="panel-b"><div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn primary sm" data-act="weekCloseNow" ${CR().lastClosed === weekKeyOf(now()) ? 'disabled' : ''}>Run Sunday update now (test)</button><span class="small muted">Applies every counted item, keeps credits between ${CR().min} and ${CR().max}, and sets each provider's platform fee for next week.</span></div></div></div>`;
+}
+function admApprovals() {
+  const pend = S.applications.filter(a => a.status === 'pending'), done = S.applications.filter(a => a.status !== 'pending').slice(0, 8);
+  const img = (src, label, sub) => `<figure class="apimg">${src ? `<button data-act="zoomSrc" data-arg="${label}" aria-label="Enlarge ${label}"><img src="${src}" alt="${label}"></button>` : '<div class="apimg-none">Not submitted</div>'}<figcaption><b>${label}</b>${sub ? `<span>${sub}</span>` : ''}</figcaption></figure>`;
+  const card = a => { const ac = a.uid && acct(a.uid), sc = Number(a.faceScore) || 0, scCls = !a.faceImg ? 'warn' : sc >= 90 ? 'good' : sc >= 75 ? 'warn' : sc ? 'bad' : 'good';
+    return `<div class="panel" id="apcard-${a.id}"><div class="panel-h"><div class="row" style="gap:10px;flex-wrap:wrap"><h3>${esc(a.name)}</h3><span class="pill">${catName(a.cat)}</span>${a.staffOf ? `<span class="pill accent">Staff of ${esc(biz(a.staffOf).name)}</span>` : '<span class="pill">Individual provider</span>'}</div><span class="small muted">Submitted ${a.at ? fmtD(a.at) + ' ' + fmtT(a.at) : '—'} · ${a.id}</span></div>
+      <div class="panel-b" style="gap:14px">
+        <div class="apgrid">${img(a.photo || PHOTOS[a.photoKey], 'Profile photo', 'shown to customers')}${img(a.faceImg, 'Live face check', a.faceImg ? 'taken with the camera' : '')}${img(a.idDoc, 'Government ID', a.idDoc ? 'uploaded' : '')}</div>
+        <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><span class="pill ${scCls}">${ic('shield', 13)} Face match ${a.faceImg ? (sc ? sc + '%' : 'done') : 'missing'}</span><span class="pill ${a.idOk ? 'good' : 'warn'}">ID ${a.idOk ? 'uploaded' : 'missing'}</span><span class="pill ${a.tin ? 'good' : 'warn'}">TIN ${a.tin ? esc(a.tin) : 'missing'}</span>${a.cert ? `<span class="pill good">${esc(a.cert)}</span>` : ''}${a.asked ? '<span class="pill warn">More info requested</span>' : ''}</div>
+        <span class="small muted">Compare the live face with the photo on the ID. The match score comes from the automatic check; approve only when the face, name and ID agree.</span>
+        <div class="formgrid" style="gap:6px 18px"><div class="col"><span class="tiny muted">Login · contact</span><span class="small">${esc((ac && ac.loginId) || a.loginId || '—')} · ${esc((ac && ac.phone) || a.phone || '—')} ${esc((ac && ac.email) || a.email || '')}</span></div>
+          <div class="col"><span class="tiny muted">Experience</span><span class="small">${a.years} yrs · ${esc(a.past || '')}</span></div>
+          <div class="col"><span class="tiny muted">Area</span><span class="small">${esc(a.area || '')}</span></div>
+          <div class="col"><span class="tiny muted">Note</span><span class="small">${esc(a.why || '—')}</span></div></div>
+        <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary sm" data-act="approve" data-arg="${a.id}">${ic('check', 15)} Approve</button><button class="btn secondary sm" data-act="askInfo" data-arg="${a.id}">Ask for info</button><button class="btn ghost sm" style="color:var(--bad)" data-act="reject" data-arg="${a.id}">Decline</button></div>
+      </div></div>`; };
+  return `<div class="page-h"><div><h1>Approvals</h1><p>New providers and spa staff wait here after sign-up. Check the live face against the ID photo, then approve. Approved accounts can log in and go on stand-by immediately.</p></div></div>
+    ${pend.length ? pend.map(card).join('') : '<div class="panel"><div class="panel-b"><div class="empty">No provider applications waiting.</div></div></div>'}
+    ${admBizApps()}
+    ${done.length ? `<div class="panel"><div class="panel-h"><h3>Recently decided</h3></div><div class="list">${done.map(a => `<div class="li"><b class="grow small">${esc(a.name)}</b><span class="pill ${a.status === 'approved' ? 'good' : 'bad'}">${a.status}</span></div>`).join('')}</div></div>` : ''}`;
 }
 function admBizApps() {
   const list = (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info'), done = (S.bizApps || []).filter(a => a.status !== 'pending' && a.status !== 'info').slice(0, 5);
@@ -1954,6 +1978,8 @@ function admFinance() {
 
 function admOverview() {
   const n = now();
+  const waiting = S.applications.filter(a => a.status === 'pending').length + (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info').length;
+  const appBanner = waiting ? `<div class="panel" role="button" tabindex="0" data-act="adminTab" data-arg="approvals" style="border-color:var(--accent);cursor:pointer"><div style="display:flex;flex-direction:row;justify-content:space-between;align-items:center;gap:12px;padding:14px 18px;text-align:left;flex-wrap:wrap"><div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start;min-width:0"><b>${ic('shield', 15)} ${waiting} application${waiting > 1 ? 's' : ''} waiting for approval</b><span class="small muted">${[...S.applications.filter(a => a.status === 'pending').map(a => a.name), ...(S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info').map(a => a.name)].map(esc).join(', ')}</span></div><span class="btn primary sm">Review ›</span></div></div>` : '';
   const month = S.bookings.filter(b => b.ledger && sameMonth(b.endedAt, n));
   const income = month.reduce((a, b) => a + b.ledger.net, 0), fees = month.reduce((a, b) => a + b.ledger.fee, 0);
   const green = S.providers.filter(p => p.status === 'green').length;
@@ -1964,7 +1990,7 @@ function admOverview() {
   const active = S.bookings.filter(b => ['paid', 'departed', 'arrived'].includes(b.status)).length;
   const perProv = S.providers.map(p => ({ p, v: month.filter(b => b.pid === p.id).reduce((a, b) => a + b.gross, 0) })).sort((a, b) => b.v - a.v);
   const max = Math.max(1, ...perProv.map(x => x.v));
-  return `<div class="page-h"><div><h1>Overview</h1><p>${new Date(n).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · Metro Manila</p></div></div>
+  return `<div class="page-h"><div><h1>Overview</h1><p>${new Date(n).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · Metro Manila</p></div></div>${appBanner}
     <div class="kpis">
       <div class="kpi accent"><span class="l">Returning pros earning this month</span><span class="v">${retEarning} of ${ret.length}</span></div>
       <div class="kpi"><span class="l">Paid to providers · month</span><span class="v">${peso(income)}</span></div>
@@ -2777,7 +2803,7 @@ function pendingPane(a) {
   return `<div class="screen" data-pane="auth">${bar(isBiz ? 'Business account' : 'Provider account')}<div class="scroll" data-scroll="pending">
     <div class="card" style="align-items:center;text-align:center;gap:10px;padding:24px 16px">${declined ? `<span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>` : '<div class="spin"></div>'}
       <h2 style="font-size:20px">${declined ? 'Application not approved' : info ? 'More information needed' : a.status === 'applying' ? 'Finish your provider profile' : 'Under review'}</h2>
-      <p class="small muted">${a.status === 'applying' ? 'Add your photo, ID, face check, work hours and payout details.' : declined ? 'Please contact BalikHome support for details.' : info ? 'BalikHome sent you a message about what to add. Check Alerts or contact support.' : isBiz ? 'BalikHome is checking your business documents. We usually finish within 2 working days.' : 'BalikHome is checking your ID, face check and experience. We usually finish within 2 working days.'}</p>
+      <p class="small muted">${a.status === 'applying' ? 'Add your photo, ID, face check, work hours and payout details.' : declined ? 'Please contact BalikHome support for details.' : info ? 'BalikHome sent you a message about what to add. Check Alerts or contact support.' : isBiz ? 'BalikHome is checking your business documents. We usually finish within 2 working days.<br><span class="tiny">Test build: approve it in Admin › Approvals (⚙ › Admin).</span>' : 'BalikHome is checking your ID, face check and experience. We usually finish within 2 working days.<br><span class="tiny">Test build: approve it in Admin › Approvals (⚙ › Admin).</span>'}</p>
       ${a.status === 'applying' ? '<button class="btn primary" data-act="startApply">Continue</button>' : ''}</div>
     <div class="card tight"><span class="small">Logged in as <b>${esc(a.loginId)}</b> · ${esc(a.name)}</span></div>
     <button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out</button>
@@ -3193,7 +3219,7 @@ const A = {
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; setTimeout(() => { if (_acc) { const ap = S.applications[0]; _acc.status = 'pending'; _acc.link = { appId: ap.id }; ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; render(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; setTimeout(() => { if (_acc) { const ap = S.applications[0]; _acc.status = 'pending'; _acc.link = { appId: ap.id }; ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; ap.faceScore = a.faceScore || null; ap.loginId = _acc.loginId; ap.email = _acc.email; ap.phone = _acc.phone; render(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
@@ -3255,6 +3281,7 @@ const A = {
     toast('admin', r.suspended ? 'Customer suspended' : 'Customer reactivated', r.name); if (!key.startsWith('n:')) pushAlert('customer:' + key, r.suspended ? 'Account on hold' : 'Account reactivated', r.suspended ? 'Please contact BalikHome support.' : 'You can book again.', null, r.suspended ? 'bad' : 'good'); },
   admCustId: key => { const r = (S.customers || {})[key]; if (r) { r.idOk = true; toast('admin', 'ID marked verified', r.name); pushAlert('customer:' + key, 'ID verified', 'Providers now see a Verified badge on your requests.', null, 'good'); } },
   admReview: arg => { const [pid, k] = arg.split(':'); const r = prov(pid).reviews[Number(k)]; r.hidden = !r.hidden; toast('admin', r.hidden ? 'Review hidden' : 'Review visible', prov(pid).name); },
+  zoomSrc: (label, el) => { const im = el && el.querySelector('img'); if (im) S.modal = { kind: 'photo', src: im.getAttribute('src'), name: label }; },
   askInfo: id => { const a = S.applications.find(x => x.id === id); a.asked = true; sendSms(a.name, 'BalikHome: please send a clearer ID photo and your past employer contact.'); toast('admin', 'Info requested', a.name); },
   runPayout: who => { const t = now(); const rows = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded && (who === 'ind' ? !b.bizId : b.bizId === who)); rows.forEach(b => { b.ledger.paidAt = t; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName); });
     const tot = rows.reduce((a, b) => a + b.ledger.net, 0); toast('admin', 'Payout batch sent', rows.length + ' jobs · ' + peso(tot, 2));
