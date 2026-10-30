@@ -591,8 +591,8 @@ const S = {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
       bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
-      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } },
-    respond: 5, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
+      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 } },
+    respond: 6, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
     alertBiz: true, tellCustomer: true
   }
@@ -659,6 +659,15 @@ const urlRef = () => { try { return (new URL(location.href).searchParams.get('re
 const shareUrl = p => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('ref', refCode(p)); return u.toString(); } catch (e) { return 'https://balik.ph/?ref=' + refCode(p); } };
 const refCode = p => (p.name.split(' ')[0] || 'PRO').toUpperCase().replace(/[^A-Z]/g, '') + '-' + p.id.toUpperCase();
 const provByRef = code => { const c = String(code || '').trim().toUpperCase(); return c ? S.providers.find(p => refCode(p) === c) : null; };
+function noReplyCheck(b) {
+  const p = prov(b.pid); if (!p) return;
+  // requests this provider had to answer, newest first; stop at the first one they answered
+  const answered = ['offered', 'paid', 'departed', 'arrived', 'ended', 'reviewed', 'declined', 'expired'];
+  const mine = S.bookings.filter(x => x.pid === p.id && (x.status === 'no_response' || answered.includes(x.status) || x.status === 'cancelled') && x.respondBy).sort((x, y) => y.respondBy - x.respondBy);
+  let run = [];
+  for (const x of mine) { if (x.status === 'no_response') { if (!x.nrUsed) run.push(x); else break; } else if (answered.includes(x.status)) break; }
+  if (run.length >= 2) { run.slice(0, 2).forEach(x => x.nrUsed = true); addCredit(p, CR().rules.noReply2, 'No reply to 2 requests in a row · ' + run[1].id + ', ' + run[0].id, b.id, 'noReply2', 'nr2:' + b.id); }
+}
 function addCredit(p, pts, text, bid, kind, uniq) {
   if (!p || !pts) return;
   p.creditLog = p.creditLog || [];
@@ -1271,7 +1280,7 @@ function provTabs(active) {
   const me = prov(S.prov.id); const n = unread('provider:' + me.id);
   const req = S.bookings.filter(b => b.pid === me.id && b.status === 'requested').length;
   const t = (id, label, icon, badge) => `<button data-act="provTab" data-arg="${id}" ${active === id ? 'aria-current="page"' : ''}>${ic(icon, 22)}${label}${badge ? `<span class="badge-n">${badge}</span>` : ''}</button>`;
-  return `<nav class="tabbar" aria-label="Provider">${t('jobs', 'Jobs', 'bag', req)}${t('status', 'Status', 'light')}${t('services', 'Services', 'list')}${t('earnings', 'Earnings', 'wallet')}${t('account', 'Account', 'user', n)}</nav>`;
+  return `<nav class="tabbar" aria-label="Provider">${t('jobs', 'Jobs', 'bag', req)}${t('status', 'Status', 'light')}${t('services', 'Services', 'list')}${t('earnings', 'Earnings', 'wallet')}${t('perf', 'Record', 'chart')}${t('account', 'Account', 'user', n)}</nav>`;
 }
 function provPane() {
   const s = S.prov; let h = '', tab = null, f = '';
@@ -1281,7 +1290,7 @@ function provPane() {
     case 'request': [h, f] = provRequest(); break;
     case 'job': [h, f] = provJob(); break;
     case 'status': h = provStatus(); tab = 'status'; break;
-    case 'perf': h = provPerf(); tab = 'status'; break;
+    case 'perf': h = provPerf(); tab = 'perf'; break;
     case 'services': h = provServices(); tab = 'services'; break;
     case 'earnings': h = provEarnings(); tab = 'earnings'; break;
     case 'account': h = provAccount(); tab = 'account'; break;
@@ -1419,7 +1428,12 @@ function provPerf() {
   const nextRate = CR().bands[bandIdx(pr.after)].rate;
   const rule = (icn, txt, pts) => `<div class="li"><span style="color:${pts > 0 ? 'var(--good)' : 'var(--bad)'}">${ic(icn, 18)}</span><span class="small grow">${txt}</span><b class="num" style="color:${pts > 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pts)}</b></div>`;
   const evs = (me.creditLog || []).slice(0, 25);
-  return `${bar('Reward credits & platform fee', 'provStatusBack')}<div class="scroll" data-scroll="p-perf">
+  const sub = S.prov.rec || 'credits', sb = (id, l) => `<button style="flex:1" data-act="provRec" data-arg="${id}" aria-pressed="${sub === id}">${l}</button>`;
+  const head = `${provHeader('My record')}<div class="scroll" data-scroll="p-perf-${sub}">
+    <div class="seg" style="width:100%">${sb('credits', 'Credits')}${sb('history', 'History')}${sb('reviews', 'Reviews')}</div>`;
+  if (sub === 'history') return head + provHistory(me) + '</div>';
+  if (sub === 'reviews') return head + `${ratingBlock(me)}<div class="col" style="gap:8px">${me.reviews.filter(x => !x.hidden).map(r => `<div class="card tight"><div class="row between"><b class="small">${esc(r.by)}</b><span class="tiny muted">${esc(r.ago || (r.at ? fmtD(r.at) : ''))}</span></div>${starsH(r.stars)}${r.tags && r.tags.length ? `<div class="row" style="flex-wrap:wrap;gap:6px">${r.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}${r.text ? `<p class="small">${esc(r.text)}</p>` : ''}</div>`).join('') || '<div class="empty">No reviews yet. Reviews appear here after customers rate your service.</div>'}</div><span class="tiny muted">Customers write text reviews after the service. Reviews that break the rules can be hidden by BalikHome.</span></div>`;
+  return head + `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent"><span class="eyebrow" style="color:inherit;opacity:.7">Reward credits</span><span class="num" style="font-size:32px;font-weight:600">${pr.cur}<span style="font-size:15px;opacity:.6"> / ${C.max}</span></span><span class="tiny" style="opacity:.75">${CR().bands[bandIdx(pr.cur)].label}</span></div>
       <div class="card" style="background:var(--good-soft);border-color:transparent;color:var(--good)"><span class="eyebrow" style="color:inherit">Platform fee now</span><span class="num" style="font-size:32px;font-weight:600">${tierRate(me)}%</span><span class="tiny">${me.tierOverride != null ? 'Set by BalikHome' : 'Updates every Sunday'}</span></div></div>
@@ -1439,10 +1453,17 @@ function provPerf() {
         ${rule('user', 'Each customer or provider who joins with your code', R0.referral)}
         ${rule('alert', `Late arrival (more than ${S.settings.penaltyAfter} min after your promise)`, R0.late)}
         ${rule('clock', `Under ${S.settings.weeklyTarget} hours on green in the week`, R0.under)}
+        ${rule('bell', `No reply to 2 requests in a row (each request gives you ${S.settings.respond} min)`, R0.noReply2)}
         ${rule('x', 'Accepting a request, then cancelling', R0.acceptCancel)}
         ${rule('x', 'Cancelling after the customer has paid', R0.paidCancel)}
       </div><span class="tiny muted">New providers start with ${C.start} credits. Credits update every Sunday and stay between ${C.min} and ${C.max}.</span></div>
     <div class="list">${CR().bands.map((t, i) => `<div class="li" style="${i === ti ? 'background:var(--accent-soft)' : ''}"><b class="grow">${t.label}</b><span class="small muted" style="width:110px">${t.min}${t.max >= C.max ? '+' : '–' + t.max} credits</span><b class="num">${t.rate}%</b></div>`).join('')}</div>
+  </div>`;
+}
+function provHistory(me) {
+  const r = records(me), evs = (me.creditLog || []).slice(0, 60);
+  const reqs = S.bookings.filter(x => x.pid === me.id).sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0)).slice(0, 30);
+  return `<div class="card" style="gap:6px"><div class="row between"><span class="eyebrow">Credits now</span><b class="num" style="font-size:20px">${me.credits} · fee ${tierRate(me)}%</b></div><span class="tiny muted">Pending changes are counted in the Sunday update.</span></div>
     <div class="card"><span class="eyebrow">Your job record</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center">
         <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.jobs}</span><span class="tiny muted">jobs</span></div>
@@ -1450,7 +1471,7 @@ function provPerf() {
         <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.hrs.toFixed(1)}</span><span class="tiny muted">service hours</span></div></div></div>
     ${(me.creditWeeks || []).length ? `<div class="col" style="gap:8px"><h3 style="font-size:15px">Sunday updates</h3><div class="list">${me.creditWeeks.slice(0, 8).map(w => `<div class="li"><div class="col grow"><b class="small">${weekLabel(w.week)}</b><span class="tiny muted">${w.before} → ${w.after} credits · fee ${w.rateBefore}% → ${w.rate}%</span></div><span class="pill ${w.sum >= 0 ? 'good' : 'bad'}">${sgn(w.sum)}</span></div>`).join('')}</div></div>` : ''}
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Credit history</h3><div class="list">${evs.map(e => `<div class="li"><div class="col grow"><b class="small">${esc(e.text)}</b><span class="tiny muted">${fmtD(e.at)} · ${e.applied ? 'applied' : 'counts on Sunday'}</span></div><span class="pill ${e.pts > 0 ? 'good' : 'bad'}">${sgn(e.pts)}</span></div>`).join('') || '<div class="empty">No credit changes yet.</div>'}</div></div>
-  </div>`;
+    <div class="col" style="gap:8px"><h3 style="font-size:15px">Requests and jobs</h3><div class="list">${reqs.map(x => `<div class="li"><div class="col grow"><b class="small">${esc(x.services.map(s => s.name).join(' + '))}</b><span class="tiny muted">${x.id} · ${esc(x.customer || '')} · ${fmtD(x.createdAt)} ${fmtT(x.createdAt)}</span></div>${statusPill(x.status)}</div>`).join('') || '<div class="empty">No requests yet.</div>'}</div></div>`;
 }
 function provServices() {
   const me = prov(S.prov.id), i = S.providers.indexOf(me);
@@ -1948,7 +1969,7 @@ function admSettings() {
       ${num('cr-daily', 'settings.credit.rules.daily', st.credit.rules.daily, 'Daily services target met', 'credits')}${num('cr-djobs', 'settings.credit.dailyJobs', st.credit.dailyJobs, 'Services a day', 'jobs')}
       ${num('cr-ddays', 'settings.credit.dailyDays', st.credit.dailyDays, 'Days needed in the week', 'days')}${num('cr-share', 'settings.credit.rules.share', st.credit.rules.share, 'Shared on social media (weekly)', 'credits')}
       ${num('cr-ref', 'settings.credit.rules.referral', st.credit.rules.referral, 'Each referred sign-up', 'credits')}${num('cr-late', 'settings.credit.rules.late', st.credit.rules.late, 'Late arrival', 'credits')}
-      ${num('cr-ac', 'settings.credit.rules.acceptCancel', st.credit.rules.acceptCancel, 'Accepted, then cancelled', 'credits')}${num('cr-pc', 'settings.credit.rules.paidCancel', st.credit.rules.paidCancel, 'Cancelled after payment', 'credits')}
+      ${num('cr-nr', 'settings.credit.rules.noReply2', st.credit.rules.noReply2, 'No reply to 2 requests in a row', 'credits')}${num('cr-ac', 'settings.credit.rules.acceptCancel', st.credit.rules.acceptCancel, 'Accepted, then cancelled', 'credits')}${num('cr-pc', 'settings.credit.rules.paidCancel', st.credit.rules.paidCancel, 'Cancelled after payment', 'credits')}
     </div></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>Stand-by & lateness</h3></div><div class="panel-b">
       ${num('s-week', 'settings.weeklyTarget', st.weeklyTarget, 'Weekly green target', 'hours')}${num('s-day', 'settings.dayTarget', st.dayTarget, 'Hours that count as a full day', 'hours')}
@@ -2252,7 +2273,8 @@ function installRow() {
 }
 
 function normalizeCredits() {
-  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } };
+  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 } };
+  if (!S.settings.respondV6) { if (Number(S.settings.respond) === 5) S.settings.respond = 6; S.settings.respondV6 = true; }
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
   S.businesses.forEach(b => { if (!Array.isArray(b.photos)) b.photos = []; });
   S.bookings.forEach(x => { if (x.status === 'business_queue') { x.status = 'cancelled'; x.cancelNote = 'Business requests were retired: customers now book a business therapist directly.'; } });
@@ -2996,6 +3018,7 @@ const A = {
   provTab: t => { S.prov.apply = null; S.prov.screen = t; },
   provBack: () => { S.prov.screen = 'jobs'; },
   provStatusBack: () => { S.prov.screen = 'status'; },
+  provRec: t => { S.prov.rec = t; },
   openPerf: () => { S.prov.screen = 'perf'; },
   openReq: id => { S.prov.bid = id; S.prov.screen = 'request'; S.prov.eta = 30; },
   openJob: id => { S.prov.bid = id; S.prov.screen = 'job'; },
@@ -3485,7 +3508,7 @@ function tick(force = false) {
   if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
   if (lead && sendDueReminders(n)) changed = true;
   if (lead) S.bookings.forEach(b => {
-    if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true;
+    if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true; noReplyCheck(b);
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
     if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; changed = true;
       if (b.when === 'later') { b.autoCancelled = true; logB(b, 'Not paid 1 hour before · booking cancelled automatically');
