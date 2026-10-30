@@ -91,7 +91,7 @@ button.brand:hover{background:var(--surface-2)}
 .mini:hover{border-color:var(--muted)}
 
 /* ---------- Stage ---------- */
-.stage{max-width:1440px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.stage{max-width:1440px;margin:0 auto;padding-block:20px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .duo{display:flex;flex-wrap:wrap;justify-content:center;gap:32px 48px}
 .duo-col{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0}
 .aspick{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px}.aspick .duo-label{flex-basis:100%;justify-content:center}
@@ -107,7 +107,7 @@ button.brand:hover{background:var(--surface-2)}
 .intro p{color:var(--muted);font-size:14px}
 
 /* ---------- Phone device ---------- */
-.device{width:min(400px,100%);height:min(840px,calc(100dvh - 140px));min-height:640px;border-radius:40px;background:var(--surface);box-shadow:var(--shadow-lg);border:1px solid var(--line);padding:10px;position:relative}
+.device{width:min(400px,100%);height:min(840px,calc(100dvh - 116px));min-height:min(600px,calc(100dvh - 116px));border-radius:40px;background:var(--surface);box-shadow:var(--shadow-lg);border:1px solid var(--line);padding:10px;position:relative}
 .screen{position:relative;height:100%;border-radius:31px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;isolation:isolate}
 @media (max-width:640px){
   .device{width:100%;height:calc(100dvh - 120px);min-height:560px;border-radius:24px;padding:0;border:0;box-shadow:none}
@@ -374,6 +374,8 @@ td.num,th.num{text-align:right}
 /* full-screen app mode on phones */
 .appshell{min-height:100dvh;background:var(--bg)}
 .appshell .screen{height:100dvh;border-radius:0}
+@media (min-width:700px){.appshell>.screen{max-width:640px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+@media (max-height:520px) and (min-width:700px){.appshell .appbar{padding-top:6px}.appshell .tabbar button{padding-block:4px}}
 .appshell .appbar{padding-top:calc(10px + env(safe-area-inset-top,0px))}
 .appshell .tabbar{padding-bottom:calc(4px + env(safe-area-inset-bottom,0px))}
 .appshell .footer-bar{padding-bottom:calc(14px + env(safe-area-inset-bottom,0px))}
@@ -2088,7 +2090,9 @@ function toastsFor(pane, web = false) {
 
 /* =============== Shell =============== */
 function wide() { return window.innerWidth >= 980; }
-function isPhone() { return window.innerWidth < 700; }
+// Phone mode = the real full-screen app: any narrow window, and touch phones/foldables/small tablets in either orientation.
+const COARSE = () => { try { return matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } };
+function isPhone() { return window.innerWidth < 700 || (COARSE() && Math.min(window.innerWidth, window.innerHeight) < 900); }
 const shareLink = () => { try { const u = new URL(location.href); u.hash = ''; u.searchParams.set('room', SYNC.room); return u.toString(); } catch (e) { return ''; } };
 function liveSection() {
   const live = SYNC.mode === 'live';
