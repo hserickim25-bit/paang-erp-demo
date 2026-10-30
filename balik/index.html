@@ -2698,7 +2698,7 @@ const codeBox = (label, to, code, bind, val, done) => `<div class="inbox"><span 
   <label class="field">${label} code ${done ? `<span class="verified">${ic('check', 14)} Verified</span>` : ''}<input id="au-${label.toLowerCase()}-otp" class="input otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" data-bind="${bind}" value="${esc(val || '')}" placeholder="••••••"></label>`;
 function credFields(f) {
   const idOk = LOGIN_RE.test(f.loginId || ''), taken = idOk && !!acctByLogin(f.loginId), pwOk = pwRule(f.pw), same = f.pw && f.pw === f.pw2;
-  return `<label class="field">Login ID<input id="au-id" class="input" autocapitalize="none" autocomplete="username" data-bind="auth.f.loginId" value="${esc(f.loginId || '')}" placeholder="4–20 letters, numbers, . _ -">${f.loginId ? (taken ? '<span class="tiny" style="color:var(--bad)">This ID is already taken.</span>' : idOk ? '<span class="tiny" style="color:var(--good)">Available</span>' : '<span class="tiny" style="color:var(--warn)">Use 4–20 letters or numbers.</span>') : ''}</label>
+  return `<label class="field">Login ID<input id="au-id" class="input" autocapitalize="none" autocomplete="username" data-bind="auth.f.loginId" value="${esc(f.loginId || '')}" placeholder="4–20 letters, numbers, . _ -">${f.loginId ? (taken ? '<span class="tiny" style="color:var(--bad)">This ID is already taken.</span>' : idOk ? '<span class="tiny" style="color:var(--good)">Available</span>' : `<span class="tiny" style="color:var(--warn)">${/\s/.test(f.loginId) ? 'Remove the space from the ID.' : 'Use 4–20 letters, numbers, . _ or - (no spaces or other symbols).'}</span>`) : ''}</label>
     <label class="field">Password<span class="pwwrap"><input id="au-pw" class="input pwin" type="${S.pwShow && S.pwShow['au-pw'] ? 'text' : 'password'}" autocapitalize="none" spellcheck="false" autocomplete="new-password" data-bind="auth.f.pw" value="${esc(f.pw || '')}" placeholder="At least 8 characters with letters and numbers"><button type="button" class="pweye" data-act="pwToggle" data-arg="au-pw" aria-label="${S.pwShow && S.pwShow['au-pw'] ? 'Hide password' : 'Show password'}" aria-pressed="${!!(S.pwShow && S.pwShow['au-pw'])}">${ic(S.pwShow && S.pwShow['au-pw'] ? 'eyeoff' : 'eye', 20)}</button></span>${f.pw && !pwOk ? '<span class="tiny" style="color:var(--warn)">At least 8 characters, with letters and numbers.</span>' : ''}</label>
     <label class="field">Confirm password<span class="pwwrap"><input id="au-pw2" class="input pwin" type="${S.pwShow && S.pwShow['au-pw2'] ? 'text' : 'password'}" autocapitalize="none" spellcheck="false" autocomplete="new-password" data-bind="auth.f.pw2" value="${esc(f.pw2 || '')}"><button type="button" class="pweye" data-act="pwToggle" data-arg="au-pw2" aria-label="${S.pwShow && S.pwShow['au-pw2'] ? 'Hide password' : 'Show password'}" aria-pressed="${!!(S.pwShow && S.pwShow['au-pw2'])}">${ic(S.pwShow && S.pwShow['au-pw2'] ? 'eyeoff' : 'eye', 20)}</button></span>${f.pw2 && !same ? '<span class="tiny" style="color:var(--bad)">Passwords do not match.</span>' : ''}</label>`;
 }
@@ -2817,6 +2817,7 @@ function render() {
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
   if (!S.bizApps) S.bizApps = [];
+  if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
@@ -2849,7 +2850,7 @@ function save() {
   clearTimeout(saveT);
   saveT = setTimeout(() => {
     try {
-      const keep = Object.assign({}, S, { toasts: [], modal: null, demoOpen: false, cust: Object.assign({}, S.cust, { pay: null, addrSheet: false, help: false }) });
+      const keep = Object.assign({}, S, { toasts: [], modal: null, demoOpen: false, pwShow: null, cust: Object.assign({}, S.cust, { pay: null, addrSheet: false, help: false }) });
       localStorage.setItem(STORE, JSON.stringify({ v: 1, simNow: now(), seq, S: keep }));
     } catch (e) { }
   }, 250);
@@ -3126,8 +3127,8 @@ const A = {
   termsAccept: () => { const t = S.terms; if (!t || !t.accept || !t.ok) return; const a = t.accept; recordConsent(a.role, a.who, a.name, a.contact); S.terms = null;
     toast(a.role === 'business' ? 'business' : a.role, 'Terms accepted', 'Version ' + TERMS.version + ' · your consent is saved.'); if (a.then && A[a.then.act]) A[a.then.act](a.then.arg); },
   bizTerms: () => { const b = biz(S.biz.id); needTerms('business', b.id, b.name, b.phone || '', null); },
-  authType: t => { S.auth = { screen: 'signup', type: t, step: 1, f: { ref: urlRef(), bcat: 'massage', docs: {} } }; },
-  authGo: sc => { S.auth = { screen: sc, step: 1, f: {} }; },
+  authType: t => { S.pwShow = null; S.auth = { screen: 'signup', type: t, step: 1, f: { ref: urlRef(), bcat: 'massage', docs: {} } }; },
+  authGo: sc => { S.pwShow = null; S.auth = { screen: sc, step: 1, f: {} }; },
   authWelcome: () => { S.auth = { screen: 'welcome' }; },
   auBack: () => { const a = S.auth; if (a.step > 1) a.step--; else S.auth = { screen: 'welcome' }; },
   auSend: () => { const f = S.auth.f; f.eCode = String(100000 + Math.floor(Math.random() * 900000)); f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.eOtp = f.pOtp = ''; S.auth.step = 2; toast('auth', 'Codes sent', 'Email to ' + f.email + ' and SMS to +63 ' + f.phone); },
@@ -3345,6 +3346,7 @@ const onBind = (e, live) => {
   if (el.type === 'number') v = el.value === '' ? 0 : Number(el.value);
   if (el.dataset.type === 'tier') v = el.value === '' ? null : Number(el.value);
   if (el.dataset.type === 'num') v = Number(el.value);
+  if (/\.(loginId|email)$/.test(path) && typeof v === 'string') v = v.replace(/\s+/g, '');
   const svcName = path.match(/^providers\.(\d+)\.services\.(\d+)\.name$/);
   const wasEmpty = svcName && !String(getPath(path) || '').trim();
   setPath(path, v);
