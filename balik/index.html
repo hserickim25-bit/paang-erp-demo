@@ -213,6 +213,10 @@ button.li:hover{background:var(--surface-2)}
 .inlinelink{background:none;border:0;padding:0;font:inherit;color:var(--accent);text-decoration:underline;cursor:pointer}
 @media(min-width:700px){.sheet.terms{max-width:720px}}
 .pwwrap{position:relative;display:block}.pwwrap .pwin{padding-right:52px;width:100%}.pweye{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:40px;border:0;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;border-radius:10px}.pweye:hover,.pweye[aria-pressed="true"]{color:var(--accent)}
+.bizgallery{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -2px;padding-bottom:2px}.bizgallery img{flex:0 0 86%;height:190px;object-fit:cover;border-radius:16px;scroll-snap-align:start}
+.bizphotos{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.bizphotos .bp{position:relative;aspect-ratio:4/3;border-radius:12px;overflow:hidden;background:var(--surface-2);max-width:100%}.bizphotos .bp img{width:100%;height:100%;object-fit:cover}
+.bizphotos .bp .iconbtn{position:absolute;top:4px;right:4px;width:26px;height:26px;background:rgba(0,0,0,.55);color:#fff}.bizphotos .bp.add{display:grid;place-items:center;align-content:center;gap:4px;border:1.5px dashed var(--line-2);color:var(--muted);cursor:pointer}
+.svcgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .chatlog{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding:8px;background:var(--surface-2);border-radius:12px;min-height:0}
 .bub{max-width:80%;align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:7px 10px;display:flex;flex-direction:column;gap:2px}.bub span{font-size:14px;white-space:pre-wrap;word-break:break-word}.bub i{font-style:normal;font-size:10.5px;color:var(--muted);align-self:flex-end}
 .bub.me{align-self:flex-end;background:var(--accent);color:#fff;border-color:transparent;border-radius:14px 14px 4px 14px}.bub.me i{color:rgba(255,255,255,.75)}
@@ -567,12 +571,12 @@ const CATS = [
 const catName = id => (CATS.find(c => c.id === id) || {}).name || '';
 
 const S = {
-  role: 'both', theme: null,
+  role: 'customer', theme: null,
   customers: { me: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', idOk: false, suspended: false, createdAt: simStart - 40 * DAY } },
   customer: { cid: 'me', name: ME, email: 'maria.santos@example.com', phone: '+63 917 555 0142', addr: 'home', signedIn: false, emailOk: true, phoneOk: true, idOk: false, pay: 'GCash' },
   cust: { screen: 'home', cat: null, filter: 'nearest', q: '', pid: null, bizId: null, cart: [], when: 'now', slot: null, bid: null, pay: null, review: { stars: 5, tags: ['On time'], text: '', photos: [] }, addrSheet: false, signup: null, help: false },
   prov: { id: 'p1', screen: 'jobs', bid: null, eta: 30, apply: null, perf: false },
-  biz: { id: 'b1', tab: 'requests', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
+  biz: { id: 'b1', tab: 'bookings', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
   admin: { tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
   fin: { remit: {}, filed: {}, issued: {}, ref: '' },
   providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], consents: null, terms: null, accounts: null, bizApps: [], session: null, auth: null, modal: null,
@@ -821,6 +825,9 @@ function listEntries(cat, filter, q) {
   const rank = e => e.kind === 'b' ? (bizGreen(e.o) ? 0 : 1) : ({ green: 0, yellow: 1, red: 2 })[e.o.status];
   return out.sort((a, b) => rank(a) - rank(b) || a.d - b.d);
 }
+function bizLogo(b, size = 68, radius = 16, font = 34, badge = true) {
+  return `<span class="bizlogo" style="width:${size}px;height:${size}px;border-radius:${radius}px;font-size:${font}px" aria-label="${esc(b.name)} logo">${b.logo ? `<img src="${b.logo}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : 'B'}${badge ? `<span class="bizbadge">${ic('building', 11, 2.2)}</span>` : ''}</span>`;
+}
 const bizGreen = b => b.staff.filter(id => prov(id) && prov(id).active !== false && prov(id).status === 'green').length;
 const fromPrice = o => Math.min(...o.services.filter(s => s.on && String(s.name || '').trim()).map(s => s.price));
 
@@ -829,7 +836,7 @@ function entryCard(e) {
   if (e.kind === 'b') {
     const g = bizGreen(o);
     return `<button class="pcard" data-act="openBiz" data-arg="${o.id}">
-      <span class="bizlogo" aria-label="Business">B<span class="bizbadge">${ic('building', 11, 2.2)}</span></span>
+      ${bizLogo(o)}
       <span class="meta"><span class="name ellipsis">${esc(o.name)}</span>
         <span class="small muted">Business · ${o.staff.length} verified therapists</span>
         <span class="small">${starsH(o.rating)} <b>${o.rating}</b> <span class="muted">(${o.count})</span></span>
@@ -960,23 +967,23 @@ function custProfile() {
 }
 
 function custBiz() {
-  const c = S.cust, b = biz(c.bizId), sel = c.cart, g = bizGreen(b);
-  const total = sel.reduce((a, i) => a + b.services[i].price, 0);
+  const c = S.cust, b = biz(c.bizId), g = bizGreen(b);
+  const staff = b.staff.map(id => prov(id)).filter(p => p && p.active !== false).sort((x, y) => { const o = { green: 0, yellow: 1, red: 2 }; return (o[statusOf(x).cls] - o[statusOf(y).cls]) || (distTo(x) - distTo(y)); });
   const h = `${bar(esc(b.name), 'back')}
     <div class="scroll" data-scroll="c-biz">
-      <div class="card" style="align-items:center;text-align:center;gap:8px;padding:20px 14px">
-        <span class="bizlogo" style="width:96px;height:96px;border-radius:24px;font-size:48px" aria-label="Business">B<span class="bizbadge" style="width:26px;height:26px">${ic('building', 14, 2.2)}</span></span>
+      ${(b.photos || []).length ? `<div class="bizgallery">${b.photos.map((u, i) => `<img src="${u}" alt="${esc(b.name)} photo ${i + 1}">`).join('')}</div>` : ''}
+      <div class="card" style="align-items:center;text-align:center;gap:8px;padding:18px 14px">
+        ${bizLogo(b, 88, 22, 44)}
         <h2 style="font-size:21px">${esc(b.name)}</h2><span class="small muted">Business · ${esc(b.area)} · ${fmtKm(distTo(b))}</span>
-        <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g} of ${b.staff.length} therapists on stand-by</span>
-        <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px"><span class="pill good">${ic('shield', 14)} DTI registered</span><span class="pill good">Staff ID-verified</span></div></div>
-      <div class="card"><p class="small">${esc(b.story)} The spa assigns the nearest therapist on stand-by, and you see their name and arrival time before you pay.</p></div>
+        <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g} of ${staff.length} therapists on stand-by</span>
+        <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px"><span class="pill good">${ic('shield', 14)} Business documents checked</span><span class="pill good">Staff ID-verified</span></div></div>
+      ${b.story ? `<div class="card"><p class="small">${esc(b.story)}</p></div>` : ''}
+      <div class="col" style="gap:8px"><h3 style="font-size:16px">Choose a therapist to book</h3><span class="small muted">You book a therapist directly. Each one works for ${esc(b.name)} and offers the menu below.</span>
+        <div class="list">${staff.map(p => `<button class="li" data-act="openProvider" data-arg="${p.id}">${zav(p, 48, true)}<div class="col grow"><b>${esc(p.name)}</b>${statusLine(p)}<span class="tiny muted">${starsH(p.rating)} ${p.rating} · ${p.years} yrs</span></div><span class="small muted num">${fmtKm(distTo(p))}</span>${ic('chev', 16)}</button>`).join('') || '<div class="empty">No therapists listed yet.</div>'}</div></div>
       ${ratingBlock(b)}
-      <div class="col" style="gap:8px"><h3 style="font-size:15px">Therapists</h3><div class="list">${b.staff.map(id => { const p = prov(id); return `<button class="li" data-act="openProvider" data-arg="${p.id}">${zav(p, 44, true)}<div class="col grow"><b>${esc(p.name)}</b>${statusLine(p)}</div><span class="small muted num">${fmtKm(distTo(p))}</span>${ic('chev', 16)}</button>`; }).join('')}</div></div>
-      <div class="col" style="gap:8px"><h3 style="font-size:15px">Menu</h3><div class="list">${b.services.map((s, i) => { if (!s.on || !String(s.name || '').trim()) return ''; const on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min</span></div><b class="num">${peso(s.price)}</b><button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}">${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div></div>
+      <div class="col" style="gap:8px"><h3 style="font-size:15px">Menu & prices</h3><div class="list">${b.services.filter(s => s.on && String(s.name || '').trim()).map(s => `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min</span></div><b class="num">${peso(s.price)}</b></div>`).join('')}</div></div>
     </div>`;
-  const f = `<div class="row between"><div class="col"><span class="small muted">${sel.length ? sel.length + ' service' + (sel.length > 1 ? 's' : '') : 'Add a service'}</span><b class="num" style="font-size:18px">${peso(total)}</b></div>
-    <button class="btn primary" data-act="goBook" ${!sel.length || !g ? 'disabled' : ''}>${g ? 'Continue' : 'No one on stand-by'}</button></div>`;
-  return [h, f];
+  return [h, ''];
 }
 
 function cartInfo() {
@@ -1572,12 +1579,13 @@ function bizPane() {
   const q = S.bookings.filter(x => x.bizId === b.id && x.status === 'business_queue');
   const nav = (id, l, icn, n) => `<button data-act="bizTab" data-arg="${id}" ${tab === id ? 'aria-current="page"' : ''}>${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill bad" style="height:20px">${n}</span>` : ''}</button>`;
   let main = '';
-  if (tab === 'requests') main = bizRequests(b, q);
+  if (tab === 'requests' || tab === 'bookings') main = bizBookings(b);
+  if (tab === 'services') main = bizServices(b);
   if (tab === 'staff') main = bizStaff(b);
   if (tab === 'settle') main = bizSettle(b);
   if (tab === 'profile') main = bizProfile(b);
-  return `<div class="web" data-pane="business"><aside class="side"><div class="org"><span class="bizlogo" style="width:36px;height:36px;border-radius:10px;font-size:19px">B</span><div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
-    ${nav('requests', 'Requests', 'bell', q.length)}${nav('staff', 'Staff', 'users')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Business profile', 'building')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
+  return `<div class="web" data-pane="business"><aside class="side"><div class="org">${bizLogo(b, 36, 10, 19, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
+    ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
     <main class="main">${main}</main>${toastsFor('business', true)}</div>`;
 }
 function bizRequests(b, q) {
@@ -1665,6 +1673,27 @@ function bizSettle(b) {
       ${per.map((p, k) => `<tr><td>${fmtD(p.start)} – ${fmtD(p.end - DAY)}</td><td class="num">${p.rows.length}</td><td class="num">${peso(p.gross, 2)}</td><td class="num">${peso(p.fee, 2)}</td><td class="num">${peso(p.wht, 2)}</td><td class="num"><b>${peso(p.net, 2)}</b></td><td>${p.current ? `<span class="pill accent">Scheduled ${fmtD(p.end)}</span>` : p.rows.length ? `<span class="pill good">Paid ${fmtD(p.end)}</span>` : '<span class="pill">No jobs</span>'}</td><td><button class="btn secondary xs" data-act="bizStmt" data-arg="${k}" ${p.rows.length ? '' : 'disabled'}>View</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
+function bizBookings(b) {
+  const mine = S.bookings.filter(x => x.bizId === b.id || b.staff.includes(x.pid));
+  const n = now(), f = S.biz.bf || 'active';
+  const groups = { active: ['requested', 'offered', 'paid', 'departed', 'arrived'], done: ['ended', 'reviewed'], cancelled: ['cancelled', 'declined', 'no_response', 'expired'] };
+  const list = mine.filter(x => f === 'all' || (groups[f] || []).includes(x.status)).sort((x, y) => (y.slotAt || y.createdAt) - (x.slotAt || x.createdAt));
+  const today = mine.filter(x => x.createdAt >= dayStart(n));
+  const inSvc = mine.filter(x => x.status === 'arrived');
+  const upcoming = mine.filter(x => ['offered', 'paid'].includes(x.status) && x.when === 'later');
+  const wkGross = mine.filter(x => ['ended', 'reviewed'].includes(x.status) && x.endedAt >= weekStartOf(n)).reduce((a, x) => a + x.gross, 0);
+  const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
+  const fb = (id, l) => `<button data-act="bizBF" data-arg="${id}" aria-pressed="${f === id}">${l}</button>`;
+  return `<div class="page-h"><div><h1>Bookings & services</h1><p>Customers book your therapists directly. Watch every staff booking, service and payment here; the therapist handles arrival time, check-in and ending the service.</p></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">${tile('Bookings today', today.length, 'requests and bookings')}${tile('In service now', inSvc.length, inSvc.map(x => prov(x.pid).name.split(' ')[0]).join(', ') || 'none')}${tile('Upcoming', upcoming.length, 'scheduled')}${tile('Earned this week', peso(wkGross), 'completed services')}${tile('On stand-by', bizGreen(b) + ' / ' + b.staff.length, 'green lights now')}</div>
+    <div class="panel"><div class="panel-h"><h3>Staff now</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Status</th><th>Current or next job</th><th class="num">Jobs this week</th></tr></thead><tbody>
+      ${b.staff.map(id => prov(id)).filter(Boolean).map(p => { const cur = mine.find(x => x.pid === p.id && ['offered', 'paid', 'departed', 'arrived'].includes(x.status)); const wk = mine.filter(x => x.pid === p.id && x.endedAt >= weekStartOf(n)).length;
+        return `<tr><td><div class="row">${avatar(p.name, p.hue, 32)}<b>${esc(p.name)}</b></div></td><td>${statusLine(p)}</td><td class="small">${cur ? `${esc(cur.services.map(s => s.name).join(' + '))} · ${esc(cur.customer)} · ${statusPill(cur.status)}` : '—'}</td><td class="num">${wk}</td></tr>`; }).join('')}
+    </tbody></table></div></div>
+    <div class="panel"><div class="panel-h"><h3>All staff bookings</h3><div class="seg">${fb('active', 'In progress')}${fb('done', 'Completed')}${fb('cancelled', 'Cancelled')}${fb('all', 'All')}</div></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>When</th><th>Therapist</th><th>Customer</th><th>Service</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>
+      ${list.slice(0, 80).map(x => `<tr><td class="mono">${x.id}</td><td class="small">${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : fmtD(x.createdAt) + ' ' + fmtT(x.createdAt)}</td><td>${x.pid && prov(x.pid) ? esc(prov(x.pid).name) : '<span class="muted">—</span>'}</td><td>${esc(x.customer)}</td><td class="small">${esc(x.services.map(s => s.name).join(' + '))}</td><td>${statusPill(x.status)}${x.refund ? '<br><span class="tiny muted">refund ' + peso(x.refund.amount) + '</span>' : ''}</td><td class="num">${peso(x.gross)}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No bookings in this view.</div></td></tr>'}
+    </tbody></table></div></div>`;
+}
 function bizProfile(b) {
   const bi = S.businesses.indexOf(b);
   const f = (label, key, extra = '') => `<label class="field">${label}<input id="bp-${key}" class="input" data-bind="businesses.${bi}.${key}" value="${esc(b[key])}" ${extra}></label>`;
@@ -1678,7 +1707,19 @@ function bizProfile(b) {
       <div class="formgrid">${f('DTI / SEC registration', 'dti')}${f('Business TIN', 'tin')}${f("Mayor's permit", 'permit')}${f('Settlement account', 'bank')}</div>
       <span class="small muted">Registration numbers are re-checked by BalikHome when changed. Payouts go to the settlement account.</span>
     </div></div>
-    <div class="narrow panel"><div class="panel-h"><h3>Menu & prices</h3><button class="btn secondary xs" data-act="bizAddSvc">${ic('plus', 14)} Add</button></div><div class="panel-b">
+    <div class="narrow panel"><div class="panel-h"><h3>Logo and promotional photos</h3></div><div class="panel-b">
+      <div class="row" style="gap:14px;align-items:center">${bizLogo(b, 84, 20, 40, false)}<div class="col" style="gap:6px"><b class="small">Business logo</b><span class="tiny muted">Square image, shown on your listing and to customers.</span>
+        <div class="row" style="gap:6px"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${b.logo ? 'Change logo' : 'Upload logo'}<input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.logo" data-compress="1" id="bp-logo"></label>${b.logo ? '<button class="btn ghost xs" data-act="bizRmLogo">Remove</button>' : ''}</div></div></div>
+      <div class="divider"></div>
+      <b class="small">Promotional photos · ${(b.photos || []).length} of 3</b><span class="tiny muted">Your space, team or results. Customers see them at the top of your page.</span>
+      <div class="bizphotos">${(b.photos || []).map((u, k) => `<span class="bp"><img src="${u}" alt="Photo ${k + 1}"><button class="iconbtn" data-act="bizRmPhoto" data-arg="${k}" aria-label="Remove photo ${k + 1}">${ic('x', 14)}</button></span>`).join('')}
+        ${(b.photos || []).length < 3 ? `<label class="bp add">${ic('plus', 22)}<span class="tiny">Add photo</span><input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.photos" data-compress="wide" id="bp-photo"></label>` : ''}</div>
+    </div></div></div>`;
+}
+function bizServices(b) {
+  const bi = S.businesses.indexOf(b);
+  return `<div class="page-h"><div><h1>Services & prices</h1><p>Add or remove the services your business offers and set the price and time for each. Every staff member offers this menu at these prices, and changes show to customers right away.</p></div><button class="btn primary sm" data-act="bizAddSvc">${ic('plus', 14)} Add service</button></div>
+    <div class="panel"><div class="panel-b"><div class="svcgrid">
       ${b.services.map((s, j) => { const named = String(s.name || '').trim(); return `<div class="card tight" style="${named ? '' : 'border-color:var(--accent)'}"><div class="row between"><label class="check" style="align-items:center"><input type="checkbox" id="bm-on-${j}" data-bind="businesses.${bi}.services.${j}.on" ${s.on && named ? 'checked' : ''} ${named ? '' : 'disabled'}>Active</label>${b.services.length > 1 ? `<button class="iconbtn" style="width:30px;height:30px" data-act="bizRemoveSvc" data-arg="${j}" aria-label="Remove ${esc(s.name || 'service')}">${ic('x', 15)}</button>` : ''}</div>
         <label class="field">Service name<input id="bm-n-${j}" class="input" maxlength="40" data-bind="businesses.${bi}.services.${j}.name" value="${esc(s.name)}" placeholder="e.g. Hot stone massage"></label>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="field">Price (₱)<input id="bm-p-${j}" class="input num" type="number" min="0" step="10" data-bind="businesses.${bi}.services.${j}.price" value="${s.price}"></label><label class="field">Minutes<input id="bm-m-${j}" class="input num" type="number" min="10" step="5" data-bind="businesses.${bi}.services.${j}.mins" value="${s.mins}"></label></div></div>`; }).join('')}
@@ -2002,6 +2043,7 @@ function shell() {
       : `<button class="fab" data-act="demo" aria-label="Demo controls: switch app" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}</button>`;
     return `<div class="appshell">${pane}</div>${fab}${demoSheet()}${modal()}`;
   }
+  if (S.role === 'both') S.role = 'customer';
   const r = S.role;
   const role = (id, l) => `<button data-act="setRole" data-arg="${id}" aria-pressed="${r === id || (id === 'customer' && r === 'both' && !wide())}">${l}</button>`;
   let stage = '';
@@ -2013,7 +2055,7 @@ function shell() {
   else stage = adminPane();
   return `<header class="topbar"><div class="topbar-in">
       <button class="brand" data-act="goHome" aria-label="BalikHome · home"><span class="brand-mark"><img src="${LOGO_MARK}" alt=""></span>BalikHome <small>test build</small></button>
-      <nav class="seg" aria-label="View">${wide() ? role('both', 'Customer + Provider') : ''}${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
+      <nav class="seg" aria-label="View">${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
       <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
     </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}`;
 }
@@ -2198,7 +2240,10 @@ function installRow() {
 function normalizeCredits() {
   const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5 } };
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
+  S.businesses.forEach(b => { if (!Array.isArray(b.photos)) b.photos = []; });
+  S.bookings.forEach(x => { if (x.status === 'business_queue') { x.status = 'cancelled'; x.cancelNote = 'Business requests were retired: customers now book a business therapist directly.'; } });
   S.providers.forEach(p => { if (!p.avail) p.avail = defAvail(); });
+  S.providers.forEach(p => { const b = p.biz && biz(p.biz); if (!b) return; const menu = b.services.filter(x => x.on && String(x.name || '').trim()).map(x => ({ name: x.name, mins: Number(x.mins) || 60, price: Number(x.price) || 0, on: true })); if (JSON.stringify(menu.map(x => [x.name, x.mins, x.price])) !== JSON.stringify((p.services || []).map(x => [x.name, x.mins, x.price]))) p.services = menu; });
   S.providers.forEach(p => { if (p.credits == null || isNaN(p.credits)) p.credits = S.settings.credit.start; p.credits = Math.max(S.settings.credit.min, Math.min(S.settings.credit.max, Math.round(p.credits))); if (!p.creditLog) p.creditLog = []; if (!p.creditWeeks) p.creditWeeks = []; if (p.tierOverride != null && p.tierOverride >= S.settings.credit.bands.length) p.tierOverride = null; });
 }
 /* =============== In-app messages and voice calls (open after payment, closed when the service ends) =============== */
@@ -3077,6 +3122,9 @@ const A = {
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
+  bizBF: f => { S.biz.bf = f; },
+  bizRmLogo: () => { biz(S.biz.id).logo = null; },
+  bizRmPhoto: k => { const b = biz(S.biz.id); (b.photos || []).splice(Number(k), 1); },
   assign: arg => { const [id, pid] = arg.split(':'); const b = bk(id), p = prov(pid); b.pid = pid; b.status = 'requested'; b.respondBy = now() + S.settings.respond * MIN; logB(b, `${biz(b.bizId).name} assigned ${p.name}`);
     notifyProviderOfRequest(b, p); S.prov.id = pid; S.prov.screen = 'jobs';
     if (b.cid) { pushAlert('customer', 'Therapist assigned', `${p.name} from ${biz(b.bizId).name} will send an arrival time.`, b.id); toast('customer', 'Therapist assigned', p.name + ' will reply with an arrival time.'); }
@@ -3224,6 +3272,7 @@ document.addEventListener('change', e => {
     const put = url => { const cur = getPath(el.dataset.file); if (Array.isArray(cur)) cur.push(url); else setPath(el.dataset.file, url); render(); };
     const rd = new FileReader(); rd.onload = () => {
       if (!el.dataset.compress) return put(rd.result);
+      if (el.dataset.compress === 'wide') { const img = new Image(); img.onload = () => { const m = 1200, sc = Math.min(1, m / Math.max(img.width, img.height)); const cv = document.createElement('canvas'); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); const cur = getPath(el.dataset.file); if (Array.isArray(cur) && cur.length >= 3) return; put(cv.toDataURL('image/jpeg', .8)); }; img.src = rd.result; return; }
       const img = new Image(); img.onload = () => { const m = 480, sc = Math.min(1, m / Math.max(img.width, img.height)); const cv = document.createElement('canvas'); const side = Math.min(img.width, img.height);
         cv.width = cv.height = Math.round(Math.min(m, side)); const g = cv.getContext('2d'); g.drawImage(img, (img.width - side) / 2, (img.height - side) / 2, side, side, 0, 0, cv.width, cv.height); put(cv.toDataURL('image/jpeg', .85)); };
       img.onerror = () => put(rd.result); img.src = rd.result; };
