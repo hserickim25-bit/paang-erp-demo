@@ -2664,8 +2664,10 @@ function pendingPane(a) {
 
 function render() {
   normalizeCredits();
-  if (!S.consents) S.consents = seedConsents();
-  if (!S.accounts) S.accounts = seedAccounts();
+  if (!S.consents || !S.consents.length) S.consents = seedConsents();
+  // Shared data loaded from the live room may predate accounts: make sure every demo account exists
+  if (!Array.isArray(S.accounts)) S.accounts = [];
+  seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
   if (!S.bizApps) S.bizApps = [];
   if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
