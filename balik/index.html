@@ -101,6 +101,8 @@ button.brand:hover{background:var(--surface-2)}
 .apgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;max-width:560px}.apimg{margin:0;display:flex;flex-direction:column;gap:6px;min-width:0}
 .apimg button{padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2);cursor:zoom-in;aspect-ratio:1;max-width:100%;width:100%}.apimg img{width:100%;height:100%;object-fit:cover;display:block}
 .apimg-none{aspect-ratio:1;border:1.5px dashed var(--line-2);border-radius:12px;display:grid;place-items:center;font-size:12px;color:var(--muted)}.apimg figcaption{display:flex;flex-direction:column;font-size:12px}.apimg figcaption span{color:var(--muted)}
+.liveline{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;max-width:100%;flex-wrap:wrap}
+.liveline .dot{width:8px;height:8px;border-radius:50%;background:#22B573}.liveline.bad{color:var(--bad);border-color:var(--bad)}.liveline.bad .dot{background:#E5484D}.liveline .muted{font-weight:500}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -121,7 +123,7 @@ button.brand:hover{background:var(--surface-2)}
 .scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:14px 14px 20px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
 @media (prefers-reduced-motion:reduce){.scroll{scroll-behavior:auto}*{transition:none!important;animation:none!important}}
 .tabbar{display:flex;background:var(--surface);border-top:1px solid var(--line);flex-shrink:0;padding-bottom:4px}
-.tabbar button{flex:1;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;font-size:10.5px;font-weight:500;color:var(--muted);position:relative}
+.tabbar button{flex:1 1 0;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border:0;background:transparent;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;font-size:10.5px;font-weight:500;color:var(--muted);position:relative}
 .tabbar button[aria-current="page"]{color:var(--accent)}
 .tabbar .badge-n{top:3px;right:calc(50% - 20px)}
 .footer-bar{background:var(--surface);border-top:1px solid var(--line);padding:12px 14px 14px;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
@@ -372,7 +374,8 @@ td.num,th.num{text-align:right}
 .inbox .app{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;flex-shrink:0}
 .verified{display:inline-flex;align-items:center;gap:4px;color:var(--good);font-weight:600;font-size:12px}
 /* full-screen app mode on phones */
-.appshell{min-height:100dvh;background:var(--bg)}
+.appshell{min-height:100dvh;background:var(--bg);max-width:100vw;overflow-x:hidden}
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .appshell .screen{height:100dvh;border-radius:0}
 @media (min-width:700px){.appshell>.screen{max-width:640px;margin:0 auto;border-left:1px solid var(--line);border-right:1px solid var(--line)}}
 @media (max-height:520px) and (min-width:700px){.appshell .appbar{padding-top:6px}.appshell .tabbar button{padding-block:4px}}
@@ -1096,7 +1099,7 @@ function custRequest() {
   const stepsH = ['Request sent', 'Arrival time', 'Pay', 'Departed', 'Service'].map((s, i) => `<li class="${i < step + 1 ? 'done' : i === step + 1 ? 'now' : ''}"><span></span>${s}</li>`).join('');
   return `${bar('Booking ' + b.id, 'toBookings')}
     <div class="scroll" data-scroll="c-req">
-      ${['requested', 'business_queue'].includes(b.status) ? offlineBanner('customer') : ''}
+      ${['requested', 'business_queue'].includes(b.status) ? liveLine() + offlineBanner('customer') : ''}
       ${hero}
       ${step >= 0 ? `<ol class="steps">${stepsH}</ol>` : ''}
       <div class="card tight"><div class="row">${p ? zav(p, 48) : avatar(bz.name, bz.hue, 40)}<div class="col grow"><b>${esc(who)}</b>${p ? statusLine(p) : ''}</div></div>
@@ -1341,7 +1344,7 @@ function provJobs() {
   const today = myLedger(me, b => sameDay(b.endedAt, n));
   const wk = weekTotal(me), staff = !!me.biz;
   const goalBase = staff ? monthGross : monthNet;
-  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${offlineBanner('provider')}
+  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${liveLine()}${offlineBanner('provider')}
     ${reqs.map(b => `<button class="card" data-act="openReq" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
       <div class="row between"><span class="eyebrow" style="color:var(--accent)">New request · also sent by SMS</span><span class="pill warn num" data-cd="${b.respondBy}">${mmss(b.respondBy - n)}</span></div>
       <b style="font-size:17px">${esc(b.services.map(s => s.name).join(' + '))}</b>
@@ -2134,7 +2137,7 @@ function demoSheet() {
     <span class="eyebrow">Now · <span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span>
     <div class="row" style="gap:8px"><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
     ${liveSection()}
-    <p class="tiny muted">Test build. Email and SMS codes are shown on screen instead of being sent, and payments are simulated.</p>
+    <p class="tiny muted">Build ${BUILD} · device ${esc(DEVICE)}. Test build. Email and SMS codes are shown on screen instead of being sent, and payments are simulated.</p>
     <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn secondary sm" data-act="resetDemo">Reset this device</button><button class="btn danger sm" data-act="resetRoom">${S.demoConfirm === 'room' ? 'Tap again to reset for everyone' : 'Reset shared test data'}</button></div>
   </div></div>`;
 }
@@ -3551,6 +3554,12 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
+const BUILD = 48;
+function liveLine() {
+  const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
+  const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
+  return `<button class="liveline ${live ? 'ok' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>`;
+}
 function devicesOnline() { const t = Date.now(); return new Set(Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE])).size; }
 
 /* adapters */
@@ -3683,7 +3692,8 @@ setInterval(() => tick(false), 1000);
 
 <script>
 if ('serviceWorker' in navigator && location.protocol === 'https:') {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(() => {}); });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').then(r => { try { r.update(); } catch (e) {} }).catch(() => {}); });
+  { let reloaded = false; const had = !!navigator.serviceWorker.controller; navigator.serviceWorker.addEventListener('controllerchange', () => { if (reloaded || !had) return; reloaded = true; location.reload(); }); }
 }
 </script>
 </body>
