@@ -203,9 +203,11 @@ button.li:hover{background:var(--surface-2)}
 .cal-g{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;text-align:center}
 .cal-h{font-size:11px;font-weight:600;color:var(--muted);padding:2px 0}
 .cal-d{height:40px;border-radius:10px;border:0;background:transparent;font:inherit;font-size:15px;color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums}
-.cal-d:hover:not([disabled]){background:var(--surface-2)}.cal-d.today{box-shadow:inset 0 0 0 1.5px var(--accent)}.cal-d.off{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.cal-d:hover:not([disabled]){background:var(--surface-2)}.cal-d.today,.cal-d.today:hover{color:#F07A12;font-weight:800}.cal-d.off{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line-2)}
 .cal-d[aria-pressed="true"],.cal-d[aria-pressed="true"]:hover{background:var(--accent);color:#fff;text-decoration:none;font-weight:700}.cal-d[disabled]{opacity:.28;cursor:default}
 .cal-d.open{background:var(--accent-soft);font-weight:600}.cal-d.open:not(.today){color:#15A34A}.cal-d.open:not(.today)[aria-pressed="true"],.cal-d.open:not(.today)[aria-pressed="true"]:hover{color:#5BE58C}.cal-key.open{background:var(--accent-soft);box-shadow:inset 0 0 0 2px #15A34A}
+.cal-d.open[aria-pressed="true"],.cal-d.open[aria-pressed="true"]:hover{background:var(--accent);font-weight:700}.cal-d.open:not(.today)[aria-pressed="true"]{color:#5BE58C}
+.cal-d.today[aria-pressed="true"],.cal-d.today[aria-pressed="true"]:hover{color:#FF9A3D}.cal-key.today{background:transparent;box-shadow:none;color:#F07A12;width:auto;height:auto;font-weight:800;font-size:11px}
 .cal-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:4px}.cal-key.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
 .sheet.terms{max-height:92dvh;height:92dvh;gap:12px}.terms-body{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;padding-right:4px}
 .terms-body h4{font-size:15px;margin:10px 0 4px}.terms-body p{margin:0 0 6px}.terms-toc{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2)}
@@ -1016,7 +1018,7 @@ function calendar(c, av, d0) {
       <button type="button" class="iconbtn" data-act="calMonth" data-arg="1" aria-label="Next month">${ic('chev', 18)}</button><button type="button" class="btn ghost xs" data-act="calToday">Today</button></div>
     <div class="cal-g">${DAYS3.map(d => `<span class="cal-h">${d.slice(0, 2)}</span>`).join('')}${cells.join('')}</div>
     ${open ? '' : `<span class="small" style="color:var(--warn)">No bookable days in this month. Bookings open ${bookWindowH()} hours ahead.</span>`}
-    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected</span><span class="tiny muted"><span class="cal-key open"></span> Bookable · next ${bookWindowH()} h</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off</span>' : ''}</div></div>`;
+    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected</span><span class="tiny muted"><span class="cal-key today">${new Date(now()).getDate()}</span> Today</span><span class="tiny muted"><span class="cal-key open"></span> Bookable · next ${bookWindowH()} h</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off</span>' : ''}</div></div>`;
 }
 function schedPicker(c, src) {
   const d0 = dayStart(now()), minT = now() + 30 * MIN, maxT = bookMax();
