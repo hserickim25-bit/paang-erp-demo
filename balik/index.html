@@ -208,6 +208,7 @@ button.li:hover{background:var(--surface-2)}
 .cal-d.open{background:var(--accent-soft);font-weight:600}.cal-d.open:not(.today){color:#15A34A}.cal-d.open:not(.today)[aria-pressed="true"],.cal-d.open:not(.today)[aria-pressed="true"]:hover{color:#5BE58C}.cal-key.open{background:var(--accent-soft);box-shadow:inset 0 0 0 2px #15A34A}
 .cal-d.open[aria-pressed="true"],.cal-d.open[aria-pressed="true"]:hover{background:var(--accent);font-weight:700}.cal-d.open:not(.today)[aria-pressed="true"]{color:#5BE58C}
 .cal-d.today[aria-pressed="true"],.cal-d.today[aria-pressed="true"]:hover{color:#FF9A3D}.cal-key.today{background:transparent;box-shadow:none;color:#F07A12;width:auto;height:auto;font-weight:800;font-size:11px}
+.nowclock{display:inline-flex;align-items:center;gap:5px;font-size:13px;font-weight:600;color:var(--fg);background:var(--surface-2);border-radius:999px;padding:4px 10px}
 .cal-key{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);vertical-align:-1px;margin-right:4px}.cal-key.off{background:transparent;box-shadow:inset 0 0 0 1px var(--line-2)}
 .sheet.terms{max-height:92dvh;height:92dvh;gap:12px}.terms-body{flex:1;overflow-y:auto;min-height:0;display:flex;flex-direction:column;gap:10px;font-size:14px;line-height:1.55;padding-right:4px}
 .terms-body h4{font-size:15px;margin:10px 0 4px}.terms-body p{margin:0 0 6px}.terms-toc{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border-radius:12px;background:var(--surface-2)}
@@ -1018,7 +1019,7 @@ function calendar(c, av, d0) {
       <button type="button" class="iconbtn" data-act="calMonth" data-arg="1" aria-label="Next month">${ic('chev', 18)}</button><button type="button" class="btn ghost xs" data-act="calToday">Today</button></div>
     <div class="cal-g">${DAYS3.map(d => `<span class="cal-h">${d.slice(0, 2)}</span>`).join('')}${cells.join('')}</div>
     ${open ? '' : `<span class="small" style="color:var(--warn)">No bookable days in this month. Bookings open ${bookWindowH()} hours ahead.</span>`}
-    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected</span><span class="tiny muted"><span class="cal-key today">${new Date(now()).getDate()}</span> Today</span><span class="tiny muted"><span class="cal-key open"></span> Bookable · next ${bookWindowH()} h</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off</span>' : ''}</div></div>`;
+    <div class="row" style="gap:12px;flex-wrap:wrap"><span class="tiny muted"><span class="cal-key"></span> Selected: <b style="color:var(--fg)">${new Date(c.day).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</b></span><span class="tiny muted"><span class="cal-key today">${new Date(now()).getDate()}</span> Today</span><span class="tiny muted"><span class="cal-key open"></span> Bookable · next ${bookWindowH()} h</span>${av ? '<span class="tiny muted"><span class="cal-key off"></span> Usually off</span>' : ''}</div></div>`;
 }
 function schedPicker(c, src) {
   const d0 = dayStart(now()), minT = now() + 30 * MIN, maxT = bookMax();
@@ -1039,7 +1040,7 @@ function custBook() {
   const h = `${bar('Request booking', 'back')}
     <div class="scroll" data-scroll="c-book">
       <div class="card tight"><div class="row">${c.screenSrc === 'biz' ? `<span class="avatar" style="width:40px;height:40px;border-radius:12px;background:hsl(${src.hue} 50% 90%);color:hsl(${src.hue} 50% 28%)">${ic('building', 20)}</span>` : avatar(src.name, src.hue, 40)}<div class="col grow"><b>${esc(src.name)}</b><span class="small muted">${svcs.map(s => esc(s.name)).join(' + ')} · ${mins} min</span></div><b class="num">${peso(gross)}</b></div></div>
-      <div class="col" style="gap:8px"><span class="eyebrow">When</span>
+      <div class="col" style="gap:8px"><div class="row between" style="gap:8px"><span class="eyebrow">When</span><span class="nowclock">${ic('clock', 14)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span></div>
         <div class="seg" style="width:100%"><button style="flex:1" data-act="setWhen" data-arg="now" aria-pressed="${c.when === 'now'}">As soon as possible</button><button style="flex:1" data-act="setWhen" data-arg="later" aria-pressed="${c.when === 'later'}">Schedule</button></div>
         ${c.when === 'now' ? `<p class="small muted">The provider replies with an arrival time of 10 to 60 minutes. You confirm and pay only after that.</p>` :
         schedPicker(c, src)}</div>
