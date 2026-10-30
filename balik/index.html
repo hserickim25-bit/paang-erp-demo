@@ -94,6 +94,10 @@ button.brand:hover{background:var(--surface-2)}
 .stage{max-width:1440px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .duo{display:flex;flex-wrap:wrap;justify-content:center;gap:32px 48px}
 .duo-col{display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0}
+.aspick{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px}.aspick .duo-label{flex-basis:100%;justify-content:center}
+.aspick button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font:inherit;font-size:13px;font-weight:600;cursor:pointer}
+.aspick button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}.aspick button[aria-pressed="true"] .muted{color:rgba(255,255,255,.75)}
+.aspick .dot{width:8px;height:8px;border-radius:50%;background:var(--muted)}.aspick .dot.green{background:#22B573}.aspick .dot.yellow{background:#F2B43C}.aspick .dot.red{background:#E5484D}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -2016,6 +2020,12 @@ function liveSection() {
       ${S.fbErr ? `<span class="small" style="color:var(--bad)">${esc(S.fbErr)}</span>` : ''}<button class="btn primary xs" data-act="saveFb">Save & connect</button></details>`}
   </div>`;
 }
+function provPicker() {
+  const list = S.providers.filter(p => p.active !== false && !(p.status === 'pending'));
+  const chip = p => { const st = statusOf(p); return `<button data-act="provAs" data-arg="${p.id}" aria-pressed="${S.prov.id === p.id}" title="${esc(p.name)} · login ${esc(p.name.split(' ')[0].toLowerCase())}"><span class="dot ${st.cls}"></span>${esc(p.name.split(' ')[0])}${p.biz ? '<span class="tiny muted"> · spa</span>' : ''}${pendingFor(p.id) ? '<span class="pill bad" style="height:18px;padding:0 6px">!</span>' : ''}</button>`; };
+  return `<div class="aspick" style="max-width:420px"><span class="duo-label">${ic('bag', 14)} Provider app · testing as</span>${list.map(chip).join('')}</div>`;
+}
+const pendingFor = pid => S.bookings.filter(x => x.pid === pid && x.status === 'requested').length;
 function demoSheet() {
   if (!S.demoOpen) return '';
   const cur = S.role === 'both' ? 'customer' : S.role;
@@ -2023,7 +2033,8 @@ function demoSheet() {
   return `<div class="demo-sheet" data-act="demo"><div class="sheet" data-stop="1"><div class="grab"></div>
     <div class="row between"><h3 style="font-size:17px">Demo controls</h3><button class="iconbtn" data-act="demo" aria-label="Close">${ic('x', 20)}</button></div>
     <span class="eyebrow">Test accounts · password ${DEMO_PW}</span>
-    <div class="row" style="gap:6px;flex-wrap:wrap">${[['maria', 'Customer'], ['liza', 'Provider'], ['grace', 'Spa staff'], ['lunas', 'Business']].map(([id, l]) => acctByLogin(id) ? `<button class="btn ${meAcct() && meAcct().loginId === id ? 'primary' : 'secondary'} xs" data-act="demoLogin" data-arg="${id}">${l} · ${id}</button>` : '').join('')}${meAcct() ? `<button class="btn ghost xs" data-act="authLogout">Log out (${esc(meAcct().loginId)})</button>` : ''}</div>
+    ${[['customer', 'Customers'], ['provider', 'Providers'], ['staff', 'Spa staff'], ['business', 'Businesses']].map(([rl, l]) => { const xs = S.accounts.filter(a => a.role === rl && a.status === 'active' && a.demo); return xs.length ? `<div class="col" style="gap:4px"><span class="tiny muted">${l}</span><div class="row" style="gap:6px;flex-wrap:wrap">${xs.map(a => { const p = a.link && a.link.pid, n = p ? pendingFor(p) : 0; return `<button class="btn ${meAcct() && meAcct().id === a.id ? 'primary' : 'secondary'} xs" data-act="demoLogin" data-arg="${esc(a.loginId)}">${esc(a.loginId)}${n ? ` <span class="pill bad" style="height:18px;padding:0 6px">${n}</span>` : ''}</button>`; }).join('')}</div></div>` : ''; }).join('')}
+    ${meAcct() ? `<div><button class="btn ghost xs" data-act="authLogout">Log out (${esc(meAcct().loginId)})</button></div>` : ''}
     <span class="eyebrow">Switch app (test view)</span>
     <div class="rolegrid">${rb('customer', 'Customer', 'user', 'Book a service')}${rb('provider', 'Provider', 'bag', 'Accept & serve')}${rb('business', 'Business', 'building', 'Spa staff & payouts')}${rb('admin', 'Admin', 'gear', 'Operations & tax')}</div>
     <span class="eyebrow">Now · <span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span>
@@ -2053,8 +2064,8 @@ function shell() {
   if (r === 'both' && wide()) stage = `<div class="intro"><h1>BalikHome — test the app live</h1><p>Sign up on the left with an email and mobile number, then book. Respond on the right as the provider. Business and Admin share the same data. Use +10 min to move the clock. On a phone, open this page and choose "Add to Home Screen" to use it like an app.</p></div>
     <div class="duo"><div class="duo-col"><span class="duo-label">${ic('user', 14)} Customer app</span><div class="device">${custPane()}</div></div><div class="duo-col"><span class="duo-label">${ic('bag', 14)} Provider app</span><div class="device">${provPane()}</div></div></div>`;
   else if (r === 'customer' || r === 'both') stage = `<div class="duo"><div class="duo-col"><div class="device">${custPane()}</div></div></div>`;
-  else if (r === 'provider') stage = `<div class="duo"><div class="duo-col"><div class="device">${provPane()}</div></div></div>`;
-  else if (r === 'business') stage = bizPane();
+  else if (r === 'provider') stage = `<div class="duo"><div class="duo-col">${provPicker()}<div class="device">${provPane()}</div></div></div>`;
+  else if (r === 'business') stage = (S.businesses.length > 1 ? `<div class="aspick" style="margin-bottom:12px"><span class="duo-label">Testing as</span>${S.businesses.map(b => `<button data-act="bizAs" data-arg="${b.id}" aria-pressed="${S.biz.id === b.id}">${bizLogo(b, 22, 6, 12, false)} ${esc(b.name)}</button>`).join('')}</div>` : '') + bizPane();
   else stage = adminPane();
   return `<header class="topbar"><div class="topbar-in">
       <button class="brand" data-act="goHome" aria-label="BalikHome · home"><span class="brand-mark"><img src="${LOGO_MARK}" alt=""></span>BalikHome <small>test build</small></button>
@@ -3125,6 +3136,8 @@ const A = {
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
+  provAs: id => { if (prov(id)) { S.prov.id = id; S.prov.bid = null; S.prov.screen = 'jobs'; S.prov.apply = null; } },
+  bizAs: id => { if (biz(id)) S.biz.id = id; },
   bizBF: f => { S.biz.bf = f; },
   bizRmLogo: () => { biz(S.biz.id).logo = null; },
   bizRmPhoto: k => { const b = biz(S.biz.id); (b.photos || []).splice(Number(k), 1); },
