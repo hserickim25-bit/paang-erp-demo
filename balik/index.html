@@ -572,7 +572,7 @@ const S = {
   biz: { id: 'b1', tab: 'requests', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
   admin: { tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
   fin: { remit: {}, filed: {}, issued: {}, ref: '' },
-  providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], consents: null, terms: null, modal: null,
+  providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], consents: null, terms: null, accounts: null, bizApps: [], session: null, auth: null, modal: null,
   settings: {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
@@ -1274,7 +1274,7 @@ function provPane() {
 function provHeader(title) {
   const me = prov(S.prov.id), st = statusOf(me);
   return `<header class="appbar">${avatar(me.name, me.hue, 34)}
-    <div class="col grow"><label class="sr" for="p-who">Viewing as</label><select id="p-who" data-bind="prov.id" data-rerender="1" style="border:0;background:transparent;font-weight:600;font-size:15px;padding:0;max-width:100%">${S.providers.map(p => `<option value="${p.id}" ${p.id === me.id ? 'selected' : ''}>${esc(p.name)}${p.biz ? ' · ' + esc(biz(p.biz).name) : ''}</option>`).join('')}</select><span class="tiny muted">${title}</span></div>
+    <div class="col grow">${meAcct() && isPhone() ? `<b style="font-size:15px">${esc(me.name)}${me.biz ? ' · ' + esc(biz(me.biz).name) : ''}</b>` : `<label class="sr" for="p-who">Viewing as</label><select id="p-who" data-bind="prov.id" data-rerender="1" style="border:0;background:transparent;font-weight:600;font-size:15px;padding:0;max-width:100%">${S.providers.map(p => `<option value="${p.id}" ${p.id === me.id ? 'selected' : ''}>${esc(p.name)}${p.biz ? ' · ' + esc(biz(p.biz).name) : ''}</option>`).join('')}</select>`}<span class="tiny muted">${title}</span></div>
     <button class="pill ${st.cls === 'green' ? 'good' : st.cls === 'yellow' ? 'warn' : 'bad'}" data-act="provTab" data-arg="status" style="border:0;height:30px"><span class="dot ${st.cls}"></span>${st.cls === 'green' ? 'Stand by' : st.cls === 'yellow' ? 'Away' : 'Off today'}</button></header>`;
 }
 function myLedger(p, filter = () => true) { return S.bookings.filter(b => b.pid === p.id && b.ledger && filter(b)); }
@@ -1486,7 +1486,7 @@ function provAccount() {
       <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Reward credits & platform fee</b><span class="small muted">${me.credits} credits · ${tierRate(me)}% fee</span></div>${ic('chev', 16)}</button>
     </div>
     <div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${me.id}">Mark all read</button></div>${alertList('provider:' + me.id)}</div>
-    <button class="btn secondary block" data-act="startApply">${ic('user', 18)} Preview the new-provider application</button>
+    ${meAcct() ? `<button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out (${esc(meAcct().loginId)})</button>` : `<button class="btn secondary block" data-act="startApply">${ic('user', 18)} Preview the new-provider application</button>`}
   </div>`;
 }
 function provApply() {
@@ -1507,10 +1507,13 @@ function provApply() {
     cta = `<button class="btn primary block" data-act="apNext" ${!(a.name && a.past && a.photo) ? 'disabled' : ''}>${a.photo ? 'Continue' : 'Add a profile photo to continue'}</button>`;
   } else if (a.step === 2) {
     body = `<h2 style="font-size:22px">Verify your identity</h2><p class="small muted">Step 2 of 4 · Required for everyone, including staff of a business.</p>
-      <div class="list"><button class="li" data-act="apToggle" data-arg="id">${ic('shield', 20)}<div class="col grow"><b>Government ID</b><span class="small muted">PhilSys, UMID, driver's license or passport</span></div>${a.id ? '<span class="pill good">Uploaded</span>' : '<span class="pill">Upload</span>'}</button>
-      <button class="li" data-act="apToggle" data-arg="selfie">${ic('camera', 20)}<div class="col grow"><b>Live selfie</b><span class="small muted">Matched to your ID</span></div>${a.selfie ? '<span class="pill good">Matched</span>' : '<span class="pill">Start</span>'}</button></div>
+      <div class="list"><label class="li" style="cursor:pointer">${ic('shield', 20)}<div class="col grow"><b>Government ID <span style="color:var(--bad)">*</span></b><span class="small muted">PhilSys, UMID, driver's license or passport · photo or scan</span></div>${a.id ? '<span class="pill good">Uploaded</span>' : '<span class="pill">Upload</span>'}<input type="file" accept="image/*" class="sr" data-file="prov.apply.idDoc" data-compress="1" id="ap-iddoc"></label>
+      <button class="li" data-act="faceStart">${ic('camera', 20)}<div class="col grow"><b>Face verification <span style="color:var(--bad)">*</span></b><span class="small muted">Live camera selfie, matched to your ID and profile photo</span></div>${a.selfie ? '<span class="pill good">Matched</span>' : '<span class="pill">Start</span>'}</button></div>
+      ${a.idDoc || a.faceImg ? `<div class="row" style="gap:8px">${a.idDoc ? `<img src="${a.idDoc}" alt="ID uploaded" style="width:84px;height:84px;object-fit:cover;border-radius:10px">` : ''}${a.faceImg ? `<img src="${a.faceImg}" alt="Face check" style="width:84px;height:84px;object-fit:cover;border-radius:10px">` : ''}</div>` : ''}
+      <button class="btn ghost xs" style="align-self:flex-start" data-act="apDemoId">Use sample ID and face check (demo)</button>
       <label class="field">TIN<input id="ap-tin" class="input num" data-bind="prov.apply.tin" value="${esc(a.tin)}" placeholder="000-000-000-000"></label>
       <span class="small muted">Don't have a TIN yet? We'll guide you through BIR registration after you apply.</span>`;
+    if (a.idDoc) a.id = true;
     cta = `<button class="btn primary block" data-act="apNext" ${!(a.id && a.selfie) ? 'disabled' : ''}>Continue</button>`;
   } else if (a.step === 3) {
     body = `<h2 style="font-size:22px">Where you start from</h2><p class="small muted">Step 3 of 4 · Customers see their distance from your base address.</p>
@@ -1529,7 +1532,18 @@ function provApply() {
   }
   return `${bar('Become a provider', 'apBack')}<div class="scroll" data-scroll="p-ap">${steps}${body}</div><div class="footer-bar">${cta}</div>`;
 }
+function faceSheet() {
+  const f = S.prov.face; if (!f) return '';
+  return `<div class="overlay" data-ov="face" style="align-items:stretch;z-index:40"><div class="sheet" style="border-radius:0;max-height:100%;height:100%;gap:12px;background:#0E1520;color:#fff">
+    <div class="row between"><b style="font-size:18px">Face verification</b><button class="iconbtn" data-act="faceClose" aria-label="Close" style="color:#fff">${ic('x', 22)}</button></div>
+    <span class="small" style="opacity:.8">Look straight at the camera in good light. Remove sunglasses or a cap. Live camera only.</span>
+    ${f.stage === 'cam' ? (S.prov.camErr ? `<div class="camview" style="display:grid;place-items:center;text-align:center;padding:20px"><span class="small">${esc(S.prov.camErr)}</span></div>` : `<div data-keep="cam|face|apply" class="camview facecam"></div>`) : `<img src="${f.img}" alt="Your face check" class="camview" style="object-fit:cover">`}
+    ${f.stage === 'check' ? '<div class="row" style="gap:10px;justify-content:center"><div class="spin"></div><span>Matching with your ID and profile photo…</span></div>' : ''}
+    ${f.stage === 'done' ? `<div class="card tight" style="background:rgba(47,203,122,.15);border-color:transparent;color:#8BF0BB"><b>Face matched · ${f.score}%</b><span class="small" style="color:#fff;opacity:.8">Live person detected and matched to your profile photo.</span></div>` : ''}
+    <div class="col" style="gap:8px;margin-top:auto">${f.stage === 'cam' ? (S.prov.camErr ? `<button class="btn secondary block" data-act="apDemoId">Test build only: skip with a demo match</button>` : `<button class="shutter" data-act="faceShot" aria-label="Take selfie"><span></span></button>`) : f.stage === 'done' ? `<button class="btn primary block" data-act="faceUse">Use this verification</button><button class="btn secondary block" data-act="faceStart">Try again</button>` : ''}</div></div></div>`;
+}
 function provOverlays() {
+  if (S.prov.face) { const fs = faceSheet(); if (S.prov.face.stage !== 'cam' || !S.prov.apply || true) return fs; }
   const cs = callScreen('provider'); if (cs) return cs;
   if (S.prov.chat) { const ch = chatSheet('provider'); if (ch) return ch; }
   if (S.prov.cam) return camSheet();
@@ -1560,7 +1574,7 @@ function bizPane() {
   if (tab === 'settle') main = bizSettle(b);
   if (tab === 'profile') main = bizProfile(b);
   return `<div class="web" data-pane="business"><aside class="side"><div class="org"><span class="bizlogo" style="width:36px;height:36px;border-radius:10px;font-size:19px">B</span><div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
-    ${nav('requests', 'Requests', 'bell', q.length)}${nav('staff', 'Staff', 'users')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Business profile', 'building')}</aside>
+    ${nav('requests', 'Requests', 'bell', q.length)}${nav('staff', 'Staff', 'users')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Business profile', 'building')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
     <main class="main">${main}</main>${toastsFor('business', true)}</div>`;
 }
 function bizRequests(b, q) {
@@ -1575,6 +1589,24 @@ function bizRequests(b, q) {
       </tbody></table></div></div>`; }).join('') : `<div class="panel"><div class="empty">No requests waiting. New spa bookings appear here with an alert.</div></div>`}
     <div class="panel"><div class="panel-h"><h3>Staff jobs in progress</h3></div>${active.length ? `<div class="tablewrap"><table><thead><tr><th>Job</th><th>Therapist</th><th>Status</th><th>Arrive by</th><th class="num">Value</th></tr></thead><tbody>${active.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(prov(x.pid).name)}</td><td>${statusPill(x.status)}${x.late && !x.arrivedAt ? ' <span class="pill bad">Late</span>' : ''}</td><td class="mono">${x.promisedAt ? fmtT(x.promisedAt) : '—'}</td><td class="num">${peso(x.gross)}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">Nothing in progress.</div>'}</div>
     <div class="panel"><div class="panel-h"><h3>Recent requests</h3></div>${done.length ? `<div class="tablewrap"><table><thead><tr><th>Job</th><th>Customer</th><th>Therapist</th><th>Status</th><th class="num">Value</th><th class="num">Rating</th></tr></thead><tbody>${done.map(x => `<tr><td class="mono">${x.id}</td><td>${esc(x.customer)}</td><td>${x.pid ? esc(prov(x.pid).name) : '—'}</td><td>${statusPill(x.status)}</td><td class="num">${peso(x.gross)}</td><td class="num">${x.review ? starsH(x.review.stars) : '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No past requests yet.</div>'}</div>`;
+}
+function bizStaffAccounts(b) {
+  const r = S.biz.reg || (S.biz.reg = { name: '', loginId: '', phone: '', cat: b.cat });
+  const pend = (S.accounts || []).filter(a => a.role === 'staff' && a.status === 'invited' && a.link && a.link.bizId === b.id);
+  const act = (S.accounts || []).filter(a => a.role === 'staff' && a.status === 'active' && a.link && a.link.bizId === b.id);
+  const idOk = LOGIN_RE.test(r.loginId || ''), taken = idOk && !!acctByLogin(r.loginId);
+  return `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><div class="col"><h3>Register a staff account</h3><span class="small muted">Register each therapist one by one. They activate it themselves with their name and login ID, verify their own mobile and set their own password.</span></div></div><div class="panel-b">
+      <div class="formgrid">
+        <label class="field">Full name<input id="br-name" class="input" autocomplete="off" data-bind="biz.reg.name" value="${esc(r.name || '')}" placeholder="As on their ID"></label>
+        <label class="field">Login ID<div class="row" style="gap:6px"><input id="br-id" class="input" autocapitalize="none" autocomplete="off" data-bind="biz.reg.loginId" value="${esc(r.loginId || '')}" placeholder="e.g. joy25"><button class="btn ghost xs" data-act="bizStaffSuggest">Suggest</button></div>${r.loginId ? (taken ? '<span class="tiny" style="color:var(--bad)">Taken</span>' : idOk ? '<span class="tiny" style="color:var(--good)">Available</span>' : '<span class="tiny" style="color:var(--warn)">4–20 letters or numbers</span>') : ''}</label>
+        <label class="field">Service type<select id="br-cat" class="select" data-bind="biz.reg.cat">${CATS.map(c => `<option value="${c.id}" ${r.cat === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></label>
+        <label class="field">Mobile (optional, for your records)<input id="br-phone" class="input" inputmode="numeric" data-bind="biz.reg.phone" value="${esc(r.phone || '')}" placeholder="917 555 0100"></label>
+      </div>
+      <button class="btn primary" style="align-self:flex-start" data-act="bizStaffReg" ${String(r.name || '').trim() && idOk && !taken ? '' : 'disabled'}>Register staff account</button></div>
+    ${pend.length || act.length ? `<div class="tablewrap"><table><thead><tr><th>Name</th><th>Login ID</th><th>Status</th><th>Registered</th><th></th></tr></thead><tbody>
+      ${pend.concat(act).map(a => `<tr><td><b>${esc(a.name)}</b></td><td class="mono">${esc(a.loginId)}</td><td>${a.status === 'invited' ? '<span class="pill warn">Waiting for activation</span>' : '<span class="pill good">Active</span>'}</td><td class="small">${fmtD(a.invitedAt || a.createdAt)}</td><td>${a.status === 'invited' ? `<button class="btn ghost xs" style="color:var(--bad)" data-act="bizStaffCancel" data-arg="${a.id}">Remove</button>` : ''}</td></tr>`).join('')}
+    </tbody></table></div>` : ''}
+    <div class="panel-b"><span class="small muted">Tell each staff member: open BalikHome → "Staff of a business? Activate your account" → enter your full name and login ID → verify your mobile → add a photo → set a password. Activated staff can work on their own and appear to customers as "${esc(b.name)} · staff".</span></div></div>`;
 }
 function bizStaff(b) {
   const inv = S.biz.invite, cf = S.biz.confirm;
@@ -1597,11 +1629,7 @@ function bizStaff(b) {
       </div>
       <label class="field">Background shown to customers<textarea id="bs-story" class="textarea" data-bind="providers.${ei}.story">${esc(ed.story)}</textarea></label>
       <span class="small muted">Changes save automatically. ID, TIN and photo can only be changed by the therapist, then re-checked by BalikHome.</span></div></div>` : ''}
-    <div class="panel"><div class="panel-h"><h3>Invite a therapist</h3></div><div class="panel-b"><div class="row" style="flex-wrap:wrap;align-items:flex-end">
-      <label class="field grow" style="min-width:180px">Name<input id="bi-name" class="input" autocomplete="off" data-bind="biz.invite.name" value="${esc(inv.name)}" placeholder="Full name"></label>
-      <label class="field grow" style="min-width:180px">Mobile<input id="bi-phone" class="input" inputmode="tel" data-bind="biz.invite.phone" value="${esc(inv.phone)}" placeholder="+63 9XX XXX XXXX"></label>
-      <button class="btn primary" data-act="invite" ${!(inv.name.trim() && phoneOk) ? 'disabled' : ''}>Send invite</button></div>
-      <span class="small muted">They get an SMS link to add their photo, ID and TIN. Once they finish, BalikHome reviews them (Admin › Providers) and they join your team.</span></div></div>`;
+    ${bizStaffAccounts(b)}`;
 }
 function periodStart(cycle, ref) { const d = new Date(ref || now()); d.setHours(0, 0, 0, 0); if (cycle === 'weekly') d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); else if (cycle === 'monthly') d.setDate(1); else d.setDate(d.getDate() <= 15 ? 1 : 16); return d.getTime(); }
 function periodEnd(cycle, start) { const s = new Date(start); return cycle === 'weekly' ? start + 7 * DAY : cycle === 'monthly' ? new Date(s.getFullYear(), s.getMonth() + 1, 1).getTime() : (s.getDate() === 1 ? new Date(s.getFullYear(), s.getMonth(), 16).getTime() : new Date(s.getFullYear(), s.getMonth() + 1, 1).getTime()); }
@@ -1714,6 +1742,7 @@ function admProviders() {
   const list = S.providers.map((p, i) => ({ p, i })).filter(({ p }) => !q || [p.name, catName(p.cat), p.area, p.biz ? biz(p.biz).name : 'individual'].join(' ').toLowerCase().includes(q));
   const ed = S.admin.provEdit ? prov(S.admin.provEdit) : null, ei = ed ? S.providers.indexOf(ed) : -1;
   return `<div class="page-h"><div><h1>Providers</h1><p>Applications, stand-by hours, reward credits and job records. The platform fee follows each provider's reward credits, updated every Sunday, unless you set a fee band after reviewing the record.</p></div></div>
+    ${admBizApps()}
     <div class="panel"><div class="panel-h"><h3>Applications</h3><span class="small muted">Certificates optional · photo, experience and identity required</span></div>
     ${apps.length ? `<div class="tablewrap"><table><thead><tr><th>Photo</th><th>Applicant</th><th>Experience</th><th>Checks</th><th>Note</th><th></th></tr></thead><tbody>${apps.map(a => `<tr><td>${(a.photo || PHOTOS[a.photoKey]) ? `<button class="zoomav" data-act="zoom" data-arg="${a.id}" aria-label="Enlarge applicant photo" style="width:48px;height:48px"><span class="avatar ph" style="width:48px;height:48px"><img src="${a.photo || PHOTOS[a.photoKey]}" alt=""></span></button>` : '<span class="pill warn">No photo</span>'}</td><td><b>${esc(a.name)}</b><br><span class="tiny muted">${catName(a.cat)} · ${esc(a.area)}${a.staffOf ? ' · staff of ' + esc(biz(a.staffOf).name) : ''}</span></td><td>${a.years} yrs<br><span class="tiny muted">${esc(a.past)}</span></td><td><span class="pill ${a.idOk ? 'good' : 'warn'}">ID</span> <span class="pill ${a.selfie ? 'good' : 'warn'}">Selfie</span> <span class="pill ${a.tin ? 'good' : 'warn'}">TIN</span> ${a.cert ? '<span class="pill accent">Cert</span>' : ''}</td><td class="small" style="max-width:240px">${esc(a.why || '—')}</td><td>${a.status === 'pending' ? `<div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn primary xs" data-act="approve" data-arg="${a.id}">Approve</button><button class="btn secondary xs" data-act="askInfo" data-arg="${a.id}">Ask for info</button><button class="btn ghost xs" style="color:var(--bad)" data-act="reject" data-arg="${a.id}">Decline</button></div>${a.asked ? '<span class="tiny muted">Info requested by SMS</span>' : ''}` : `<span class="pill ${a.status === 'approved' ? 'good' : 'bad'}">${a.status}</span>`}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty">No applications.</div>'}</div>
     ${ed ? `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><div class="row">${avatar(ed.name, ed.hue, 40)}<h3>Edit ${esc(ed.name)}</h3></div><button class="btn secondary xs" data-act="admEditProv" data-arg="">Done</button></div><div class="panel-b">
@@ -1738,6 +1767,21 @@ function admProviders() {
       ${S.providers.filter(p => p.active !== false).map(p => { const pr = projected(p); return `<tr><td><b>${esc(p.name)}</b></td><td class="num">${pr.cur}</td><td class="small" style="max-width:360px">${pr.items.map(e => `<span class="pill ${e.pts > 0 ? 'good' : 'bad'}" style="margin:2px 4px 2px 0">${sgn(e.pts)} ${esc(e.kind === 'hours' ? 'hours' : e.kind === 'under' ? 'under hours' : e.kind === 'daily' ? 'daily jobs' : e.kind === 'share' ? 'share' : e.kind === 'referral' ? 'referral' : e.kind === 'late' ? 'late' : e.kind === 'acceptCancel' ? 'accept-cancel' : e.kind === 'paidCancel' ? 'paid-cancel' : e.kind)}</span>`).join('')}</td><td class="num" style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</td><td class="num"><b>${pr.after}</b></td><td class="num">${tierRate(p)}% → ${p.tierOverride != null ? tierRate(p) : CR().bands[bandIdx(pr.after)].rate}%</td></tr>`; }).join('')}
     </tbody></table></div><div class="panel-b"><div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn primary sm" data-act="weekCloseNow" ${CR().lastClosed === weekKeyOf(now()) ? 'disabled' : ''}>Run Sunday update now (test)</button><span class="small muted">Applies every counted item, keeps credits between ${CR().min} and ${CR().max}, and sets each provider's platform fee for next week.</span></div></div></div>`;
 }
+function admBizApps() {
+  const list = (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info'), done = (S.bizApps || []).filter(a => a.status !== 'pending' && a.status !== 'info').slice(0, 5);
+  return `<div class="panel"><div class="panel-h"><h3>Business applications · ${list.length} to review</h3><span class="small muted">Check the permit, BIR 2303 and DTI/SEC documents before approving</span></div>
+    ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Business</th><th>Owner</th><th>Documents</th><th>Submitted</th><th></th></tr></thead><tbody>${list.map(a => `<tr><td><b>${esc(a.name)}</b><br><span class="tiny muted">${catName(a.cat)} · ${esc(a.area)} · TIN ${esc(a.tin)}</span></td><td class="small">${esc(a.owner)}<br><span class="tiny muted">${esc(a.email)} · ${esc(a.phone)}</span></td>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap">${DOCS.map(([k, label]) => a.docs && a.docs[k] ? `<button class="btn secondary xs" data-act="admDoc" data-arg="${a.id}|${k}" title="${esc(label)}">${esc(label.split(' ')[0] === 'Business' ? 'Permit' : label.split(' ')[0])}</button>` : '').join('')}</div></td><td class="small">${fmtD(a.at)} ${fmtT(a.at)}</td>
+      <td><div class="row" style="gap:6px"><button class="btn primary xs" data-act="admBizApprove" data-arg="${a.id}">Approve</button><button class="btn ghost xs" style="color:var(--bad)" data-act="admBizDecline" data-arg="${a.id}">Decline</button></div></td></tr>`).join('')}</tbody></table></div>` : '<div class="panel-b"><span class="small muted">No business applications waiting.</span></div>'}
+    ${done.length ? `<div class="panel-b"><span class="tiny muted">Recent: ${done.map(a => esc(a.name) + ' · ' + a.status).join(' · ')}</span></div>` : ''}</div>`;
+}
+function admAccounts() {
+  const acc = S.accounts || [];
+  return `<div class="panel"><div class="panel-h"><h3>Accounts · ${acc.length}</h3><span class="small muted">Login IDs by member type · passwords are stored only as salted hashes</span></div><div class="tablewrap"><table><thead><tr><th>Login ID</th><th>Type</th><th>Name</th><th>Contact</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
+    ${acc.slice().reverse().slice(0, 60).map(a => `<tr style="${a.suspended ? 'opacity:.55' : ''}"><td class="mono">${esc(a.loginId)}</td><td><span class="pill">${ROLE_NAME[a.role] || a.role}</span>${a.role === 'staff' && a.link && biz(a.link.bizId) ? `<br><span class="tiny muted">${esc(biz(a.link.bizId).name)}</span>` : ''}</td><td>${esc(a.name)}</td><td class="small">${esc(a.email || '')}${a.email && a.phone ? '<br>' : ''}${esc(a.phone || '')}</td>
+      <td>${a.suspended ? '<span class="pill bad">On hold</span>' : a.status === 'active' ? '<span class="pill good">Active</span>' : `<span class="pill warn">${esc(a.status)}</span>`}</td><td class="small">${a.lastLogin ? fmtD(a.lastLogin) + ' ' + fmtT(a.lastLogin) : '—'}</td><td><button class="btn ghost xs" data-act="admAcctSusp" data-arg="${a.id}">${a.suspended ? 'Reactivate' : 'Hold'}</button></td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
 function customerRows() {
   const map = {};
   Object.values(S.customers || {}).forEach(c => { map[c.cid] = { key: c.cid, rec: c, name: c.name, jobs: 0, spent: 0, last: c.createdAt || 0 }; });
@@ -1753,7 +1797,7 @@ function admCustomers() {
   const rows = customerRows();
   const reviews = [];
   S.providers.forEach(p => p.reviews.forEach((r, k) => reviews.push({ p, r, k })));
-  return `<div class="page-h"><div><h1>Customers & reviews</h1><p>Customers sign up with a verified email and mobile number; government ID is optional. Suspended customers cannot send new requests. Hidden reviews disappear from provider profiles.</p></div></div>
+  return `${admAccounts()}<div class="page-h"><div><h1>Customers & reviews</h1><p>Customers sign up with a verified email and mobile number; government ID is optional. Suspended customers cannot send new requests. Hidden reviews disappear from provider profiles.</p></div></div>
     <div class="panel"><div class="panel-h"><h3>Customers · ${rows.length}</h3></div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Verification</th><th class="num">Bookings</th><th class="num">Spent</th><th>Last booking</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     ${rows.map(c => { const r = c.rec || (S.customers || {})[c.key] || {}; const reg = !!(c.rec && c.rec.email); const susp = !!r.suspended; return `<tr style="${susp ? 'background:var(--bad-soft)' : ''}"><td><b>${esc(c.name)}</b>${reg ? `<br><span class="tiny muted">${esc(r.email)} · ${esc(r.phone)}</span>` : ''}${c.key === (S.customer.cid || 'me') && S.customer.signedIn ? ' <span class="pill accent" style="height:20px">This device</span>' : ''}</td>
       <td><span class="pill good">Email</span> <span class="pill good">Phone</span> ${r.idOk ? '<span class="pill good">ID</span>' : '<span class="pill outline">No ID</span>'}</td>
@@ -1872,6 +1916,7 @@ function admSettings() {
 function modal() {
   const m = S.modal; if (!m) return '';
   if (m.kind === 'photo') return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Photo of ${esc(m.name)}" style="width:min(460px,100%)"><div class="row between"><b>${esc(m.name)}</b><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div><img src="${m.src}" alt="" style="width:100%;border-radius:14px"></div></div>`;
+  if (m.kind === 'doc') return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="${esc(m.title)}" style="width:min(760px,100%)"><div class="row between"><h2 style="font-size:17px">${esc(m.title)}</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div><img src="${m.src}" alt="${esc(m.title)}" style="width:100%;max-height:72vh;object-fit:contain;border-radius:10px;background:var(--surface-2)"></div></div>`;
   if (m.kind === 'stmt') {
     const b = biz(S.biz.id), p = bizPeriods(b)[m.k];
     return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Settlement statement" style="width:min(720px,100%)">
@@ -1930,7 +1975,9 @@ function demoSheet() {
   const rb = (id, label, icon, sub) => `<button data-act="setRole" data-arg="${id}" aria-pressed="${cur === id}">${ic(icon, 20)}<span class="col"><span>${label}</span><span class="tiny muted" style="font-weight:500">${sub}</span></span></button>`;
   return `<div class="demo-sheet" data-act="demo"><div class="sheet" data-stop="1"><div class="grab"></div>
     <div class="row between"><h3 style="font-size:17px">Demo controls</h3><button class="iconbtn" data-act="demo" aria-label="Close">${ic('x', 20)}</button></div>
-    <span class="eyebrow">Switch app</span>
+    <span class="eyebrow">Test accounts · password ${DEMO_PW}</span>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${[['maria', 'Customer'], ['liza', 'Provider'], ['grace', 'Spa staff'], ['lunas', 'Business']].map(([id, l]) => acctByLogin(id) ? `<button class="btn ${meAcct() && meAcct().loginId === id ? 'primary' : 'secondary'} xs" data-act="demoLogin" data-arg="${id}">${l} · ${id}</button>` : '').join('')}${meAcct() ? `<button class="btn ghost xs" data-act="authLogout">Log out (${esc(meAcct().loginId)})</button>` : ''}</div>
+    <span class="eyebrow">Switch app (test view)</span>
     <div class="rolegrid">${rb('customer', 'Customer', 'user', 'Book a service')}${rb('provider', 'Provider', 'bag', 'Accept & serve')}${rb('business', 'Business', 'building', 'Spa staff & payouts')}${rb('admin', 'Admin', 'gear', 'Operations & tax')}</div>
     <span class="eyebrow">Now · <span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span></span>
     <div class="row" style="gap:8px"><button class="btn secondary sm" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 16)}</button></div>
@@ -1941,6 +1988,10 @@ function demoSheet() {
 }
 function shell() {
   if (isPhone()) {
+    const fabA = `<button class="fab" data-act="demo" aria-label="Test tools" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}</button>`;
+    if (needsAuth()) return `<div class="appshell">${authPane()}</div>${fabA}${demoSheet()}${modal()}`;
+    const ma = meAcct();
+    if (ma && ma.status !== 'active' && S.role !== 'admin') return `<div class="appshell">${S.prov.apply && ma.status === 'applying' ? provPane() : pendingPane(ma)}</div>${fabA}${demoSheet()}${modal()}`;
     const r = S.role === 'both' ? 'customer' : S.role;
     const onSplash = r === 'customer' && !S.customer.signedIn && !S.cust.signup;
     const pane = r === 'customer' ? custPane() : r === 'provider' ? provPane() : `<div class="webwrap">${r === 'business' ? bizPane() : adminPane()}</div>`;
@@ -2033,7 +2084,7 @@ function makeKeep(k) {
     return { el, kind, v, init() {
       const md = navigator.mediaDevices;
       if (!md || !md.getUserMedia) { S.prov.camErr = 'This browser cannot open the camera here.'; render(); return; }
-      md.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }, audio: false })
+      md.getUserMedia({ video: { facingMode: { ideal: who === 'face' ? 'user' : 'environment' }, width: { ideal: 1280 } }, audio: false })
         .then(st => { this.stream = st; v.srcObject = st; v.play().catch(() => { }); S.prov.camErr = ''; })
         .catch(e => { S.prov.camErr = (e && e.name === 'NotAllowedError') ? 'Camera permission was blocked. Allow camera access for this site and try again.' : 'No camera found on this device.'; render(); });
     } };
@@ -2421,9 +2472,202 @@ function seedConsents() {
   add('customer', 'me', ME, 'maria.santos@example.com', 60);
   return out;
 }
+/* =============== Accounts: sign-up by type, login ID + password, business staff activation =============== */
+// Compact SHA-256 (synchronous) for password hashing in this prototype. Production: Firebase Authentication.
+function sha256(ascii) {
+  const rr = (v, a) => (v >>> a) | (v << (32 - a)); const mp = Math.pow, max = mp(2, 32); let res = '', words = [], i, j;
+  const asciiBitLength = ascii.length * 8; let hash = sha256.h = sha256.h || [], k = sha256.k = sha256.k || [], pl = k.length; const isC = {};
+  for (let c = 2; pl < 64; c++) { if (!isC[c]) { for (i = 0; i < 313; i += c) isC[i] = c; hash[pl] = (mp(c, .5) * max) | 0; k[pl++] = (mp(c, 1 / 3) * max) | 0; } }
+  hash = hash.slice(0, 8); ascii += '\x80'; while (ascii.length % 64 - 56) ascii += '\x00';
+  for (i = 0; i < ascii.length; i++) { j = ascii.charCodeAt(i); if (j >> 8) return ''; words[i >> 2] |= j << ((3 - i) % 4) * 8; }
+  words[words.length] = ((asciiBitLength / max) | 0); words[words.length] = asciiBitLength;
+  for (j = 0; j < words.length;) { const w = words.slice(j, j += 16), oh = hash; hash = hash.slice(0, 8);
+    for (i = 0; i < 64; i++) { const w15 = w[i - 15], w2 = w[i - 2], a = hash[0], e = hash[4];
+      const t1 = hash[7] + (rr(e, 6) ^ rr(e, 11) ^ rr(e, 25)) + ((e & hash[5]) ^ ((~e) & hash[6])) + k[i] + (w[i] = (i < 16) ? w[i] : (w[i - 16] + (rr(w15, 7) ^ rr(w15, 18) ^ (w15 >>> 3)) + w[i - 7] + (rr(w2, 17) ^ rr(w2, 19) ^ (w2 >>> 10))) | 0);
+      const t2 = (rr(a, 2) ^ rr(a, 13) ^ rr(a, 22)) + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(t1 + t2) | 0].concat(hash); hash[4] = (hash[4] + t1) | 0; }
+    for (i = 0; i < 8; i++) hash[i] = (hash[i] + oh[i]) | 0; }
+  for (i = 0; i < 8; i++) for (j = 3; j + 1; j--) { const b = (hash[i] >> (j * 8)) & 255; res += ((b < 16) ? 0 : '') + b.toString(16); }
+  return res;
+}
+const utf8 = s => unescape(encodeURIComponent(s));
+const hashPw = (pw, salt) => sha256(utf8(salt + ':' + pw));
+const newSalt = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+const LOGIN_RE = /^[a-z0-9._-]{4,20}$/i;
+const pwRule = pw => String(pw || '').length >= 8 && /[a-z]/i.test(pw) && /\d/.test(pw);
+const acct = uid => (S.accounts || []).find(a => a.id === uid);
+const acctByLogin = id => (S.accounts || []).find(a => a.loginId && a.loginId.toLowerCase() === String(id || '').trim().toLowerCase());
+const meAcct = () => S.session && S.session.uid ? acct(S.session.uid) : null;
+const DEMO_PW = 'balik1234';
+const ROLE_NAME = { customer: 'Customer', provider: 'Individual provider', staff: 'Business staff', business: 'Business', admin: 'Admin' };
+function seedAccounts() {
+  const mk = (id, loginId, role, name, email, phone, link, status = 'active') => { const salt = 'seed-' + id; return { id, loginId, role, name, email, phone, link, status, salt, pw: hashPw(DEMO_PW, salt), createdAt: Date.now() - 30 * DAY, lastLogin: null, demo: true }; };
+  const out = [mk('u-maria', 'maria', 'customer', ME, 'maria.santos@example.com', '+63 917 555 0142', { cid: 'me' })];
+  S.providers.forEach(p => out.push(mk('u-' + p.id, p.name.split(' ')[0].toLowerCase(), p.biz ? 'staff' : 'provider', p.name, '', p.phone || '', { pid: p.id, bizId: p.biz || null })));
+  S.businesses.forEach(b => out.push(mk('u-' + b.id, b.name.split(' ')[0].toLowerCase(), 'business', b.owner || b.name, 'owner@' + b.name.split(' ')[0].toLowerCase() + '.ph', b.phone || '', { bizId: b.id })));
+  return out;
+}
+function startSession(a) {
+  S.session = { uid: a.id, at: Date.now() }; a.lastLogin = Date.now(); S.auth = null; applySession();
+}
+function applySession() {
+  const a = meAcct(); if (!a) return;
+  if (a.role === 'customer') {
+    const r = (S.customers || {})[a.link.cid] || {}; const c = S.customer;
+    Object.assign(c, { cid: a.link.cid, name: r.name || a.name, email: r.email || a.email, phone: r.phone || a.phone, addr: r.addr || c.addr || 'home', idOk: !!r.idOk, extraAddrs: r.addrs || c.extraAddrs || [] });
+    c.signedIn = true; S.role = 'customer'; S.cust.signup = null;
+  } else if (a.role === 'provider' || a.role === 'staff') { S.role = 'provider'; if (a.link && a.link.pid && prov(a.link.pid)) S.prov.id = a.link.pid; }
+  else if (a.role === 'business') { S.role = 'business'; if (a.link && a.link.bizId && biz(a.link.bizId)) S.biz.id = a.link.bizId; }
+}
+function needsAuth() { return isPhone() && !meAcct() && S.role !== 'admin'; }
+
+/* ---------- screens ---------- */
+function authShell(title, back, body, cta) {
+  return `<div class="screen" data-pane="auth">${title ? bar(title, back) : ''}<div class="scroll" data-scroll="auth">${body}</div>${cta ? `<div class="footer-bar">${cta}</div>` : ''}${toastsFor('auth')}</div>`;
+}
+function authPane() {
+  const A0 = S.auth || (S.auth = { screen: 'welcome' });
+  if (A0.screen === 'login') return authLogin();
+  if (A0.screen === 'forgot') return authForgot();
+  if (A0.screen === 'activate') return authActivate();
+  if (A0.screen === 'signup') return authSignup();
+  return authWelcome();
+}
+function authWelcome() {
+  const card = (type, icn, t, sub) => `<button class="opt" data-act="authType" data-arg="${type}" style="align-items:center;padding:16px">${`<span class="avatar" style="width:46px;height:46px;border-radius:14px;background:var(--accent-soft);color:var(--accent)">${ic(icn, 24)}</span>`}<div class="col grow"><b style="font-size:16px">${t}</b><span class="small muted">${sub}</span></div>${ic('chev', 18)}</button>`;
+  return `<div class="screen" data-pane="auth"><div class="scroll" data-scroll="auth" style="gap:14px;padding-top:calc(18px + env(safe-area-inset-top,0px))">
+    <div class="logo-big" style="align-self:center;width:min(220px,58vw)"><img src="${LOGO_FULL}" alt="BalikHome"></div>
+    <div class="col" style="gap:2px;text-align:center"><h2 style="font-size:21px">Welcome to BalikHome</h2><span class="small muted">Choose how you want to join</span></div>
+    ${card('customer', 'user', 'Customer', 'Book verified pros for home beauty, massage and pet care')}
+    ${card('provider', 'bag', 'Individual provider', 'Earn with your skills · ID, TIN and face check')}
+    ${card('business', 'building', 'Business', 'Register your salon or spa · permit and BIR documents')}
+    <button class="btn primary block" data-act="authGo" data-arg="login">Log in</button>
+    <button class="btn ghost block" data-act="authGo" data-arg="activate">Staff of a business? Activate your account</button>
+    <span class="tiny muted" style="text-align:center">By joining you agree to the <button type="button" class="inlinelink" data-act="termsOpen">Terms and Conditions</button>.</span>
+  </div>${toastsFor('auth')}</div>`;
+}
+const codeBox = (label, to, code, bind, val, done) => `<div class="inbox"><span class="app" style="background:var(--accent-soft);color:var(--accent)">${ic(label === 'Email' ? 'send' : 'phone', 16)}</span><div class="col"><b class="small">${label === 'Email' ? 'Email to ' : 'SMS to '}${esc(to)}</b><span class="small muted">Your BalikHome code is <b class="num" style="color:var(--fg)">${code}</b></span></div></div>
+  <label class="field">${label} code ${done ? `<span class="verified">${ic('check', 14)} Verified</span>` : ''}<input id="au-${label.toLowerCase()}-otp" class="input otp" inputmode="numeric" maxlength="6" autocomplete="one-time-code" data-bind="${bind}" value="${esc(val || '')}" placeholder="••••••"></label>`;
+function credFields(f) {
+  const idOk = LOGIN_RE.test(f.loginId || ''), taken = idOk && !!acctByLogin(f.loginId), pwOk = pwRule(f.pw), same = f.pw && f.pw === f.pw2;
+  return `<label class="field">Login ID<input id="au-id" class="input" autocapitalize="none" autocomplete="username" data-bind="auth.f.loginId" value="${esc(f.loginId || '')}" placeholder="4–20 letters, numbers, . _ -">${f.loginId ? (taken ? '<span class="tiny" style="color:var(--bad)">This ID is already taken.</span>' : idOk ? '<span class="tiny" style="color:var(--good)">Available</span>' : '<span class="tiny" style="color:var(--warn)">Use 4–20 letters or numbers.</span>') : ''}</label>
+    <label class="field">Password<input id="au-pw" class="input" type="password" autocomplete="new-password" data-bind="auth.f.pw" value="${esc(f.pw || '')}" placeholder="At least 8 characters with letters and numbers">${f.pw && !pwOk ? '<span class="tiny" style="color:var(--warn)">At least 8 characters, with letters and numbers.</span>' : ''}</label>
+    <label class="field">Confirm password<input id="au-pw2" class="input" type="password" autocomplete="new-password" data-bind="auth.f.pw2" value="${esc(f.pw2 || '')}">${f.pw2 && !same ? '<span class="tiny" style="color:var(--bad)">Passwords do not match.</span>' : ''}</label>`;
+}
+const credOk = f => LOGIN_RE.test(f.loginId || '') && !acctByLogin(f.loginId) && pwRule(f.pw) && f.pw === f.pw2;
+const DOCS = [['permit', "Business permit / Mayor's permit", true], ['bir', 'BIR Certificate of Registration (Form 2303)', true], ['reg', 'DTI or SEC registration', true], ['brgy', 'Barangay clearance', false]];
+function authSignup() {
+  const a = S.auth, f = a.f, t = a.type;
+  const total = t === 'customer' ? 4 : t === 'business' ? 5 : 3;
+  const steps = `<div class="row" style="gap:6px">${Array.from({ length: total }, (_, i) => `<div class="progress grow"><span style="width:${i + 1 <= a.step ? 100 : 0}%"></span></div>`).join('')}</div>`;
+  const head = (h, sub) => `<span class="pill accent" style="align-self:flex-start">${ROLE_NAME[t]} sign-up</span><h2 style="font-size:22px">${h}</h2><p class="small muted">Step ${a.step} of ${total}${t === 'provider' && a.step === 3 ? ' · then your provider profile' : ''} · ${sub}</p>`;
+  let body = '', cta = '';
+  const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email || ''), phoneOk = String(f.phone || '').replace(/\D/g, '').length >= 10;
+  if (a.step === 1) {
+    body = head(t === 'business' ? 'Owner or authorized person' : 'Your details', t === 'business' ? 'Use your own email and mobile number.' : 'We verify your email and mobile number.') + `
+      <label class="field">Full name<input id="au-name" class="input" autocomplete="name" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
+      <label class="field">Email<input id="au-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@example.com"></label>
+      <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="au-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="auth.f.phone" value="${esc(f.phone || '')}" placeholder="917 555 0142"></div></label>
+      ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
+      <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">BalikHome Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms.</span></label>`;
+    cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>Send verification codes</button>`;
+  } else if (a.step === 2) {
+    const eDone = f.eOtp === f.eCode, pDone = f.pOtp === f.pCode;
+    body = head('Verify email and phone', 'In this test build the codes appear on screen.') + codeBox('Email', f.email, f.eCode, 'auth.f.eOtp', f.eOtp, eDone) + codeBox('SMS', '+63 ' + f.phone, f.pCode, 'auth.f.pOtp', f.pOtp, pDone) +
+      `<div class="row" style="gap:8px"><button class="btn ghost xs" data-act="auSend">Resend codes</button><button class="btn ghost xs" data-act="auFill">Fill codes (demo)</button></div>`;
+    cta = `<button class="btn primary block" data-act="auNext" ${!(eDone && pDone) ? 'disabled' : ''}>Continue</button>`;
+  } else if (a.step === 3) {
+    body = head('Create your login', 'You will log in with this ID and password.') + credFields(f);
+    cta = `<button class="btn primary block" data-act="${t === 'provider' ? 'auProvider' : 'auNext'}" ${credOk(f) ? '' : 'disabled'}>${t === 'provider' ? 'Create account and continue' : 'Continue'}</button>`;
+  } else if (t === 'customer') {
+    body = head('Where should pros come?', 'Distances are measured from this address.') + allAddrs().map(x => addrOpt(x, 'auAddr', f.addr === x.id)).join('') + addrForm('au');
+    cta = `<button class="btn primary block" data-act="auCustomer" ${f.addr ? '' : 'disabled'}>Create account and start booking</button>`;
+  } else if (t === 'business' && a.step === 4) {
+    body = head('Business details', 'Shown to customers after approval.') + `
+      <label class="field">Business name<input id="au-bname" class="input" data-bind="auth.f.bname" value="${esc(f.bname || '')}" placeholder="e.g. Lunas Wellness Spa"></label>
+      <label class="field">Type<select id="au-bcat" class="select" data-bind="auth.f.bcat">${CATS.map(c => `<option value="${c.id}" ${f.bcat === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></label>
+      <label class="field">Business address<input id="au-barea" class="input" data-bind="auth.f.barea" value="${esc(f.barea || '')}" placeholder="Street, barangay, city"></label>
+      <label class="field">Business TIN<input id="au-btin" class="input num" data-bind="auth.f.btin" value="${esc(f.btin || '')}" placeholder="000-000-000-000"></label>`;
+    cta = `<button class="btn primary block" data-act="auNext" ${String(f.bname || '').trim() && String(f.barea || '').trim() && String(f.btin || '').replace(/\D/g, '').length >= 9 ? '' : 'disabled'}>Continue</button>`;
+  } else if (t === 'business') {
+    const d = f.docs || (f.docs = {});
+    body = head('Upload business documents', 'Scan or photograph each document. PDF or image, up to 1.5 MB.') + DOCS.map(([k, label, req]) => `<div class="li" style="border:1px solid var(--line);border-radius:12px;gap:10px">${ic('doc', 20)}<div class="col grow" style="min-width:0"><b class="small">${label}${req ? ' <span style="color:var(--bad)">*</span>' : ' <span class="muted">(optional)</span>'}</b><span class="tiny muted ellipsis">${d[k] ? esc(d[k].name) + ' · ' + Math.round(d[k].size / 1024) + ' KB' : 'Not uploaded'}</span></div>
+      <label class="btn ${d[k] ? 'ghost' : 'secondary'} xs" style="cursor:pointer">${d[k] ? 'Replace' : 'Upload'}<input type="file" accept="image/*,application/pdf" class="sr" data-doc="${k}" id="au-doc-${k}"></label></div>`).join('') +
+      (a.docErr ? `<span class="small" style="color:var(--bad)">${esc(a.docErr)}</span>` : '') + credSummary(f) +
+      `<button class="btn ghost xs" data-act="auDemoDocs" style="align-self:flex-start">Use sample documents (demo)</button>`;
+    cta = `<button class="btn primary block" data-act="auBusiness" ${DOCS.filter(x => x[2]).every(([k]) => d[k]) ? '' : 'disabled'}>Submit for review</button>`;
+  }
+  return authShell('Sign up', 'auBack', steps + body, cta);
+}
+const credSummary = f => `<div class="card tight" style="background:var(--surface-2);border-color:transparent"><span class="small">Login ID <b>${esc(f.loginId || '')}</b> · ${esc(f.email || '')} · +63 ${esc(f.phone || '')}</span></div>`;
+function authLogin() {
+  const f = S.auth.f || (S.auth.f = {});
+  return authShell('Log in', 'authWelcome', `<div class="logo-big" style="align-self:center;width:min(180px,48vw);box-shadow:none;border:1px solid var(--line)"><img src="${LOGO_FULL}" alt="BalikHome"></div>
+    <label class="field">Login ID<input id="li-id" class="input" autocapitalize="none" autocomplete="username" data-bind="auth.f.loginId" value="${esc(f.loginId || '')}"></label>
+    <label class="field">Password<input id="li-pw" class="input" type="password" autocomplete="current-password" data-bind="auth.f.pw" data-enter="authLogin" value="${esc(f.pw || '')}"></label>
+    ${S.auth.err ? `<span class="small" style="color:var(--bad)">${esc(S.auth.err)}</span>` : ''}
+    <button class="btn ghost xs" style="align-self:flex-start" data-act="authGo" data-arg="forgot">Forgot password?</button>
+    <button class="btn ghost xs" style="align-self:flex-start" data-act="authGo" data-arg="activate">Business staff: first-time activation</button>`,
+    `<button class="btn primary block" data-act="authLogin" ${f.loginId && f.pw ? '' : 'disabled'}>Log in</button>`);
+}
+function authForgot() {
+  const a = S.auth, f = a.f || (a.f = {}), acc = acctByLogin(f.loginId);
+  let body = `<label class="field">Login ID<input id="fp-id" class="input" autocapitalize="none" data-bind="auth.f.loginId" value="${esc(f.loginId || '')}"></label>`, cta;
+  if (!f.pCode) cta = `<button class="btn primary block" data-act="fpSend" ${acc && acc.status !== 'invited' ? '' : 'disabled'}>Send code to my mobile</button>`;
+  else { const done = f.pOtp === f.pCode;
+    body += codeBox('SMS', acc ? acc.phone : '', f.pCode, 'auth.f.pOtp', f.pOtp, done) + `<button class="btn ghost xs" style="align-self:flex-start" data-act="fpFill">Fill code (demo)</button>` + (done ? `<label class="field">New password<input id="fp-pw" class="input" type="password" data-bind="auth.f.pw" value="${esc(f.pw || '')}"></label><label class="field">Confirm<input id="fp-pw2" class="input" type="password" data-bind="auth.f.pw2" value="${esc(f.pw2 || '')}"></label>` : '');
+    cta = `<button class="btn primary block" data-act="fpSave" ${done && pwRule(f.pw) && f.pw === f.pw2 ? '' : 'disabled'}>Save new password</button>`; }
+  return authShell('Reset password', 'authWelcome', body + (f.loginId && !acc ? '<span class="small" style="color:var(--warn)">No account with this ID.</span>' : ''), cta);
+}
+function authActivate() {
+  const a = S.auth, f = a.f || (a.f = {}), st = a.step || 1;
+  const acc = f.uid ? acct(f.uid) : null, b = acc ? biz(acc.link.bizId) : null;
+  let body = '', cta = '';
+  if (st === 1) {
+    body = `<h2 style="font-size:22px">Activate your staff account</h2><p class="small muted">Your business registered you with your name and a login ID. Enter both exactly as your business gave them.</p>
+      <label class="field">Full name<input id="ac-name" class="input" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
+      <label class="field">Login ID<input id="ac-id" class="input" autocapitalize="none" data-bind="auth.f.loginId" value="${esc(f.loginId || '')}"></label>${a.err ? `<span class="small" style="color:var(--bad)">${esc(a.err)}</span>` : ''}`;
+    cta = `<button class="btn primary block" data-act="acFind" ${f.name && f.loginId ? '' : 'disabled'}>Continue</button>`;
+  } else if (st === 2) {
+    const done = f.pCode && f.pOtp === f.pCode, phoneOk = String(f.phone || '').replace(/\D/g, '').length >= 10;
+    body = `<span class="pill accent" style="align-self:flex-start">${esc(b ? b.name : '')} · staff</span><h2 style="font-size:22px">Verify your mobile</h2><p class="small muted">Use your own number. Customers never see it.</p>
+      <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="ac-phone" class="input" inputmode="numeric" data-bind="auth.f.phone" value="${esc(f.phone || '')}"></div></label>
+      ${f.pCode ? codeBox('SMS', '+63 ' + f.phone, f.pCode, 'auth.f.pOtp', f.pOtp, done) + '<button class="btn ghost xs" style="align-self:flex-start" data-act="fpFill">Fill code (demo)</button>' : `<button class="btn secondary sm" data-act="acSend" ${phoneOk ? '' : 'disabled'}>Send code</button>`}`;
+    cta = `<button class="btn primary block" data-act="acNext" ${done ? '' : 'disabled'}>Continue</button>`;
+  } else if (st === 3) {
+    body = `<h2 style="font-size:22px">Your profile photo</h2><p class="small muted">Required. Customers see it on ${esc(b ? b.name : 'your business')}'s listing and before booking you.</p>
+      <div class="photo-up ${f.photo ? 'has' : ''}"><span class="pu-img">${f.photo ? `<img src="${f.photo}" alt="Your photo">` : ic('camera', 30)}</span><div class="col" style="gap:6px"><b>Profile photo <span style="color:var(--bad)">*</span></b>
+        <div class="row" style="gap:6px;flex-wrap:wrap"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${f.photo ? 'Change' : 'Take or upload'}<input type="file" accept="image/*" capture="user" class="sr" data-file="auth.f.photo" data-compress="1" id="ac-photo"></label><button class="btn ghost xs" data-act="acSample">Use sample photo (demo)</button></div></div></div>`;
+    cta = `<button class="btn primary block" data-act="acNext" ${f.photo ? '' : 'disabled'}>Continue</button>`;
+  } else {
+    body = `<h2 style="font-size:22px">Create your password</h2><p class="small muted">Login ID: <b>${esc(acc ? acc.loginId : '')}</b></p>
+      <label class="field">Password<input id="ac-pw" class="input" type="password" autocomplete="new-password" data-bind="auth.f.pw" value="${esc(f.pw || '')}" placeholder="At least 8 characters with letters and numbers"></label>
+      <label class="field">Confirm password<input id="ac-pw2" class="input" type="password" autocomplete="new-password" data-bind="auth.f.pw2" value="${esc(f.pw2 || '')}"></label>
+      <label class="check"><input type="checkbox" id="ac-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I agree to the <button type="button" class="inlinelink" data-act="termsOpen">BalikHome Terms and Conditions</button> (v${TERMS.version}).</span></label>`;
+    cta = `<button class="btn primary block" data-act="acDone" ${pwRule(f.pw) && f.pw === f.pw2 && f.terms ? '' : 'disabled'}>Activate and log in</button>`;
+  }
+  return authShell('Staff activation', 'authWelcome', body, cta);
+}
+function pendingPane(a) {
+  const isBiz = a.role === 'business';
+  const app = isBiz ? (S.bizApps || []).find(x => x.id === a.link.bizAppId) : S.applications.find(x => x.id === a.link.appId);
+  const declined = app && app.status === 'declined', info = app && app.status === 'info';
+  return `<div class="screen" data-pane="auth">${bar(isBiz ? 'Business account' : 'Provider account')}<div class="scroll" data-scroll="pending">
+    <div class="card" style="align-items:center;text-align:center;gap:10px;padding:24px 16px">${declined ? `<span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>` : '<div class="spin"></div>'}
+      <h2 style="font-size:20px">${declined ? 'Application not approved' : info ? 'More information needed' : a.status === 'applying' ? 'Finish your provider profile' : 'Under review'}</h2>
+      <p class="small muted">${a.status === 'applying' ? 'Add your photo, ID, face check, work hours and payout details.' : declined ? 'Please contact BalikHome support for details.' : info ? 'BalikHome sent you a message about what to add. Check Alerts or contact support.' : isBiz ? 'BalikHome is checking your business documents. We usually finish within 2 working days.' : 'BalikHome is checking your ID, face check and experience. We usually finish within 2 working days.'}</p>
+      ${a.status === 'applying' ? '<button class="btn primary" data-act="startApply">Continue</button>' : ''}</div>
+    <div class="card tight"><span class="small">Logged in as <b>${esc(a.loginId)}</b> · ${esc(a.name)}</span></div>
+    <button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out</button>
+  </div>${toastsFor('auth')}</div>`;
+}
+
 function render() {
   normalizeCredits();
   if (!S.consents) S.consents = seedConsents();
+  if (!S.accounts) S.accounts = seedAccounts();
+  if (!S.bizApps) S.bizApps = [];
+  if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
   const keep = ae && ae.id && (ae.tagName === 'TEXTAREA' || (ae.tagName === 'INPUT' && !['checkbox', 'radio', 'file'].includes(ae.type))) ? ae : null;
@@ -2449,7 +2693,7 @@ function render() {
   save();
   if (typeof schedulePush === 'function') schedulePush();
 }
-const STORE = 'balik-demo-v9';
+const STORE = 'balik-demo-v10';
 let saveT = 0;
 function save() {
   clearTimeout(saveT);
@@ -2609,7 +2853,7 @@ const A = {
   saveAddr: where => { const n = S.cust.newAddr; if (!n || !n.city || n.line.trim().length < 4) return; const c = CITIES.find(x => x[0] === n.city);
     const a = { id: 'x' + Date.now().toString(36), kind: n.kind, label: n.label.trim() || n.kind, line: n.line.trim() + ', ' + n.city, short: n.city, lat: n.gps ? n.gps.lat : c[1], lng: n.gps ? n.gps.lng : c[2], from: n.from, to: n.to, approx: !n.gps };
     (S.customer.extraAddrs || (S.customer.extraAddrs = [])).push(a); S.cust.newAddr = null;
-    if (where === 'su') S.cust.signup.addr = a.id; else { S.customer.addr = a.id; S.cust.addrSheet = false; }
+    if (where === 'su') S.cust.signup.addr = a.id; else if (where === 'au') { S.auth.f.addr = a.id; S.customer.addr = a.id; } else { S.customer.addr = a.id; S.cust.addrSheet = false; }
     const rec = S.customers && S.customers[S.customer.cid]; if (rec) rec.addrs = S.customer.extraAddrs.slice();
     toast('customer', 'Address saved', a.label + ' · distances now measured from ' + n.city + '.');
     if (a.approx) { try { fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=' + encodeURIComponent(a.line + ', Philippines')).then(r => r.json()).then(j => { if (j && j[0]) { a.lat = +(+j[0].lat).toFixed(6); a.lng = +(+j[0].lon).toFixed(6); a.approx = false; render(); } }).catch(() => { }); } catch (e) { } } },
@@ -2671,7 +2915,7 @@ const A = {
   suDone: () => { const s = S.cust.signup, c = S.customer; c.name = s.name.trim(); c.email = s.email.trim(); c.phone = '+63 ' + s.phone.trim(); c.addr = s.addr; c.emailOk = c.phoneOk = true; c.idOk = false; c.signedIn = true; c.cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5); S.customers[c.cid] = custRecordFromLocal(); recordConsent('customer', c.cid, c.name, c.email + ' · ' + c.phone); { const rp = provByRef(s.ref); if (rp) { S.customers[c.cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + c.cid); } }
     S.cust.signup = null; S.cust.screen = 'home'; toast('customer', 'Welcome to BalikHome, ' + c.name.split(' ')[0], 'Email and phone verified. You can book now.'); },
   demoSignIn: () => { const m = S.customers.me || {}; const c = S.customer; Object.assign(c, { cid: 'me', name: m.name || ME, email: m.email || c.email, phone: m.phone || c.phone, addr: m.addr || 'home', idOk: !!m.idOk }); c.signedIn = true; S.cust.screen = 'home'; toast('customer', 'Signed in', 'Welcome back, ' + c.name.split(' ')[0] + '.'); },
-  signOut: () => { S.customer.signedIn = false; S.cust.signup = null; S.cust.screen = 'home'; },
+  signOut: () => { S.customer.signedIn = false; S.cust.signup = null; S.cust.screen = 'home'; if (meAcct()) A.authLogout(); },
   addId: () => { if (!S.customer.idOk) { S.customer.idOk = true; if (S.customers[S.customer.cid]) S.customers[S.customer.cid].idOk = true; toast('customer', 'ID verified', 'Providers now see a Verified badge on your requests.'); } },
   goPro: () => { if (isPhone() || !wide()) S.role = 'provider'; A.startApply(); },
   resetDemo: () => { try { localStorage.removeItem(STORE); } catch (e) { } location.reload(); },
@@ -2731,6 +2975,70 @@ const A = {
   termsAccept: () => { const t = S.terms; if (!t || !t.accept || !t.ok) return; const a = t.accept; recordConsent(a.role, a.who, a.name, a.contact); S.terms = null;
     toast(a.role === 'business' ? 'business' : a.role, 'Terms accepted', 'Version ' + TERMS.version + ' · your consent is saved.'); if (a.then && A[a.then.act]) A[a.then.act](a.then.arg); },
   bizTerms: () => { const b = biz(S.biz.id); needTerms('business', b.id, b.name, b.phone || '', null); },
+  authType: t => { S.auth = { screen: 'signup', type: t, step: 1, f: { ref: urlRef(), bcat: 'massage', docs: {} } }; },
+  authGo: sc => { S.auth = { screen: sc, step: 1, f: {} }; },
+  authWelcome: () => { S.auth = { screen: 'welcome' }; },
+  auBack: () => { const a = S.auth; if (a.step > 1) a.step--; else S.auth = { screen: 'welcome' }; },
+  auSend: () => { const f = S.auth.f; f.eCode = String(100000 + Math.floor(Math.random() * 900000)); f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.eOtp = f.pOtp = ''; S.auth.step = 2; toast('auth', 'Codes sent', 'Email to ' + f.email + ' and SMS to +63 ' + f.phone); },
+  auFill: () => { const f = S.auth.f; f.eOtp = f.eCode; f.pOtp = f.pCode; },
+  auNext: () => { S.auth.step++; },
+  auAddr: id => { S.auth.f.addr = id; S.customer.addr = id; },
+  auCustomer: () => { const f = S.auth.f, c = S.customer; const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
+    Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: true, phoneOk: true, idOk: false, signedIn: true });
+    S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
+    { const rp = provByRef(f.ref); if (rp) { S.customers[cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + cid); } }
+    const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
+    S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to BalikHome', 'Your account ' + a.loginId + ' is ready.'); },
+  auProvider: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36);
+    const a = { id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
+    S.accounts.push(a); S.session = { uid, at: Date.now() }; S.auth = null; S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.ref = f.ref || ''; S.prov.apply.uid = uid;
+    toast('provider', 'Account created', 'Now set up your provider profile.'); },
+  auDemoDocs: () => { const f = S.auth.f; f.docs = f.docs || {}; const mkDoc = (title, k) => { const cv = document.createElement('canvas'); cv.width = 900; cv.height = 1200; const g = cv.getContext('2d'); g.fillStyle = '#fbfaf4'; g.fillRect(0, 0, 900, 1200); g.strokeStyle = '#12355B'; g.lineWidth = 6; g.strokeRect(30, 30, 840, 1140); g.fillStyle = '#12355B'; g.font = 'bold 40px Arial'; g.fillText('REPUBLIC OF THE PHILIPPINES', 120, 130); g.font = 'bold 46px Arial'; g.fillText(title, 90, 260); g.font = '30px Arial'; g.fillStyle = '#333'; ['Registered name: ' + (f.bname || 'Sample Business'), 'Address: ' + (f.barea || 'Makati City'), 'TIN: ' + (f.btin || '000-000-000-000'), 'Valid until: Dec 31, 2026', 'SAMPLE · FOR TESTING ONLY'].forEach((t, i) => g.fillText(t, 90, 380 + i * 70)); const u = cv.toDataURL('image/jpeg', .7); f.docs[k] = { name: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.jpg', type: 'image/jpeg', size: Math.round(u.length * .75), data: u }; };
+    mkDoc("MAYOR'S PERMIT", 'permit'); mkDoc('BIR FORM 2303 · COR', 'bir'); mkDoc('DTI BUSINESS NAME', 'reg'); },
+  auBusiness: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36), appId = 'BA-' + (1000 + Math.floor(Math.random() * 8999));
+    S.bizApps.unshift({ id: appId, uid, name: f.bname.trim(), cat: f.bcat, area: f.barea.trim(), tin: f.btin, owner: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), docs: f.docs, at: Date.now(), status: 'pending' });
+    const a = { id: uid, loginId: f.loginId.trim(), role: 'business', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: { bizAppId: appId }, status: 'pending', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
+    S.accounts.push(a); recordConsent('business', appId, f.bname.trim(), f.name.trim() + ' · ' + f.email.trim()); S.session = { uid, at: Date.now() }; S.auth = null; S.role = 'business';
+    pushAlert('admin', 'New business application', f.bname + ' · ' + appId, null); toast('auth', 'Application sent', 'BalikHome will review your documents.'); },
+  authLogin: () => { const f = S.auth.f, a = acctByLogin(f.loginId);
+    if (!a || a.status === 'invited') { S.auth.err = a ? 'This staff account is not activated yet. Tap "Business staff: first-time activation".' : 'Login ID or password is incorrect.'; return; }
+    if (a.pw !== hashPw(f.pw || '', a.salt)) { S.auth.err = 'Login ID or password is incorrect.'; return; }
+    if (a.suspended) { S.auth.err = 'This account is on hold. Please contact BalikHome support.'; return; }
+    startSession(a); toast(S.role === 'business' ? 'business' : S.role, 'Welcome back', a.name); landOnBooking(); },
+  authLogout: () => { S.demoOpen = false; S.session = null; S.auth = { screen: 'welcome' }; S.customer.signedIn = false; S.prov.apply = null; S.cust.screen = 'home'; if (S.role === 'admin') S.role = 'customer'; },
+  demoLogin: id => { const a = acctByLogin(id); if (a) { startSession(a); S.demoOpen = false; } },
+  fpSend: () => { const f = S.auth.f; f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.pOtp = ''; },
+  fpFill: () => { const f = S.auth.f; f.pOtp = f.pCode; },
+  fpSave: () => { const f = S.auth.f, a = acctByLogin(f.loginId); if (!a) return; a.salt = newSalt(); a.pw = hashPw(f.pw, a.salt); S.auth = { screen: 'login', f: { loginId: a.loginId } }; toast('auth', 'Password changed', 'Log in with your new password.'); },
+  acFind: () => { const f = S.auth.f, a = acctByLogin(f.loginId);
+    if (!a || a.role !== 'staff') { S.auth.err = 'No staff account with this login ID. Check with your business.'; return; }
+    if (a.status !== 'invited') { S.auth.err = 'This account is already active. Please log in.'; return; }
+    if (a.name.trim().toLowerCase() !== String(f.name || '').trim().toLowerCase()) { S.auth.err = 'The name does not match what your business registered.'; return; }
+    S.auth.err = ''; f.uid = a.id; S.auth.step = 2; },
+  acSend: () => { const f = S.auth.f; f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.pOtp = ''; },
+  acNext: () => { S.auth.step++; },
+  acSample: () => { S.auth.f.photo = PHOTOS.sample; },
+  acDone: () => { const f = S.auth.f, a = acct(f.uid); if (!a) return; const b = biz(a.link.bizId); if (!b) return;
+    const nid = 'p' + (Math.max(...S.providers.map(x => parseInt(x.id.slice(1)) || 0)) + 1);
+    S.providers.push(mkProv({ id: nid, photo: f.photo, name: a.name, cat: a.cat || b.cat, type: 'staff', biz: b.id, area: b.area, lat: b.lat + (Math.random() - .5) * .01, lng: b.lng + (Math.random() - .5) * .01, years: 1, past: 'Staff of ' + b.name, story: 'Therapist at ' + b.name + '.', returning: false, cert: null, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 ' + f.phone.trim(), tin: 'Pending', hue: 30 + S.providers.length * 37, services: b.services.filter(x => x.on).map(x => ({ ...x })), reviews: [], avail: b.avail ? JSON.parse(JSON.stringify(b.avail)) : defAvail() }));
+    b.staff.push(nid); a.salt = newSalt(); a.pw = hashPw(f.pw, a.salt); a.phone = '+63 ' + f.phone.trim(); a.status = 'active'; a.activatedAt = Date.now(); a.link = { pid: nid, bizId: b.id };
+    recordConsent('provider', nid, a.name, a.phone); pushAlert('business:' + b.id, a.name + ' activated their account', 'Login ID ' + a.loginId + ' · now listed as staff of ' + b.name + '.', null, 'good');
+    startSession(a); S.prov.screen = 'jobs'; toast('provider', 'Account activated', 'Set your status to green when you are ready to take requests.'); },
+  bizStaffReg: () => { const r = S.biz.reg || {}, b = biz(S.biz.id); if (!r.name || !LOGIN_RE.test(r.loginId || '') || acctByLogin(r.loginId)) return;
+    S.accounts.push({ id: 'u-' + Date.now().toString(36), loginId: r.loginId.trim(), role: 'staff', name: r.name.trim(), email: '', phone: r.phone ? '+63 ' + r.phone : '', cat: r.cat || b.cat, link: { bizId: b.id }, status: 'invited', invitedAt: Date.now(), createdAt: Date.now(), invitedBy: b.id });
+    toast('business', 'Staff account registered', r.name + ' · ID ' + r.loginId + '. Share the ID so they can activate.'); S.biz.reg = { name: '', loginId: '', phone: '', cat: b.cat }; },
+  bizStaffSuggest: () => { const r = S.biz.reg || (S.biz.reg = {}); const base = String(r.name || 'staff').trim().split(/\s+/)[0].toLowerCase().replace(/[^a-z0-9]/g, '') || 'staff'; let id; do { id = base + (10 + Math.floor(Math.random() * 89)); } while (acctByLogin(id)); r.loginId = id; },
+  bizStaffCancel: uid => { S.accounts = S.accounts.filter(a => !(a.id === uid && a.status === 'invited')); },
+  admBizApprove: id => { const ap = S.bizApps.find(x => x.id === id); if (!ap) return; const nb = 'b' + (Math.max(...S.businesses.map(x => parseInt(x.id.slice(1)) || 0)) + 1);
+    S.businesses.push({ id: nb, name: ap.name, cat: ap.cat, area: ap.area, lat: 14.5547 + (Math.random() - .5) * .04, lng: 121.0244 + (Math.random() - .5) * .04, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], dti: 'See documents', tin: ap.tin, permit: 'See documents', bank: 'To be added', cycle: 'weekly', ytd: 0, hue: 30 + S.businesses.length * 53, owner: ap.owner, phone: ap.phone, story: 'New on BalikHome.', services: [{ name: catName(ap.cat) + ' service', mins: 60, price: 600, on: true }], staff: [], invited: [], avail: { days: [1, 1, 1, 1, 1, 1, 1], from: 600, to: 1260 } });
+    ap.status = 'approved'; ap.bizId = nb; ap.decidedAt = Date.now(); const a = acct(ap.uid); if (a) { a.status = 'active'; a.link = { bizId: nb }; }
+    const c = (S.consents || []).find(x => x.who === ap.id); if (c && !consentOf('business', nb)) S.consents.unshift(Object.assign({}, c, { id: 'tc' + Date.now().toString(36), who: nb, method: 'Accepted when applying (' + ap.id + ')' }));
+    pushAlert('business:' + nb, 'Business approved', ap.name + ' is now on BalikHome. Register your staff from Staff.', null, 'good'); toast('admin', 'Business approved', ap.name); },
+  admBizDecline: id => { const ap = S.bizApps.find(x => x.id === id); if (!ap) return; ap.status = 'declined'; ap.decidedAt = Date.now(); toast('admin', 'Business application declined', ap.name); },
+  admDoc: arg => { const [id, k] = arg.split('|'); const ap = S.bizApps.find(x => x.id === id); const d = ap && ap.docs && ap.docs[k]; if (!d) return;
+    if (String(d.type).startsWith('image/')) { S.modal = { kind: 'doc', title: ap.name + ' · ' + (DOCS.find(x => x[0] === k) || [k, k])[1], src: d.data }; return; }
+    try { const bin = atob(d.data.split(',')[1]); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); window.open(URL.createObjectURL(new Blob([u8], { type: d.type })), '_blank'); } catch (e) { } },
+  admAcctSusp: uid => { const a = acct(uid); if (a) { a.suspended = !a.suspended; toast('admin', a.suspended ? 'Account on hold' : 'Account reactivated', a.loginId); } },
   toggleGps: () => { if (S.loc.status !== 'granted') { S.loc.ask = true; return; } S.loc.shareProv = !S.prov.gps; S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
   endService: id => endService(bk(id), false),
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
@@ -2745,14 +3053,21 @@ const A = {
   addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
-  startApply: () => { S.prov.apply = { step: 1, avail: defAvail(), ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
+  startApply: () => { const _ma = meAcct(); S.prov.apply = { uid: _ma && _ma.role === 'provider' ? _ma.id : null, step: 1, avail: defAvail(), ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
   apNext: () => { S.prov.apply.step++; },
   apBack: () => { const a = S.prov.apply; if (a.step > 1) a.step--; else S.prov.apply = null; },
   apToggle: k => { S.prov.apply[k] = true; },
+  apDemoId: () => { const a = S.prov.apply; a.id = true; a.idDoc = a.idDoc || PHOTOS.sample; a.selfie = true; a.faceImg = a.faceImg || a.photo || PHOTOS.sample; a.faceScore = 97; },
+  faceStart: () => { S.prov.face = { stage: 'cam' }; },
+  faceClose: () => { stopCam(); S.prov.face = null; },
+  faceShot: () => { const o = Object.values(KEEP).find(x => x.kind === 'cam'); if (!o || !o.v.videoWidth) { toast('provider', 'Camera not ready', 'Wait a moment and try again.'); return; }
+    const c = document.createElement('canvas'), sz = Math.min(o.v.videoWidth, o.v.videoHeight); c.width = c.height = 480; c.getContext('2d').drawImage(o.v, (o.v.videoWidth - sz) / 2, (o.v.videoHeight - sz) / 2, sz, sz, 0, 0, 480, 480);
+    stopCam(); S.prov.face = { stage: 'check', img: c.toDataURL('image/jpeg', .8) }; setTimeout(() => { if (S.prov.face && S.prov.face.stage === 'check') { S.prov.face.stage = 'done'; S.prov.face.score = 94 + Math.floor(Math.random() * 5); render(); } }, 1500); },
+  faceUse: () => { const a = S.prov.apply, f = S.prov.face; if (!a || !f) return; a.selfie = true; a.faceImg = f.img; a.faceScore = f.score; S.prov.face = null; },
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; setTimeout(() => { if (_acc) { const ap = S.applications[0]; _acc.status = 'pending'; _acc.link = { appId: ap.id }; ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; render(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
@@ -2838,6 +3153,7 @@ const A = {
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on BalikHome.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
     prov(nid).avail = a.avail ? JSON.parse(JSON.stringify(a.avail)) : defAvail();
+    { const ua = a.uid && acct(a.uid); if (ua) { ua.status = 'active'; ua.link = { pid: nid, bizId: prov(nid).biz || null }; ua.role = prov(nid).biz ? 'staff' : 'provider'; prov(nid).phone = ua.phone || prov(nid).phone; } }
     { const src = a.tcId && (S.consents || []).find(c => c.who === a.tcId); if (src && !consentOf('provider', nid)) S.consents.unshift(Object.assign({}, src, { id: 'tc' + Date.now().toString(36), who: nid, name: prov(nid).name, method: 'Accepted when applying (' + a.id + ')' })); }
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by BalikHome.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
@@ -2888,6 +3204,15 @@ document.addEventListener('keydown', e => { const el = e.target; if (e.key === '
 document.addEventListener('input', e => { if (e.isComposing || composing) { if (e.target.dataset && e.target.dataset.bind) setPath(e.target.dataset.bind, e.target.value); return; } if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
 document.addEventListener('change', e => {
   const el = e.target;
+  if (el.dataset && el.dataset.doc) {
+    const f = el.files && el.files[0]; if (!f) return; const k = el.dataset.doc; S.auth.docErr = '';
+    const put = (url, size) => { S.auth.f.docs = S.auth.f.docs || {}; S.auth.f.docs[k] = { name: f.name, type: f.type || 'application/octet-stream', size, data: url }; render(); };
+    const rd = new FileReader(); rd.onload = () => {
+      if (f.type === 'application/pdf') { if (f.size > 1.5 * 1024 * 1024) { S.auth.docErr = 'This PDF is larger than 1.5 MB. Please upload a smaller scan or a photo.'; render(); return; } return put(rd.result, f.size); }
+      const img = new Image(); img.onload = () => { const m = 1600, sc = Math.min(1, m / Math.max(img.width, img.height)); const cv = document.createElement('canvas'); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); const u = cv.toDataURL('image/jpeg', .78); put(u, Math.round(u.length * .75)); };
+      img.onerror = () => { S.auth.docErr = 'Could not read this file. Please upload a JPG, PNG or PDF.'; render(); }; img.src = rd.result; };
+    rd.readAsDataURL(f); return;
+  }
   if (el.dataset && el.dataset.file) {
     const f = el.files && el.files[0]; if (!f) return;
     const put = url => { const cur = getPath(el.dataset.file); if (Array.isArray(cur)) cur.push(url); else setPath(el.dataset.file, url); render(); };
@@ -2906,7 +3231,7 @@ let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => {
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents'];
+const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -2926,7 +3251,7 @@ const sortFns = {
   providers: (a, b) => (parseInt(a.id.slice(1)) || 0) - (parseInt(b.id.slice(1)) || 0),
   businesses: (a, b) => a.id < b.id ? -1 : 1,
   bookings: (a, b) => b.createdAt - a.createdAt,
-  alerts: (a, b) => b.at - a.at, sms: (a, b) => b.at - a.at, applications: (a, b) => (b.at || 0) - (a.at || 0), consents: (a, b) => (b.at || 0) - (a.at || 0)
+  alerts: (a, b) => b.at - a.at, sms: (a, b) => b.at - a.at, applications: (a, b) => (b.at || 0) - (a.at || 0), consents: (a, b) => (b.at || 0) - (a.at || 0), accounts: (a, b) => (a.createdAt || 0) - (b.createdAt || 0), bizApps: (a, b) => (b.at || 0) - (a.at || 0)
 };
 // Firebase keys cannot contain . # $ [ ] / — encode them
 const encK = k => String(k).replace(/[.#$\[\]\/%]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'));
