@@ -2800,6 +2800,17 @@ function pendingPane(a) {
   const isBiz = a.role === 'business';
   const app = isBiz ? (S.bizApps || []).find(x => x.id === a.link.bizAppId) : S.applications.find(x => x.id === a.link.appId);
   const declined = app && app.status === 'declined', info = app && app.status === 'info';
+  if (!isBiz && !app && a.status === 'pending' && SYNC.ready) {
+    const copy = lsGet('balik-myapp-' + a.id);
+    if (copy) { try { const r = JSON.parse(copy); if (r && r.id && !S.applications.some(x => x.id === r.id)) { S.applications.unshift(r); a.link = { appId: r.id }; setTimeout(() => { schedulePush(); render(); }, 0); } } catch (e) { } }
+    else return `<div class="screen" data-pane="auth">${bar('Provider account')}<div class="scroll" data-scroll="pending">
+      <div class="card" style="align-items:center;text-align:center;gap:10px;padding:24px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--warn-soft);color:var(--warn)">${ic('alert', 26)}</span>
+        <h2 style="font-size:20px">Please send your application again</h2>
+        <p class="small muted">Your account is ready, but your application did not reach BalikHome, so it cannot be reviewed yet. Send it again with your photo, live face check and ID. It takes about 3 minutes.</p>
+        <button class="btn primary" data-act="resendApply">Send application again</button></div>
+      <div class="card tight"><span class="small">Logged in as <b>${esc(a.loginId)}</b> · ${esc(a.name)}</span></div>
+      <button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out</button></div>${toastsFor('auth')}</div>`;
+  }
   return `<div class="screen" data-pane="auth">${bar(isBiz ? 'Business account' : 'Provider account')}<div class="scroll" data-scroll="pending">
     <div class="card" style="align-items:center;text-align:center;gap:10px;padding:24px 16px">${declined ? `<span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>` : '<div class="spin"></div>'}
       <h2 style="font-size:20px">${declined ? 'Application not approved' : info ? 'More information needed' : a.status === 'applying' ? 'Finish your provider profile' : 'Under review'}</h2>
@@ -3206,6 +3217,7 @@ const A = {
   addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
+  resendApply: () => { const a = meAcct(); if (!a) return; a.status = 'applying'; a.link = {}; A.startApply(); if (S.prov.apply) S.prov.apply.name = a.name || ''; },
   startApply: () => { const _ma = meAcct(); S.prov.apply = { uid: _ma && _ma.role === 'provider' ? _ma.id : null, step: 1, avail: defAvail(), ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
   apNext: () => { S.prov.apply.step++; },
   apBack: () => { const a = S.prov.apply; if (a.step > 1) a.step--; else S.prov.apply = null; },
@@ -3220,7 +3232,7 @@ const A = {
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; setTimeout(() => { if (_acc) { const ap = S.applications[0]; _acc.status = 'pending'; _acc.link = { appId: ap.id }; ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; ap.faceScore = a.faceScore || null; ap.loginId = _acc.loginId; ap.email = _acc.email; ap.phone = _acc.phone; render(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: uniqueId('A-', x => S.applications.some(a => a.id === x)), tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; const _newId = uniqueId('A-', x => S.applications.some(a => a.id === x)); setTimeout(() => { if (_acc) { const ap = S.applications.find(x => x.id === _newId) || S.applications[0]; _acc.status = 'pending'; _acc.link = { appId: ap.id }; ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; ap.faceScore = a.faceScore || null; ap.loginId = _acc.loginId; ap.email = _acc.email; ap.phone = _acc.phone; lsSet('balik-myapp-' + _acc.id, JSON.stringify(ap)); render(); schedulePush(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: _newId, tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
@@ -3444,7 +3456,13 @@ function diffPaths() {
 function pushNow() {
   if (!SYNC.adapter || !SYNC.ready) return;
   const p = diffPaths();
-  if (Object.keys(p).length) SYNC.adapter.update(p).catch(e => { SYNC.status = 'Sync error: ' + (e && e.message || e); });
+  if (!Object.keys(p).length) return;
+  SYNC.adapter.update(p).then(() => { if (SYNC.err) { SYNC.err = null; SYNC.status = SYNC.mode === 'live' ? 'Live' : 'This device only'; } }).catch(e => {
+    // not saved on the server: forget that we sent it so the next push sends it again
+    Object.keys(p).forEach(k => { const i = k.indexOf('/'); if (i > 0) { const n = k.slice(0, i), key = k.slice(i + 1); if (SYNC.last[n] && typeof SYNC.last[n] === 'object') delete SYNC.last[n][key]; } else SYNC.last[k] = null; });
+    SYNC.err = String(e && e.message || e); SYNC.status = 'Sync error: ' + SYNC.err + ' · retrying';
+    clearTimeout(SYNC.retryT); SYNC.retryT = setTimeout(pushNow, 5000);
+  });
 }
 function schedulePush() { if (!SYNC.adapter || !SYNC.ready) return; clearTimeout(SYNC.pushT); SYNC.pushT = setTimeout(pushNow, 60); }
 function myTargets() { return { ['customer:' + (S.customer.cid || 'me')]: 'customer', ['provider:' + S.prov.id]: 'provider', ['business:' + S.biz.id]: 'business' }; }
