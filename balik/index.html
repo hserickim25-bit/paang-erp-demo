@@ -1314,7 +1314,13 @@ function provHeader(title) {
 }
 function myLedger(p, filter = () => true) { return S.bookings.filter(b => b.pid === p.id && b.ledger && filter(b)); }
 const LIVE_URL = 'https://hserickim25-bit.github.io/paang-erp-demo/balik/';
+const liveBroken = () => (SYNC.mode === 'live' || SYNC.mode === 'error') && (SYNC.mode === 'error' || !!SYNC.err || (SYNC.online === false && SYNC.offSince && Date.now() - SYNC.offSince > 6000));
 function offlineBanner(role) {
+  if (liveBroken()) return `<div class="card tight" style="gap:6px;background:var(--bad-soft);border-color:transparent">
+    <b class="small" style="color:var(--bad)">${ic('alert', 15)} Live server problem · requests may not arrive</b>
+    <span class="small">${SYNC.online === false ? 'This phone lost its connection to the live server. It reconnects by itself when the internet is back.' : 'The live server refused or did not answer.'}</span>
+    ${SYNC.err ? `<span class="tiny mono" style="word-break:break-word">${esc(SYNC.err)}</span>` : ''}
+    <div class="row" style="gap:8px"><button class="btn secondary xs" data-act="syncRetry">Reconnect</button><span class="tiny muted">If this stays, send a screenshot of this message.</span></div></div>`;
   if (SYNC.mode === 'live') return '';
   if (window.BALIK_PREVIEW) return `<div class="card tight" style="gap:6px;background:var(--warn-soft);border-color:transparent">
     <b class="small" style="color:var(--warn)">${ic('alert', 15)} Preview only · not connected to other phones</b>
@@ -2098,6 +2104,7 @@ function liveSection() {
   const live = SYNC.mode === 'live';
   return `<div class="card tight" style="gap:8px;${live ? 'border-color:var(--good-dot)' : ''}">
     <div class="row between"><span class="eyebrow">Live connection</span><span class="pill ${live ? 'good' : SYNC.mode === 'tabs' ? 'warn' : 'bad'}">${live ? 'Live · ' + devicesOnline() + ' device' + (devicesOnline() > 1 ? 's' : '') + ' online' : esc(SYNC.status)}</span></div>
+    ${(live || SYNC.mode === 'error') ? `<span class="tiny ${liveBroken() ? '' : 'muted'}" style="${liveBroken() ? 'color:var(--bad)' : ''}">Server ${SYNC.online === false ? 'not connected' : SYNC.online ? 'connected' : 'checking…'} · last sent ${SYNC.lastOut ? fmtT(SYNC.lastOut) : '—'} · last received ${SYNC.lastIn ? fmtT(SYNC.lastIn) : '—'}${SYNC.err ? ' · ' + esc(SYNC.err) : ''}</span>` : ''}
     ${live ? `<span class="small">Room <b class="num">${esc(SYNC.room)}</b>. Open the same link on each phone or PC: the customer, provider, business and admin then share bookings, alerts and payments in real time.</span>`
       : `<span class="small">${SYNC.cfgErr ? 'Firebase could not start (' + esc(SYNC.cfgErr) + '). ' : ''}Not connected to Firebase yet, so only tabs on this device share data.</span>`}
     <div class="row" style="gap:6px"><input id="room-link" class="input" readonly value="${esc(shareLink())}" style="height:36px;font-size:12px" onfocus="this.select()"><button class="btn secondary xs" data-act="copyLink">Copy</button></div>
@@ -3257,6 +3264,7 @@ const A = {
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
+  syncRetry: () => { location.reload(); },
   provAs: id => { if (prov(id)) { S.prov.id = id; S.prov.bid = null; S.prov.screen = 'jobs'; S.prov.apply = null; } },
   bizAs: id => { if (biz(id)) S.biz.id = id; },
   bizBF: f => { S.biz.bf = f; },
@@ -3478,11 +3486,20 @@ function pushNow() {
   if (!SYNC.adapter || !SYNC.ready) return;
   const p = diffPaths();
   if (!Object.keys(p).length) return;
-  SYNC.adapter.update(p).then(() => { if (SYNC.err) { SYNC.err = null; SYNC.status = SYNC.mode === 'live' ? 'Live' : 'This device only'; } }).catch(e => {
+  const forget = k => { const i = k.indexOf('/'); if (i > 0) { const n = k.slice(0, i), key = k.slice(i + 1); if (SYNC.last[n] && typeof SYNC.last[n] === 'object') delete SYNC.last[n][key]; } else SYNC.last[k] = null; };
+  SYNC.inflight = SYNC.inflight || {};
+  const keys = Object.keys(p); keys.forEach(k => SYNC.inflight[k] = (SYNC.inflight[k] || 0) + 1);
+  const done = ks => ks.forEach(k => { if (SYNC.inflight[k] > 1) SYNC.inflight[k]--; else delete SYNC.inflight[k]; });
+  const ok = () => { SYNC.lastOut = Date.now(); if (SYNC.err) { SYNC.err = null; SYNC.status = SYNC.mode === 'live' ? 'Live' : 'This device only'; render(); } };
+  if (Object.keys(p).length > 1 && SYNC.err) {   // after a failure, send record by record
+    Object.entries(p).forEach(([k, v]) => SYNC.adapter.update({ [k]: v }).then(() => { done([k]); ok(); }).catch(e => { done([k]); forget(k); SYNC.err = String(e && e.message || e) + ' (' + k.split('/')[0] + ')'; SYNC.status = 'Sync error: ' + SYNC.err; clearTimeout(SYNC.retryT); SYNC.retryT = setTimeout(pushNow, 8000); render(); }));
+    return;
+  }
+  SYNC.adapter.update(p).then(() => { done(keys); ok(); }).catch(e => { done(keys);
     // not saved on the server: forget that we sent it so the next push sends it again
     Object.keys(p).forEach(k => { const i = k.indexOf('/'); if (i > 0) { const n = k.slice(0, i), key = k.slice(i + 1); if (SYNC.last[n] && typeof SYNC.last[n] === 'object') delete SYNC.last[n][key]; } else SYNC.last[k] = null; });
     SYNC.err = String(e && e.message || e); SYNC.status = 'Sync error: ' + SYNC.err + ' · retrying';
-    clearTimeout(SYNC.retryT); SYNC.retryT = setTimeout(pushNow, 5000);
+    clearTimeout(SYNC.retryT); SYNC.retryT = setTimeout(pushNow, 3000); render();
   });
 }
 function schedulePush() { if (!SYNC.adapter || !SYNC.ready) return; clearTimeout(SYNC.pushT); SYNC.pushT = setTimeout(pushNow, 60); }
@@ -3497,7 +3514,7 @@ function applyRemote(root) {
     const keys = new Set(Object.keys(remote).concat(Object.keys(local)));
     let differs = false; const merged = {};
     keys.forEach(k => {
-      const localChanged = local[k] !== last[k];       // edited here and not pushed yet
+      const localChanged = local[k] !== last[k] || !!(SYNC.inflight && SYNC.inflight[n + '/' + k]);       // edited here and not confirmed by the server yet
       const v = localChanged ? local[k] : remote[k];
       if (v != null) merged[k] = v;
       if (v !== local[k]) differs = true;
@@ -3557,10 +3574,12 @@ async function firebaseAdapter(cfg, room) {
   const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
   const ref = app.database().ref('rooms/' + room);
   ref.child('presence/' + DEVICE).onDisconnect().remove();
+  app.database().ref('.info/connected').on('value', s => { const on = !!s.val(); if (on !== SYNC.online) { SYNC.online = on; if (on) SYNC.offSince = 0; else SYNC.offSince = Date.now(); render(); } });
+  const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' timed out after ' + ms / 1000 + ' s')), ms))]);
   return {
     kind: 'firebase',
-    get: () => ref.get().then(s => s.val()),
-    onChange: f => ref.on('value', s => f(s.val())),
+    get: () => withTimeout(ref.get(), 15000, 'Reading the live room').then(s => s.val()),
+    onChange: f => ref.on('value', s => { SYNC.lastIn = Date.now(); f(s.val()); }, e => { SYNC.err = 'Live updates stopped: ' + (e && e.message || e); render(); }),
     update: paths => ref.update(paths),
     reset: () => ref.remove()
   };
@@ -3593,7 +3612,7 @@ async function startSync() {
     const beat = () => SYNC.adapter.update({ ['presence/' + DEVICE]: Date.now() }).catch(() => { });
     beat(); setInterval(beat, 10000);
     pushNow(); render();
-  } catch (e) { SYNC.status = 'Offline: ' + (e && e.message || e); SYNC.adapter = null; render(); }
+  } catch (e) { SYNC.status = 'Offline: ' + (e && e.message || e); SYNC.err = String(e && e.message || e); SYNC.mode = SYNC.mode === 'live' ? 'error' : SYNC.mode; SYNC.adapter = null; render(); }
 }
 function custRecordFromLocal() { const c = S.customer; return { cid: c.cid || 'me', name: c.name, email: c.email, phone: c.phone, addr: c.addr, idOk: !!c.idOk, suspended: false, createdAt: now() }; }
 const myCust = () => S.customers[S.customer.cid || 'me'] || {};
