@@ -590,7 +590,7 @@ const S = {
   settings: {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
-      bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
+      bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 30 }, { label: 'Starter', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
       rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 } },
     respond: 6, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
@@ -2303,7 +2303,8 @@ function installRow() {
 }
 
 function normalizeCredits() {
-  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
+  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 30 }, { label: 'Starter', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
+  { const bs = S.settings.credit.bands; if (bs && bs[1] && bs[1].label === 'Standard') { bs[1].label = 'Starter'; if (bs[0] && bs[0].label === 'Starter') bs[0].label = 'Kaya Mo!'; } }
   if (!S.settings.respondV6) { if (Number(S.settings.respond) === 5) S.settings.respond = 6; S.settings.respondV6 = true; }
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
   S.businesses.forEach(b => { if (!Array.isArray(b.photos)) b.photos = []; });
