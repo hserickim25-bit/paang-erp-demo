@@ -650,7 +650,11 @@ const CR = () => S.settings.credit;
 const clampCr = v => Math.max(CR().min, Math.min(CR().max, v));
 const bandIdx = c => { const bs = CR().bands; for (let i = 0; i < bs.length; i++) if (c <= bs[i].max) return i; return bs.length - 1; };
 const tierIdx = p => p.tierOverride != null ? p.tierOverride : bandIdx(p.credits == null ? CR().start : p.credits);
-const tierRate = p => CR().bands[Math.min(tierIdx(p), CR().bands.length - 1)].rate;
+const STAFF_MIN = () => Number(CR().staffMin) || 10, STAFF_MAX = () => Number(CR().staffMax) || 20;
+// Spa staff use their own fee scale (start 15 %, kept between 10 % and 20 %); credits move them up and down exactly like individual providers.
+const staffRateAt = i => { const r = (CR().staffRates || [20, 15, 12, 10])[Math.min(i, CR().bands.length - 1)]; return Math.max(STAFF_MIN(), Math.min(STAFF_MAX(), Number(r == null ? 15 : r))); };
+const rateAt = (p, i) => p && p.biz ? staffRateAt(i) : CR().bands[Math.min(i, CR().bands.length - 1)].rate;
+const tierRate = p => rateAt(p, tierIdx(p));
 const weekStartOf = t => { const d = new Date(t); d.setHours(0, 0, 0, 0); return d.getTime() - ((d.getDay() + 6) % 7) * DAY; };
 const weekKeyOf = t => { const d = new Date(weekStartOf(t)); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); };
 const weekLabel = k => { const d = new Date(k + 'T00:00:00'); const e = new Date(d.getTime() + 6 * DAY); const f = x => x.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); return f(d) + ' – ' + f(e); };
@@ -729,7 +733,7 @@ function postLedger(b) {
   const applies = before + b.gross > S.settings.whtThreshold;
   const wht = applies ? Math.round(b.gross * (S.settings.whtBase / 100) * (S.settings.whtRate / 100) * 100) / 100 : 0;
   payee.ytd = before + b.gross;
-  b.ledger = { rate, fee, wht, applies, net: Math.round((b.gross - fee - wht) * 100) / 100, payee: b.bizId ? 'business' : 'provider', payeeName: payee.name, payeeTin: payee.tin, at: b.endedAt };
+  b.ledger = { rate, fee, wht, applies, net: Math.round((b.gross - fee - wht) * 100) / 100, payee: b.bizId ? 'business' : 'provider', payeeName: payee.name, payeeTin: payee.tin, at: b.endedAt, staff: p && p.biz ? { pid: p.id, name: p.name, credits: p.credits } : null };
 }
 
 function seedHistory() {
@@ -765,7 +769,7 @@ seedHistory(); SEEDING = false;
 (function seedCredits() {
   const lastWk = weekKeyOf(now() - 7 * DAY), wk = weekKeyOf(now());
   const set = { p1: [7, 6], p2: [5, 5], p3: [9, 8], p4: [4, 5], p5: [6, 6], p6: [5, 4], p7: [8, 7], p8: [5, 5] };
-  S.providers.forEach(p => { const v = set[p.id] || [5, 5]; p.credits = v[0]; p.creditWeeks = [{ week: lastWk, at: now() - 2 * DAY, before: v[1], sum: v[0] - v[1], after: v[0], rate: CR().bands[bandIdx(v[0])].rate, rateBefore: CR().bands[bandIdx(v[1])].rate, n: 2 }]; p.creditLog = []; });
+  S.providers.forEach(p => { const v = set[p.id] || [5, 5]; p.credits = v[0]; p.creditWeeks = [{ week: lastWk, at: now() - 2 * DAY, before: v[1], sum: v[0] - v[1], after: v[0], rate: rateAt(p, bandIdx(v[0])), rateBefore: rateAt(p, bandIdx(v[1])), n: 2 }]; p.creditLog = []; });
   const l = prov('p1'); if (l) { l.creditLog.unshift({ id: 'crs1', at: now() - 26 * HOUR, pts: 1, text: 'Shared BalikHome on Facebook', kind: 'share', uniq: 'share:' + wk, week: wk, applied: false }, { id: 'crs2', at: now() - 50 * HOUR, pts: 1, text: 'Referral · new customer Ana V.', kind: 'referral', uniq: 'ref:seed', week: wk, applied: false }); }
   CR().lastWeek = wk;
 })();
@@ -1425,7 +1429,7 @@ function records(p) {
 }
 function provPerf() {
   const me = prov(S.prov.id), r = records(me), ti = tierIdx(me), pr = projected(me), C = CR(), R0 = C.rules;
-  const nextRate = CR().bands[bandIdx(pr.after)].rate;
+  const nextRate = rateAt(me, bandIdx(pr.after));
   const rule = (icn, txt, pts) => `<div class="li"><span style="color:${pts > 0 ? 'var(--good)' : 'var(--bad)'}">${ic(icn, 18)}</span><span class="small grow">${txt}</span><b class="num" style="color:${pts > 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pts)}</b></div>`;
   const evs = (me.creditLog || []).slice(0, 25);
   const sub = S.prov.rec || 'credits', sb = (id, l) => `<button style="flex:1" data-act="provRec" data-arg="${id}" aria-pressed="${sub === id}">${l}</button>`;
@@ -1457,7 +1461,7 @@ function provPerf() {
         ${rule('x', 'Accepting a request, then cancelling', R0.acceptCancel)}
         ${rule('x', 'Cancelling after the customer has paid', R0.paidCancel)}
       </div><span class="tiny muted">New providers start with ${C.start} credits. Credits update every Sunday and stay between ${C.min} and ${C.max}.</span></div>
-    <div class="list">${CR().bands.map((t, i) => `<div class="li" style="${i === ti ? 'background:var(--accent-soft)' : ''}"><b class="grow">${t.label}</b><span class="small muted" style="width:110px">${t.min}${t.max >= C.max ? '+' : '–' + t.max} credits</span><b class="num">${t.rate}%</b></div>`).join('')}</div>
+    <div class="list">${CR().bands.map((t, i) => `<div class="li" style="${i === ti ? 'background:var(--accent-soft)' : ''}"><b class="grow">${t.label}</b><span class="small muted" style="width:110px">${t.min}${t.max >= C.max ? '+' : '–' + t.max} credits</span><b class="num">${rateAt(me, i)}%</b></div>`).join('')}</div>${me.biz ? `<span class="tiny muted">Spa staff rate: you started at ${staffRateAt(bandIdx(CR().start))}% with ${CR().start} credits. Credits move it between ${STAFF_MIN()}% and ${STAFF_MAX()}%. The fee is deducted from ${esc(biz(me.biz).name)}'s payout.</span>` : ''}
   </div>`;
 }
 function provHistory(me) {
@@ -1668,7 +1672,17 @@ function bizStaff(b) {
       </div>
       <label class="field">Background shown to customers<textarea id="bs-story" class="textarea" data-bind="providers.${ei}.story">${esc(ed.story)}</textarea></label>
       <span class="small muted">Changes save automatically. ID, TIN and photo can only be changed by the therapist, then re-checked by BalikHome.</span></div></div>` : ''}
+    ${bizStaffFees(b)}
     ${bizStaffAccounts(b)}`;
+}
+function bizStaffFees(b) {
+  const C = CR(), staff = b.staff.map(id => prov(id)).filter(Boolean);
+  return `<div class="panel"><div class="panel-h"><h3>Staff platform fee · by reward credits</h3><span class="small muted">Each staff member starts at ${staffRateAt(bandIdx(C.start))}% with ${C.start} credits · range ${STAFF_MIN()}–${STAFF_MAX()}%</span></div>
+    <div class="split" style="padding:14px"><div class="wide"><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Credits now</th><th class="num">Fee now</th><th>This week so far</th><th class="num">If the week ended now</th></tr></thead><tbody>
+      ${staff.map(p => { const pr = projected(p); return `<tr><td><b>${esc(p.name)}</b></td><td class="num">${p.credits}</td><td class="num"><b>${tierRate(p)}%</b>${p.tierOverride != null ? ' <span class="tiny muted">set by BalikHome</span>' : ''}</td><td class="small">${pr.items.map(e => `<span class="pill ${e.pts > 0 ? 'good' : 'bad'}" style="margin:2px 4px 2px 0">${sgn(e.pts)} ${esc(e.text.split(' · ')[0])}</span>`).join('') || '<span class="muted">—</span>'}</td><td class="num">${pr.after} · ${rateAt(p, bandIdx(pr.after))}%</td></tr>`; }).join('') || '<tr><td colspan="5"><div class="empty">No staff yet.</div></td></tr>'}
+    </tbody></table></div></div>
+    <div class="narrow"><div class="list">${C.bands.map((t, i) => `<div class="li"><b class="grow">${t.label}</b><span class="small muted">${t.min}${t.max >= C.max ? '+' : '–' + t.max} credits</span><b class="num">${staffRateAt(i)}%</b></div>`).join('')}</div>
+      <p class="tiny muted" style="margin-top:8px">Credits are earned and lost under the same rules as individual providers and update every Sunday. The fee for each job uses the therapist's rate on the day the job ends and is deducted from the business payout.</p></div></div></div>`;
 }
 function periodStart(cycle, ref) { const d = new Date(ref || now()); d.setHours(0, 0, 0, 0); if (cycle === 'weekly') d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); else if (cycle === 'monthly') d.setDate(1); else d.setDate(d.getDate() <= 15 ? 1 : 16); return d.getTime(); }
 function periodEnd(cycle, start) { const s = new Date(start); return cycle === 'weekly' ? start + 7 * DAY : cycle === 'monthly' ? new Date(s.getFullYear(), s.getMonth() + 1, 1).getTime() : (s.getDate() === 1 ? new Date(s.getFullYear(), s.getMonth(), 16).getTime() : new Date(s.getFullYear(), s.getMonth() + 1, 1).getTime()); }
@@ -1686,13 +1700,13 @@ function bizPeriods(b, count = 4) {
 function bizSettle(b) {
   const per = bizPeriods(b), cur = per[0];
   const cyc = c => `<button data-act="setCycle" data-arg="${c}" aria-pressed="${b.cycle === c}">${{ weekly: 'Weekly', biweekly: 'Twice a month', monthly: 'Monthly' }[c]}</button>`;
-  return `<div class="page-h"><div><h1>Settlement</h1><p>Staff job payouts are paid to the business account, not to staff, on the cycle you choose. BalikHome deducts only its platform fee and any tax withheld.</p></div><div class="seg">${cyc('weekly')}${cyc('biweekly')}${cyc('monthly')}</div></div>
+  return `<div class="page-h"><div><h1>Settlement</h1><p>Staff job payouts are paid to the business account, not to staff, on the cycle you choose. BalikHome deducts only its platform fee (each therapist's own rate, ${STAFF_MIN()}–${STAFF_MAX()}% by reward credits) and any tax withheld.</p></div><div class="seg">${cyc('weekly')}${cyc('biweekly')}${cyc('monthly')}</div></div>
     <div class="kpis"><div class="kpi accent"><span class="l">Next payout to ${esc(b.bank)} · ${fmtD(cur.end)}</span><span class="v">${peso(cur.net, 2)}</span></div>
       <div class="kpi"><span class="l">Customer payments</span><span class="v">${peso(cur.gross, 2)}</span></div>
       <div class="kpi"><span class="l">Platform fees</span><span class="v">${peso(cur.fee, 2)}</span></div>
       <div class="kpi"><span class="l">Tax withheld (RR 16-2023)</span><span class="v">${peso(cur.wht, 2)}</span></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>This period by therapist · ${fmtD(cur.start)} – ${fmtD(cur.end - DAY)}</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Tax withheld</th><th class="num">Net</th></tr></thead><tbody>
-      ${b.staff.map(id => { const p = prov(id), r = cur.rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${r.length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>This period by therapist · ${fmtD(cur.start)} – ${fmtD(cur.end - DAY)}</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Credits · rate now</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Tax withheld</th><th class="num">Net</th></tr></thead><tbody>
+      ${b.staff.map(id => { const p = prov(id), r = cur.rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${p.credits} · ${tierRate(p)}%</td><td class="num">${r.length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
       </tbody></table></div></div>
       <div class="narrow panel"><div class="panel-h"><h3>Taxes</h3></div><div class="panel-b"><div class="row between"><span class="small">Year-to-date remittances</span><b class="num">${peso(b.ytd)}</b></div><div class="progress"><span style="width:${Math.min(100, b.ytd / S.settings.whtThreshold * 100)}%;background:var(--warn-dot)"></span></div>
         <p class="small muted">${b.ytd > S.settings.whtThreshold ? `Above ${peso(S.settings.whtThreshold)}, so BalikHome withholds 1% of half the gross on every payout.` : `Below ${peso(S.settings.whtThreshold)}, so nothing is withheld yet.`} The business files its own returns and claims the credit with Form 2307.</p>
@@ -1832,7 +1846,7 @@ function admProviders() {
       <span class="small muted">Changes save automatically and show in every app.</span></div></div>` : ''}
     <div class="panel"><div class="panel-h"><h3>All providers · this week</h3><label class="row" style="min-width:220px;height:36px;padding:0 10px;border-radius:9px;border:1px solid var(--line-2);background:var(--surface)">${ic('search', 15)}<input id="adm-pq" class="grow" type="search" data-bind="admin.provQ" value="${esc(S.admin.provQ || '')}" placeholder="Search name, category, area" style="border:0;background:transparent;outline:none;height:100%;color:var(--fg)"></label></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Now</th><th class="num">Green h</th><th class="num">Late ${S.settings.penaltyAfter}+</th><th class="num">Jobs · on-time</th><th class="num">Credits</th><th class="num">This week</th><th>Platform fee</th><th>Actions</th></tr></thead><tbody>
     ${list.map(({ p, i }) => { const r = records(p); const below = weekTotal(p) < S.settings.weeklyTarget; const off = p.active === false; return `<tr style="${off ? 'opacity:.55' : ''}"><td><div class="row">${avatar(p.name, p.hue, 34)}<div class="col"><b>${esc(p.name)}</b><span class="tiny muted">${p.biz ? esc(biz(p.biz).name) : 'Individual'} · ${catName(p.cat)}${p.returning ? ' · returning' : ''}</span></div></div></td><td>${off ? '<span class="pill bad">Suspended</span>' : tlMini(p.status)}</td><td class="num" style="${below ? 'color:var(--warn)' : ''}">${weekTotal(p).toFixed(1)}</td><td class="num">${r.late}</td><td class="num">${r.jobs} · ${pct(r.onTime)}</td><td class="num"><div class="row" style="gap:4px;justify-content:flex-end"><button class="btn ghost xs" style="width:26px;padding:0" data-act="admCredit" data-arg="${p.id}:-1" aria-label="Remove a credit">−</button><b>${p.credits}</b><button class="btn ghost xs" style="width:26px;padding:0" data-act="admCredit" data-arg="${p.id}:1" aria-label="Add a credit">+</button></div></td><td class="num">${(() => { const pr = projected(p); return `<span style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</span> <span class="tiny muted">→ ${pr.after}</span>`; })()}</td>
-      <td><select id="tier-${p.id}" class="select" style="height:32px;font-size:13px;width:140px" data-bind="providers.${i}.tierOverride" data-type="tier"><option value="" ${p.tierOverride == null ? 'selected' : ''}>Auto · ${CR().bands[bandIdx(p.credits)].rate}%</option>${CR().bands.map((t, k) => `<option value="${k}" ${p.tierOverride === k ? 'selected' : ''}>${t.label} · ${t.rate}%</option>`).join('')}</select></td>
+      <td><select id="tier-${p.id}" class="select" style="height:32px;font-size:13px;width:140px" data-bind="providers.${i}.tierOverride" data-type="tier"><option value="" ${p.tierOverride == null ? 'selected' : ''}>Auto · ${rateAt(p, bandIdx(p.credits))}%</option>${CR().bands.map((t, k) => `<option value="${k}" ${p.tierOverride === k ? 'selected' : ''}>${t.label} · ${rateAt(p, k)}%</option>`).join('')}</select></td>
       <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admEditProv" data-arg="${p.id}">Edit</button>${off ? `<button class="btn primary xs" data-act="admSuspend" data-arg="${p.id}">Reactivate</button>` : (S.admin.confirm === 'susp:' + p.id ? `<button class="btn danger xs" data-act="admSuspend" data-arg="${p.id}">Confirm suspend</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="susp:${p.id}">Suspend</button>`)}</div></td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No providers match.</div></td></tr>'}
     </tbody></table></div></div>
     <div class="panel"><div class="panel-h"><h3>Sunday reward-credit update · ${weekLabel(weekKeyOf(now()))}</h3><span class="small muted">${CR().lastClosed === weekKeyOf(now()) ? 'Closed for this week' : 'Runs automatically at the end of Sunday'}</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th class="num">Credits now</th><th>Counted this week</th><th class="num">Change</th><th class="num">After Sunday</th><th class="num">Fee now → next</th></tr></thead><tbody>
@@ -1880,6 +1894,21 @@ function admCustomers() {
     ${reviews.map(({ p, r, k }) => `<tr style="${r.hidden ? 'opacity:.55' : ''}"><td>${esc(p.name)}</td><td>${esc(r.by)}<br><span class="tiny muted">${esc(r.ago)}</span></td><td>${starsH(r.stars)}</td><td class="small" style="max-width:280px">${esc(r.text || '—')}</td><td>${r.hidden ? '<span class="pill bad">Hidden</span>' : '<span class="pill good">Visible</span>'}</td><td><button class="btn ${r.hidden ? 'secondary' : 'ghost'} xs" data-act="admReview" data-arg="${p.id}:${k}">${r.hidden ? 'Show' : 'Hide'}</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
+function admStaffFees(month) {
+  const isStaff = b => !!b.bizId, ind = month.filter(b => !isStaff(b)), stf = month.filter(isStaff);
+  const sum = (a, k) => a.reduce((t, b) => t + (k === 'gross' ? b.gross : b.ledger[k]), 0);
+  const avg = a => sum(a, 'gross') ? (sum(a, 'fee') / sum(a, 'gross') * 100).toFixed(1) + '%' : '—';
+  const rows = {};
+  stf.forEach(b => { const p = prov(b.pid); if (!p) return; const o = rows[p.id] || (rows[p.id] = { p, jobs: 0, gross: 0, fee: 0, net: 0, paid: 0 }); o.jobs++; o.gross += b.gross; o.fee += b.ledger.fee; o.net += b.ledger.net; if (b.ledger.paidAt) o.paid += b.ledger.net; });
+  S.providers.filter(p => p.biz && p.active !== false && !rows[p.id]).forEach(p => rows[p.id] = { p, jobs: 0, gross: 0, fee: 0, net: 0, paid: 0 });
+  return `<div class="panel"><div class="panel-h"><h3>Platform fee revenue by payee type · this month</h3><span class="small muted">Individual ${CR().bands.map(t => t.rate).join('/')}% · Spa staff ${STAFF_MIN()}–${STAFF_MAX()}% by reward credits</span></div>
+    <div class="kpis" style="padding:14px"><div class="kpi"><span class="l">Individual providers · ${ind.length} jobs</span><span class="v">${peso(sum(ind, 'fee'), 2)}</span><span class="tiny muted">avg rate ${avg(ind)}</span></div>
+      <div class="kpi"><span class="l">Business staff · ${stf.length} jobs</span><span class="v">${peso(sum(stf, 'fee'), 2)}</span><span class="tiny muted">avg rate ${avg(stf)}</span></div>
+      <div class="kpi accent"><span class="l">Total platform fees</span><span class="v">${peso(sum(month, 'fee'), 2)}</span><span class="tiny muted">avg rate ${avg(month)}</span></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Staff</th><th>Business (payee)</th><th class="num">Credits</th><th class="num">Fee rate now</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Platform fee</th><th class="num">Net to business</th><th>Payout</th></tr></thead><tbody>
+      ${Object.values(rows).sort((a, b) => b.gross - a.gross).map(o => `<tr><td><b>${esc(o.p.name)}</b></td><td>${esc(biz(o.p.biz) ? biz(o.p.biz).name : '')}</td><td class="num">${o.p.credits}</td><td class="num">${tierRate(o.p)}%${o.p.tierOverride != null ? ' <span class="tiny muted">manual</span>' : ''}</td><td class="num">${o.jobs}</td><td class="num">${peso(o.gross, 2)}</td><td class="num">${peso(o.fee, 2)}</td><td class="num">${peso(o.net, 2)}</td><td>${o.jobs ? (o.paid >= o.net - .01 ? '<span class="pill good">Paid</span>' : `<span class="pill warn">${peso(o.net - o.paid, 2)} due</span>`) : '<span class="muted">—</span>'}</td></tr>`).join('') || '<tr><td colspan="9"><div class="empty">No business staff yet.</div></td></tr>'}
+    </tbody></table></div></div>`;
+}
 function admFinance() {
   const n = now(), q = quarterOf(n), y = new Date(n).getFullYear();
   const F = S.fin || (S.fin = { remit: {}, filed: {}, issued: {}, ref: '' });
@@ -1908,11 +1937,12 @@ function admFinance() {
       ${rec(F.filed[qKey], 'Quarterly return · Q' + q + ' ' + y, 'BIR Form 1601-EQ with payee list (QAP)', 'finFile', qKey)}
       <div class="card tight"><div class="row between"><div class="col"><b class="small">Form 2307 · Q${q} ${y}</b><span class="tiny muted">${Object.keys(issued).length} of ${withWht.length} payees issued</span></div><button class="btn primary xs" data-act="finIssueAll" ${withWht.length && Object.keys(issued).length < withWht.length ? '' : 'disabled'}>Issue all</button></div></div>
       <p class="tiny muted">Confirm forms and deadlines with a Philippine tax adviser before launch.</p></div></div></div>
+    ${admStaffFees(month)}
     <div class="panel"><div class="panel-h"><h3>Withholding by payee · Q${q} ${y}</h3></div><div class="tablewrap"><table><thead><tr><th>Payee</th><th>TIN</th><th class="num">YTD remittance</th><th class="num">Q${q} gross</th><th class="num">Withheld</th><th>2307</th></tr></thead><tbody>
       ${Object.values(payees).sort((a, b) => b.ytd - a.ytd).map(o => `<tr><td><b>${esc(o.name)}</b></td><td class="mono small">${esc(o.tin)}</td><td class="num">${peso(o.ytd)}${o.ytd > S.settings.whtThreshold ? ' <span class="pill warn" style="height:20px">Over</span>' : ''}</td><td class="num">${peso(o.gross)}</td><td class="num">${peso(o.wht, 2)}</td><td><div class="row" style="gap:6px"><button class="btn secondary xs" data-act="open2307" data-arg="${o.key}">View</button>${o.wht > 0 ? (issued[o.key] ? `<span class="pill good">Issued ${fmtD(issued[o.key])}</span>` : `<button class="btn ghost xs" data-act="finIssue" data-arg="${o.key}">Issue</button>`) : '<span class="tiny muted">Not needed</span>'}</div></td></tr>`).join('')}
     </tbody></table></div></div>
-    <div class="panel"><div class="panel-h"><h3>Ledger · this month</h3></div><div class="tablewrap"><table><thead><tr><th>Job</th><th>Ended</th><th>Payee</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th><th>Payout</th></tr></thead><tbody>
-      ${month.map(b => `<tr><td class="mono">${b.id}</td><td class="mono">${fmtD(b.endedAt)}</td><td>${esc(b.ledger.payeeName)}</td><td class="num">${peso(b.gross, 2)}</td><td class="num">${peso(b.ledger.fee, 2)}</td><td class="num">${peso(b.ledger.wht, 2)}</td><td class="num">${peso(b.ledger.net, 2)}</td><td>${b.refunded ? '<span class="pill bad">Refunded</span>' : b.ledger.paidAt ? `<span class="pill good">Paid ${fmtD(b.ledger.paidAt)}</span>` : '<span class="pill warn">Pending</span>'}</td></tr>`).join('')}
+    <div class="panel"><div class="panel-h"><h3>Ledger · this month</h3></div><div class="tablewrap"><table><thead><tr><th>Job</th><th>Ended</th><th>Payee</th><th class="num">Gross</th><th class="num">Fee %</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th><th>Payout</th></tr></thead><tbody>
+      ${month.map(b => `<tr><td class="mono">${b.id}</td><td class="mono">${fmtD(b.endedAt)}</td><td>${esc(b.ledger.payeeName)}${b.ledger.staff || (b.bizId && prov(b.pid)) ? `<br><span class="tiny muted">staff · ${esc((b.ledger.staff || prov(b.pid)).name)}</span>` : ''}</td><td class="num">${peso(b.gross, 2)}</td><td class="num">${b.ledger.rate}%</td><td class="num">${peso(b.ledger.fee, 2)}</td><td class="num">${peso(b.ledger.wht, 2)}</td><td class="num">${peso(b.ledger.net, 2)}</td><td>${b.refunded ? '<span class="pill bad">Refunded</span>' : b.ledger.paidAt ? `<span class="pill good">Paid ${fmtD(b.ledger.paidAt)}</span>` : '<span class="pill warn">Pending</span>'}</td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 
@@ -1960,8 +1990,8 @@ function admSettings() {
       <div class="tablewrap"><table><thead><tr><th>Accepted</th><th>Role</th><th>Name</th><th>Contact</th><th>Version</th><th>Method · device</th><th>Text fingerprint</th></tr></thead><tbody>
       ${cons.slice(0, 50).map(c => `<tr><td class="mono">${fmtD(c.at)} ${fmtT(c.at)}</td><td><span class="pill">${esc(c.role)}</span></td><td>${esc(c.name)}<br><span class="tiny muted mono">${esc(c.who)}</span></td><td class="small">${esc(c.contact || '—')}</td><td>v${esc(c.version)}</td><td class="small">${esc(c.method)}<br><span class="tiny muted">${esc(c.device)}</span></td><td class="tiny mono" title="${esc(c.hash)}">${esc(String(c.hash).slice(0, 18))}…</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No records yet.</td></tr>'}
       </tbody></table></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Platform fee by reward credits</h3><span class="pill warn">Draft rates · confirm before launch</span></div><div class="tablewrap"><table><thead><tr><th>Band</th><th>Credits</th><th>Platform fee</th></tr></thead><tbody>
-      ${st.credit.bands.map((t, i) => `<tr><td><b>${t.label}</b></td><td>${t.min}${i === st.credit.bands.length - 1 ? '–' + st.credit.max : '–' + t.max}</td><td><div class="row"><input id="band-rate-${i}" class="input num" type="number" min="0" max="50" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.bands.${i}.rate" value="${t.rate}"><span class="small muted">%</span></div></td></tr>`).join('')}
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Platform fee by reward credits</h3><span class="pill warn">Draft rates · confirm before launch</span></div><div class="tablewrap"><table><thead><tr><th>Band</th><th>Credits</th><th>Individual provider fee</th><th>Spa staff fee (${STAFF_MIN()}–${STAFF_MAX()}%)</th></tr></thead><tbody>
+      ${st.credit.bands.map((t, i) => `<tr><td><b>${t.label}</b></td><td>${t.min}${i === st.credit.bands.length - 1 ? '–' + st.credit.max : '–' + t.max}</td><td><div class="row"><input id="band-rate-${i}" class="input num" type="number" min="0" max="50" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.bands.${i}.rate" value="${t.rate}"><span class="small muted">%</span></div></td><td><div class="row"><input id="staff-rate-${i}" class="input num" type="number" min="${STAFF_MIN()}" max="${STAFF_MAX()}" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.staffRates.${i}" value="${(st.credit.staffRates || [])[i]}"><span class="small muted">%${Number((st.credit.staffRates || [])[i]) !== staffRateAt(i) ? ' · applied ' + staffRateAt(i) + '%' : ''}</span></div></td></tr>`).join('')}
     </tbody></table></div>
     <div class="panel-h" style="border-top:1px solid var(--line)"><h3>Reward credit rules</h3><span class="small muted">Measured Monday–Sunday · updated every Sunday</span></div><div class="panel-b"><div class="formgrid">
       ${num('cr-start', 'settings.credit.start', st.credit.start, 'Credits at sign-up', 'credits')}${num('cr-max', 'settings.credit.max', st.credit.max, 'Maximum credits', 'credits')}
@@ -2273,10 +2303,11 @@ function installRow() {
 }
 
 function normalizeCredits() {
-  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 } };
+  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Starter', min: 0, max: 4, rate: 30 }, { label: 'Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
   if (!S.settings.respondV6) { if (Number(S.settings.respond) === 5) S.settings.respond = 6; S.settings.respondV6 = true; }
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
   S.businesses.forEach(b => { if (!Array.isArray(b.photos)) b.photos = []; });
+  if (!S.settings.credit.staffFeeV1) { S.settings.credit.staffFeeV1 = true; S.bookings.forEach(b => { const p = b.ledger && !b.ledger.paidAt && prov(b.pid); if (p && p.biz) { b.ledger.rate = tierRate(p); b.ledger.fee = Math.round(b.gross * b.ledger.rate) / 100; b.ledger.net = Math.round((b.gross - b.ledger.fee - b.ledger.wht) * 100) / 100; b.ledger.staff = { pid: p.id, name: p.name, credits: p.credits }; } }); }
   S.bookings.forEach(x => { if (x.status === 'business_queue') { x.status = 'cancelled'; x.cancelNote = 'Business requests were retired: customers now book a business therapist directly.'; } });
   S.providers.forEach(p => { if (!p.avail) p.avail = defAvail(); });
   S.providers.forEach(p => { const b = p.biz && biz(p.biz); if (!b) return; const menu = b.services.filter(x => x.on && String(x.name || '').trim()).map(x => ({ name: x.name, mins: Number(x.mins) || 60, price: Number(x.price) || 0, on: true })); if (JSON.stringify(menu.map(x => [x.name, x.mins, x.price])) !== JSON.stringify((p.services || []).map(x => [x.name, x.mins, x.price]))) p.services = menu; });
