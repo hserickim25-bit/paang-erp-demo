@@ -103,6 +103,7 @@ button.brand:hover{background:var(--surface-2)}
 .apimg-none{aspect-ratio:1;border:1.5px dashed var(--line-2);border-radius:12px;display:grid;place-items:center;font-size:12px;color:var(--muted)}.apimg figcaption{display:flex;flex-direction:column;font-size:12px}.apimg figcaption span{color:var(--muted)}
 .liveline{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;max-width:100%;flex-wrap:wrap}
 .liveline .dot{width:8px;height:8px;border-radius:50%;background:#22B573}.liveline.bad{color:var(--bad);border-color:var(--bad)}.liveline.bad .dot{background:#E5484D}.liveline .muted{font-weight:500}
+.fab{position:fixed}.fabdot{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#22B573}.fabdot.bad{background:#E5484D}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -2129,6 +2130,7 @@ function demoSheet() {
   const rb = (id, label, icon, sub) => `<button data-act="setRole" data-arg="${id}" aria-pressed="${cur === id}">${ic(icon, 20)}<span class="col"><span>${label}</span><span class="tiny muted" style="font-weight:500">${sub}</span></span></button>`;
   return `<div class="demo-sheet" data-act="demo"><div class="sheet" data-stop="1"><div class="grab"></div>
     <div class="row between"><h3 style="font-size:17px">Demo controls</h3><button class="iconbtn" data-act="demo" aria-label="Close">${ic('x', 20)}</button></div>
+    ${liveLine()}
     <span class="eyebrow">Test accounts · password ${DEMO_PW}</span>
     ${[['customer', 'Customers'], ['provider', 'Providers'], ['staff', 'Spa staff'], ['business', 'Businesses']].map(([rl, l]) => { const xs = S.accounts.filter(a => a.role === rl && a.status === 'active' && a.demo); return xs.length ? `<div class="col" style="gap:4px"><span class="tiny muted">${l}</span><div class="row" style="gap:6px;flex-wrap:wrap">${xs.map(a => { const p = a.link && a.link.pid, n = p ? pendingFor(p) : 0; return `<button class="btn ${meAcct() && meAcct().id === a.id ? 'primary' : 'secondary'} xs" data-act="demoLogin" data-arg="${esc(a.loginId)}">${esc(a.loginId)}${n ? ` <span class="pill bad" style="height:18px;padding:0 6px">${n}</span>` : ''}</button>`; }).join('')}</div></div>` : ''; }).join('')}
     ${meAcct() ? `<div><button class="btn ghost xs" data-act="authLogout">Log out (${esc(meAcct().loginId)})</button></div>` : ''}
@@ -2143,15 +2145,15 @@ function demoSheet() {
 }
 function shell() {
   if (isPhone()) {
-    const fabA = `<button class="fab" data-act="demo" aria-label="Test tools" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}</button>`;
+    const fabA = `<button class="fab" data-act="demo" aria-label="Test tools" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`;
     if (needsAuth()) return `<div class="appshell">${authPane()}</div>${fabA}${demoSheet()}${modal()}`;
     const ma = meAcct();
     if (ma && ma.status !== 'active' && S.role !== 'admin') return `<div class="appshell">${S.prov.apply && ma.status === 'applying' ? provPane() : pendingPane(ma)}</div>${fabA}${demoSheet()}${modal()}`;
     const r = S.role === 'both' ? 'customer' : S.role;
     const onSplash = r === 'customer' && !S.customer.signedIn && !S.cust.signup;
     const pane = r === 'customer' ? custPane() : r === 'provider' ? provPane() : `<div class="webwrap">${r === 'business' ? bizPane() : adminPane()}</div>`;
-    const fab = onSplash ? `<button class="fab" style="top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;background:rgba(255,255,255,.14);color:#fff" data-act="demo">${ic('gear', 16)} Demo</button>`
-      : `<button class="fab" data-act="demo" aria-label="Demo controls: switch app" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}</button>`;
+    const fab = onSplash ? `<button class="fab" style="top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;background:rgba(255,255,255,.14);color:#fff" data-act="demo">${ic('gear', 16)} Demo<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`
+      : `<button class="fab" data-act="demo" aria-label="Demo controls: switch app" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`;
     return `<div class="appshell">${pane}</div>${fab}${demoSheet()}${modal()}`;
   }
   if (S.role === 'both') S.role = 'customer';
@@ -3554,7 +3556,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 48;
+const BUILD = 49;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
