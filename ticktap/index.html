@@ -335,6 +335,8 @@ ol.steps{margin:0;padding:0}
 .tl.m::after{left:8px;top:-8px;width:10px;height:7px}
 .tlight::before{left:-17px;top:-15px;width:40px;height:calc(100% + 22px);border-width:5px}
 .tlight::after{left:16px;top:-10px;width:14px;height:8px}
+.pt-now{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#FFF6D6,#FFE7A3);color:#2A2205;border:1px solid #F5C842}
+.pt-now .muted{color:#5B4A12}.pt-nowx{flex-shrink:0;width:52px;height:52px;border-radius:14px;background:#FFB800;color:#14213D;display:grid;place-items:center;font-weight:800;font-size:20px}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -2373,7 +2375,7 @@ function admSettings() {
     ['terms', 'doc', 'Terms & consent records', `Version ${TERMS.version} · ${cons.filter(c => c.version === TERMS.version).length} acceptances`],
     ['fees', 'receipt', 'Platform fees', `Individual ${st.credit.bands.map(t => t.rate).join('/')}% · staff ${STAFF_MIN()}–${STAFF_MAX()}%`],
     ['credits', 'chart', 'Reward credit rules', `Start ${st.credit.start} · range ${st.credit.min}–${st.credit.max} · Sunday update`],
-    ['points', 'sparkle', 'Customer points', `${PTS().on ? 'On' : 'Paused'} · ${peso(PTS().per)} = 1 point · use from ${PTS().min}`],
+    ['points', 'sparkle', 'Customer points', `${ptEventAt(now()) ? ptEventAt(now()).mult + '× event now · ' + peso(PTS().per) + ' = ' + ptEventAt(now()).mult + ' points' : (PTS().on ? 'On · ' + peso(PTS().per) + ' = 1 point' : 'Paused')} · redeem from ${PTS().min} pts`],
     ['standby', 'clock', 'Requests, booking & stand-by', `Reply in ${st.respond} min · book ${st.bookAheadHours || 72} h ahead · ${st.weeklyTarget} h/week`],
     ['late', 'alert', 'Late alert routing', `Late after ${st.penaltyAfter} min · ${st.alertBiz ? 'business alerted' : 'business not alerted'}`],
     ['wht', 'wallet', 'Withholding tax', `${st.whtRate}% on ${st.whtBase}% above ${peso(st.whtThreshold)}`]
@@ -2394,11 +2396,18 @@ function admSettings() {
       ${num('cr-ref', 'settings.credit.rules.referral', st.credit.rules.referral, 'Each referred sign-up', 'credits')}${num('cr-late', 'settings.credit.rules.late', st.credit.rules.late, 'Late arrival', 'credits')}
       ${num('cr-nr', 'settings.credit.rules.noReply2', st.credit.rules.noReply2, 'No reply to 2 requests in a row', 'credits')}${num('cr-ac', 'settings.credit.rules.acceptCancel', st.credit.rules.acceptCancel, 'Accepted, then cancelled', 'credits')}${num('cr-pc', 'settings.credit.rules.paidCancel', st.credit.rules.paidCancel, 'Cancelled after payment', 'credits')}
     </div></div></div>`,
-    points: () => `<div class="panel"><div class="panel-h"><div class="col"><h3>Customer points</h3><span class="small muted">Standing rule for Ticktap Points. Bonus 2×–5× events are set in Events & promotions.</span></div>
-      <div class="row" style="gap:8px"><span class="small">${PTS().on ? 'Earning on' : 'Earning paused'}</span><button class="switch" role="switch" aria-checked="${PTS().on}" data-act="ptPolicyToggle" aria-label="Points earning"><span></span></button></div></div>
+    points: () => { const P = PTS(), ev = ptEventAt(now()), m = ptMultNow(), per = P.per || 100, ex = 1000, base = Math.floor(ex / per), val = P.value || 1;
+      return `<div class="pt-now"><span class="pt-nowx">${m ? m + '×' : 'Off'}</span><div class="col grow" style="gap:4px;min-width:0">
+        <span class="tiny muted" style="text-transform:uppercase;letter-spacing:.06em;font-weight:700">Applied to bookings right now</span>
+        ${ev ? `<b>${esc(ev.title || ev.mult + '× points event')} · until ${fmtD(dayTs(ev.end))}</b><span class="small">Every ${peso(per)} paid earns <b>${ev.mult} points</b>. The event replaces the standing 1× rule, so points are never added twice.</span>`
+          : P.on ? `<b>Standing rule · 1×</b><span class="small">Every ${peso(per)} paid earns <b>1 point</b>.</span>` : `<b>Earning paused</b><span class="small">Customers earn no points until you switch earning back on or a bonus event starts.</span>`}
+        ${m ? `<span class="small muted">Example: a ${peso(ex)} booking earns ${base} × ${m} = <b>${base * m} points</b>. Customers can spend points once they have ${P.min} or more (${P.min} points = ${peso(P.min * val)} off).</span>` : ''}
+      </div></div>
+      <div class="panel"><div class="panel-h" style="flex-wrap:wrap"><div class="col" style="min-width:0;flex:1 1 200px"><h3>Standing rule (1×)</h3><span class="small muted">Always applies unless a bonus event is running. Bonus 2×–5× events are set in Events & promotions.</span></div>
+      <div class="row" style="gap:8px"><span class="small">${P.on ? 'Earning on' : 'Earning paused'}</span><button class="switch" role="switch" aria-checked="${P.on}" data-act="ptPolicyToggle" aria-label="Points earning"><span></span></button></div></div>
       <div class="panel-b"><div class="formgrid">
-      ${(PTS(), '')}${num('pt-per', 'settings.points.per', st.points.per, 'Customer points: pesos per point', '₱ paid = 1 point')}${num('pt-min', 'settings.points.min', st.points.min, 'Points needed before use', 'points')}${num('pt-val', 'settings.points.value', st.points.value, 'Value of 1 point', '₱')}
-      </div><button class="btn secondary sm" style="align-self:flex-start" data-act="adminTab" data-arg="promos">${ic('sparkle', 14)} Bonus points events</button></div></div>`,
+      ${num('pt-per', 'settings.points.per', P.per, 'Earning: pesos paid for 1 point', '₱ paid = 1 point')}${num('pt-min', 'settings.points.min', P.min, 'Redeeming: minimum balance before use', 'points')}${num('pt-val', 'settings.points.value', P.value, 'Redeeming: value of 1 point', '₱ off')}
+      </div><button class="btn secondary sm" style="align-self:flex-start" data-act="adminTab" data-arg="promos">${ic('sparkle', 14)} Bonus points events</button></div></div>`; },
     standby: () => `<div class="panel"><div class="panel-h"><h3>Stand-by & lateness</h3></div><div class="panel-b">
       ${num('s-week', 'settings.weeklyTarget', st.weeklyTarget, 'Weekly green target', 'hours')}${num('s-day', 'settings.dayTarget', st.dayTarget, 'Hours that count as a full day', 'hours')}
       ${num('s-pen', 'settings.penaltyAfter', st.penaltyAfter, 'Counts as late after promised arrival', 'minutes')}${num('s-trig', 'settings.lateTrigger', st.lateTrigger, 'Send late alert after promised arrival', 'minutes')}
@@ -4030,7 +4039,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 67;
+const BUILD = 68;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
