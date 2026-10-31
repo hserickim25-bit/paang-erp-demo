@@ -242,7 +242,7 @@ button.li:hover{background:var(--surface-2)}
 .pcard .name{font-weight:600;font-size:15px}
 .pcard .right{display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0}
 .status-line{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600}
-.tl{display:inline-flex;flex-direction:row;align-items:center;gap:4px;padding:4px 6px;border-radius:999px;background:linear-gradient(180deg,#2A303B,#151920);flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
+.tl{position:relative;margin:7px 0 4px 9px;border:1.5px solid #FFB800;display:inline-flex;flex-direction:row;align-items:center;gap:4px;padding:3px 5px;border-radius:6px;background:linear-gradient(180deg,#2A303B,#151920);flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08)}
 .tl i{width:11px;height:11px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);display:block;box-shadow:inset 0 1px 2px rgba(0,0,0,.35)}
 .tl i.on.r{background:radial-gradient(circle at 35% 32%,#FFE3E3 0,#FF3B3B 38%,#E00000 100%);box-shadow:0 0 6px 1px rgba(255,45,45,.95),0 0 14px 3px rgba(255,45,45,.55);animation:tlglow-r 2.4s ease-in-out infinite}
 .tl i.on.y{background:radial-gradient(circle at 35% 32%,#FFFBE0 0,#FFD60A 40%,#FFAA00 100%);box-shadow:0 0 6px 1px rgba(255,214,10,.95),0 0 14px 3px rgba(255,190,0,.55);animation:tlglow-y 2.4s ease-in-out infinite}
@@ -324,8 +324,19 @@ ol.steps{margin:0;padding:0}
 .spin{width:22px;height:22px;border-radius:50%;border:2.5px solid var(--accent-soft);border-top-color:var(--accent);animation:sp .8s linear infinite}
 @keyframes sp{to{transform:rotate(360deg)}}
 
+
+/* Ticktap signal: yellow pole + bracket */
+.tl::before,.tlight::before{content:"";position:absolute;pointer-events:none;border-left:3px solid #FFB800;border-top:3px solid #FFB800;border-top-left-radius:3px}
+.tl::after,.tlight::after{content:"";position:absolute;pointer-events:none;background:#FFB800;border-radius:2px 2px 0 0}
+.tl::before{left:-11px;top:-9px;width:22px;height:calc(100% + 14px)}
+.tl::after{left:6px;top:-6px;width:8px;height:5px}
+.tl.m{margin:9px 0 5px 12px;border-width:2px}
+.tl.m::before{left:-14px;top:-11px;width:28px;height:calc(100% + 17px);border-width:4px}
+.tl.m::after{left:8px;top:-8px;width:10px;height:7px}
+.tlight::before{left:-17px;top:-15px;width:40px;height:calc(100% + 22px);border-width:5px}
+.tlight::after{left:16px;top:-10px;width:14px;height:8px}
 /* traffic light */
-.tlight{width:66px;padding:10px 0;border-radius:18px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
+.tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
 .tlight i.on.g{background:radial-gradient(circle at 35% 30%,#E3FFEF 0,#22F08A 40%,#00B85C 100%);box-shadow:0 0 12px 3px rgba(34,240,138,.95),0 0 32px 8px rgba(0,220,110,.5);animation:tlglow-g 2.4s ease-in-out infinite}
 .tlight i.on.y{background:radial-gradient(circle at 35% 30%,#FFFBE0 0,#FFD60A 40%,#FFAA00 100%);box-shadow:0 0 12px 3px rgba(255,214,10,.95),0 0 32px 8px rgba(255,190,0,.5);animation:tlglow-y 2.4s ease-in-out infinite}
@@ -4020,7 +4031,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 65;
+const BUILD = 66;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
