@@ -2714,10 +2714,12 @@ function addTestPros() {
     setP('p116', ev('Grooming launch deal', 'all', 15, null, '2026-10-31', '2026-11-30'));
     const fac = biz('bz-fac'); if (fac) fac.staff.forEach(id => setP(id, ev('Ganda Glow grand opening', 'all', 20, null, '2026-10-31', '2026-11-30')));
     const P = PTS(); if (!P.events.some(e => e.id === 'pe-open2026')) {
-      P.events.filter(e => !e.stoppedAt && dayTs(e.start) <= dayTs('2026-12-31') && dayTs(e.end) >= dayTs('2026-11-01')).forEach(e => { e.stoppedAt = t0; });
-      P.events.push({ id: 'pe-open2026', title: 'Grand opening · double points', mult: 2, start: '2026-11-01', end: '2026-12-31', createdAt: t0 });
+      P.events.filter(e => !e.stoppedAt && dayTs(e.start) <= dayTs('2026-12-31') && dayTs(e.end) >= dayTs('2026-10-31')).forEach(e => { e.stoppedAt = t0; });
+      P.events.push({ id: 'pe-open2026', title: 'Grand opening · double points', mult: 2, start: '2026-10-31', end: '2026-12-31', createdAt: t0 });
     }
   }
+  // opening event moved to start today (Oct 31) — applied once to rooms that already have it
+  if (!S.settings.demoOpenStart31) { const e = PTS().events.find(x => x.id === 'pe-open2026'); if (e) { S.settings.demoOpenStart31 = true; if (!e.stoppedAt && e.start === '2026-11-01') e.start = '2026-10-31'; } }
   // test accounts have accepted the terms like the original demo accounts
   if (Array.isArray(S.consents) && S.consents.length) {
     const has = (role, who) => S.consents.some(c => c.role === role && c.who === who);
@@ -4004,7 +4006,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 58;
+const BUILD = 59;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
