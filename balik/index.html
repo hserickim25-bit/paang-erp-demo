@@ -115,6 +115,11 @@ button.brand:hover{background:var(--surface-2)}
 .promo-card{background:linear-gradient(135deg,#FFF1F1,#FFF7ED);border-color:#F5C2C0;color:#7A1F17;gap:4px}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .promo-b{background:#4A1F1F;color:#FFB4AB}:root:not([data-theme="light"]) .promo-card{background:#3A2222;border-color:#5A2E2E;color:#FFD9D4}}
 :root[data-theme="dark"] .promo-b{background:#4A1F1F;color:#FFB4AB}:root[data-theme="dark"] .promo-card{background:#3A2222;border-color:#5A2E2E;color:#FFD9D4}
+.loy-card{background:linear-gradient(135deg,#EEF7F1,#F4FAF6);border-color:#BFE3CC;color:#1C5A35;gap:6px}
+.stamps{display:flex;flex-wrap:wrap;gap:5px;align-items:center}.stamps span{width:22px;height:22px;border-radius:50%;border:1.5px dashed #7FB99A;display:grid;place-items:center;color:#fff}.stamps span.on{background:#22A060;border:0}.stamps span.free{width:auto;padding:0 8px;border-radius:11px;border:1.5px solid #22A060;color:#1C5A35;font-size:10px;font-weight:800}
+.payopt{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .loy-card{background:#18301F;border-color:#2B4F36;color:#C8F0D6}:root:not([data-theme="light"]) .stamps span.free{color:#C8F0D6}}
+:root[data-theme="dark"] .loy-card{background:#18301F;border-color:#2B4F36;color:#C8F0D6}:root[data-theme="dark"] .stamps span.free{color:#C8F0D6}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -888,6 +893,32 @@ const promoMax = p => !promoOn(p) ? 0 : Math.max(0, ...p.services.filter(s => s.
 const promoUntil = p => fmtD(dayTs(p.promo.end));
 const priceH = (p, s) => { const d = discPct(p, s); return d ? `<span class="col" style="align-items:flex-end;gap:0"><s class="tiny muted num">${peso(s.price)}</s><b class="num" style="color:var(--bad)">${peso(svcPrice(p, s))}</b></span>` : `<b class="num">${peso(s.price)}</b>`; };
 const promoBadge = p => promoOn(p) ? `<span class="promo-b">${ic('sparkle', 11)} ${p.promo.mode === 'items' ? 'Up to ' : ''}−${promoMax(p)}% · until ${promoUntil(p)}</span>` : '';
+/* ---------- loyalty: every N visits, 1 free (individual providers and businesses only) ---------- */
+const ownerKeyOf = b => b.bizId ? 'b:' + b.bizId : 'p:' + b.pid;
+const ownerByKey = k => k && k[0] === 'b' ? biz(k.slice(2)) : prov(k.slice(2));
+const loyOn = o => !!(o && o.loyalty && o.loyalty.on && !o.loyalty.stoppedAt && !o.loyalty.draft);
+const loyEligible = (o, s) => o.loyalty.scope !== 'items' || (o.loyalty.items || []).includes(s.name);
+function loyStatus(key, cid) {
+  const o = ownerByKey(key); if (!loyOn(o)) return null; const L = o.loyalty, need = Math.max(2, Number(L.need) || 10);
+  const mine = S.bookings.filter(b => ownerKeyOf(b) === key && b.cid === cid);
+  const visits = mine.filter(b => ['ended', 'reviewed'].includes(b.status) && (b.endedAt || 0) >= (L.startedAt || 0) && !b.loyaltyFree && b.services.some(s => loyEligible(o, s))).length;
+  const used = mine.filter(b => b.loyaltyFree && b.loyaltyFree.owner === key && !(b.status === 'cancelled' && b.refunded)).length;
+  const earned = Math.floor(visits / need), avail = Math.max(0, earned - used);
+  return { o, L, need, visits, used, earned, avail, prog: visits % need };
+}
+const loyText = o => `Every ${o.loyalty.need} visits${o.loyalty.scope === 'items' ? ' for ' + (o.loyalty.items || []).join(', ') : ''}, the next one is free`;
+function loyCard(key, cid) {
+  const o = ownerByKey(key); if (!loyOn(o)) return '';
+  const st = loyStatus(key, cid) || { need: o.loyalty.need, prog: 0, avail: 0 };
+  return `<div class="card tight loy-card"><b>${ic('heart', 16)} ${esc(o.loyalty.title || 'Loyalty reward')}</b><span class="small">${esc(loyText(o))}.${o.staff ? ' Visits with any of our therapists count.' : ''}</span>
+    <div class="stamps">${Array.from({ length: st.need }, (_, i) => `<span class="${i < st.prog ? 'on' : ''}">${i < st.prog ? ic('check', 11, 3) : ''}</span>`).join('')}<span class="free">FREE</span></div>
+    <span class="tiny">${st.avail ? `<b>You have ${st.avail} free service${st.avail > 1 ? 's' : ''} ready.</b> Use it when you pay.` : `${st.prog} of ${st.need} visits`}</span></div>`;
+}
+/* ---------- BalikHome points (platform-funded) ---------- */
+const PTS = () => S.settings.points || (S.settings.points = { per: 100, min: 20, value: 1 });
+const custRec = cid => (S.customers || {})[cid];
+const ptBal = cid => ((custRec(cid) || {}).ptLog || []).reduce((a, e) => a + e.pts, 0);
+function ptAdd(cid, pts, kind, bid, note) { const r = custRec(cid); if (!r || !pts) return; r.ptLog = r.ptLog || []; r.ptLog.unshift({ at: now(), pts, kind, bid: bid || null, note: note || '' }); }
 const fromPrice = o => Math.min(...o.services.filter(s => s.on && String(s.name || '').trim()).map(s => o.staff ? s.price : svcPrice(o, s)));
 
 function entryCard(e) {
@@ -935,6 +966,7 @@ function custPane() {
     case 'bookings': h = custBookings(); tab = 'bookings'; break;
     case 'alerts': h = custAlerts(); tab = 'alerts'; break;
     case 'account': h = custAccount(); tab = 'account'; break;
+    case 'points': h = custPoints(); tab = 'account'; break;
   }
   return `<div class="screen" data-pane="customer">${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
 }
@@ -1014,6 +1046,7 @@ function custProfile() {
       </div>
       <div class="card tight" style="gap:6px"><div class="row between"><span class="eyebrow">Usual working hours</span>${statusLine(p)}</div><b class="small">${availText(availOf(p))}</b><span class="tiny muted">For reference. The traffic light shows whether ${esc(p.name.split(' ')[0])} is available right now, and it always comes first.</span></div>
       <div class="card"><span class="eyebrow">Background</span><p>${esc(p.past)}</p><p class="small muted">${esc(p.story)}</p></div>
+      ${loyCard(p.biz ? 'b:' + p.biz : 'p:' + p.id, S.customer.cid || 'me')}
       ${promoOn(p) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc(p.promo.title || 'Discount event')}</b><span class="small">${p.promo.mode === 'items' ? 'Discounts on selected services' : '−' + p.promo.pct + '% on all services'} · until ${promoUntil(p)}</span><span class="tiny">Prices below already include the discount.</span></div>` : ''}
       ${ratingBlock(p)}
       ${reviewsBlock(p)}
@@ -1038,6 +1071,7 @@ function custBiz() {
         <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g} of ${staff.length} therapists on stand-by</span>
         <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px"><span class="pill good">${ic('shield', 14)} Business documents checked</span><span class="pill good">Staff ID-verified</span></div></div>
       ${b.story ? `<div class="card"><p class="small">${esc(b.story)}</p></div>` : ''}
+      ${loyCard('b:' + b.id, S.customer.cid || 'me')}
       <div class="col" style="gap:8px"><h3 style="font-size:16px">Choose a therapist to book</h3><span class="small muted">You book a therapist directly. Each one works for ${esc(b.name)} and offers the menu below.</span>
         <div class="list">${staff.map(p => `<button class="li" data-act="openProvider" data-arg="${p.id}">${zav(p, 48, true)}<div class="col grow"><b>${esc(p.name)}</b>${statusLine(p)}<span class="tiny muted">${starsH(p.rating)} ${p.rating} · ${p.years} yrs</span></div><span class="small muted num">${fmtKm(distTo(p))}</span>${ic('chev', 16)}</button>`).join('') || '<div class="empty">No therapists listed yet.</div>'}</div></div>
       ${ratingBlock(b)}
@@ -1046,6 +1080,23 @@ function custBiz() {
   return [h, ''];
 }
 
+function payCalc(b) {
+  const c = S.cust.pay || {}, key = ownerKeyOf(b), ls = b.cid ? loyStatus(key, b.cid) : null;
+  let free = null;
+  if (ls && ls.avail > 0) { const el = b.services.filter(s => loyEligible(ls.o, s)).sort((x, y) => x.price - y.price); if (el.length) free = { owner: key, item: el[0].name, value: el[0].price }; }
+  const useFree = !!free && c.useFree !== false, afterFree = b.gross - (useFree ? free.value : 0);
+  const bal = ptBal(b.cid), P = PTS(), canPts = bal >= P.min && afterFree > 0;
+  const ptsUse = canPts && c.usePts ? Math.min(bal, Math.floor(afterFree / P.value)) : 0;
+  return { free, useFree, afterFree, bal, canPts, ptsUse, ptsValue: ptsUse * P.value, cash: Math.max(0, afterFree - ptsUse * P.value) };
+}
+function payExtras(b) {
+  const k = payCalc(b), P = PTS();
+  let h = '';
+  if (k.free) h += `<label class="row payopt" style="gap:10px"><input type="checkbox" data-act="payToggle" data-arg="useFree" ${k.useFree ? 'checked' : ''}><div class="col grow"><b class="small">${ic('heart', 14)} Use your free service</b><span class="tiny muted">${esc(k.free.item)} is free (loyalty reward)</span></div><b class="num" style="color:var(--good)">−${peso(k.free.value)}</b></label>`;
+  if (k.bal > 0) h += `<label class="row payopt" style="gap:10px;${k.canPts ? '' : 'opacity:.6'}"><input type="checkbox" data-act="payToggle" data-arg="usePts" ${k.ptsUse ? 'checked' : ''} ${k.canPts ? '' : 'disabled'}><div class="col grow"><b class="small">${ic('sparkle', 14)} Pay with BalikHome points</b><span class="tiny muted">${k.bal} points available${k.canPts ? ` · 1 point = ${peso(P.value)}` : ` · usable from ${P.min} points`}</span></div><b class="num" style="color:var(--good)">${k.ptsUse ? '−' + peso(k.ptsValue) : ''}</b></label>`;
+  if (k.useFree || k.ptsUse) h += `<div class="row between" style="padding:0 4px"><b>You pay</b><b class="num" style="font-size:18px">${peso(k.cash)}</b></div>`;
+  return h;
+}
 function cartInfo() {
   const c = S.cust; const src = c.screenSrc === 'biz' ? biz(c.bizId) : prov(c.pid);
   const svcs = c.cart.map(i => src.services[i]).map(s => { const d = c.screenSrc === 'biz' ? 0 : discPct(src, s); return d ? Object.assign({}, s, { price: svcPrice(src, s), orig: s.price, disc: d }) : s; });
@@ -1222,6 +1273,16 @@ function alertList(to) {
   return list.length ? `<div class="list">${list.map(a => `<button class="li" data-act="openAlert" data-arg="${a.id}"><span class="avatar" style="width:36px;height:36px;background:${a.kind === 'bad' ? 'var(--bad-soft)' : a.kind === 'good' ? 'var(--good-soft)' : 'var(--accent-soft)'};color:${a.kind === 'bad' ? 'var(--bad)' : a.kind === 'good' ? 'var(--good)' : 'var(--accent)'}">${ic(a.kind === 'bad' ? 'alert' : a.kind === 'good' ? 'check' : 'bell', 18)}</span><div class="col grow"><b class="small">${esc(a.title)}</b><span class="small muted">${esc(a.body)}</span></div><span class="tiny muted num">${fmtT(a.at)}</span>${a.read ? '' : '<span class="dot green" style="background:var(--accent);box-shadow:none"></span>'}</button>`).join('')}</div>` : '<div class="empty">No alerts yet. Updates about your bookings show up here.</div>';
 }
 function custAlerts() { return `${bar('Alerts', null, `<button class="btn ghost xs" data-act="readAll" data-arg="customer">Mark all read</button>`)}<div class="scroll" data-scroll="c-al">${alertList('customer')}</div>`; }
+function custPoints() {
+  const cid = S.customer.cid || 'me', P = PTS(), log = (custRec(cid) || {}).ptLog || [], bal = ptBal(cid);
+  const lo = S.bookings.filter(b => b.cid === cid).map(b => ownerKeyOf(b)).filter((k, i, a) => a.indexOf(k) === i).map(k => loyStatus(k, cid)).filter(Boolean);
+  return `${bar('BalikHome points', 'custBackAccount')}<div class="scroll" data-scroll="c-pts">
+    <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent;gap:4px"><span class="eyebrow" style="color:inherit;opacity:.75">Your points</span><span class="num" style="font-size:40px;font-weight:600">${bal}</span><span class="small" style="opacity:.85">Worth ${peso(bal * P.value)} · ${bal >= P.min ? 'ready to use when you pay' : `usable from ${P.min} points (${P.min - bal} more)`}</span></div>
+    <div class="card tight" style="gap:4px"><b class="small">How points work</b><span class="small muted">Earn 1 point for every ${peso(P.per)} you pay, credited when the service ends. From ${P.min} points you can pay part or all of a booking (1 point = ${peso(P.value)}). Points used on a cancelled booking are returned.</span></div>
+    ${lo.length ? `<div class="col" style="gap:8px"><h3 style="font-size:15px">Loyalty rewards</h3>${lo.map(l => `<div class="li" style="border:1px solid var(--line);border-radius:12px;background:var(--surface)"><div class="col grow"><b class="small">${esc(l.o.name)} · ${esc(l.L.title || 'Loyalty')}</b><span class="tiny muted">${l.prog} of ${l.need} visits${l.avail ? ' · ' + l.avail + ' free ready' : ''}</span></div>${l.avail ? '<span class="pill good">Free ready</span>' : ''}</div>`).join('')}</div>` : ''}
+    <div class="col" style="gap:8px"><h3 style="font-size:15px">History</h3><div class="list">${log.map(e => `<div class="li"><div class="col grow"><b class="small">${e.kind === 'earn' ? 'Earned' : e.kind === 'use' ? 'Used' : e.kind === 'admin' ? 'Adjusted by BalikHome' : 'Returned'}${e.bid ? ' · ' + e.bid : ''}</b><span class="tiny muted">${fmtD(e.at)} ${fmtT(e.at)}${e.note ? ' · ' + esc(e.note) : ''}</span></div><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${e.pts > 0 ? '+' : ''}${e.pts}</b></div>`).join('') || '<div class="empty">No points yet. Book a service to start earning.</div>'}</div></div>
+  </div>`;
+}
 function custAccount() {
   const c = S.customer, a = addr();
   return `${bar('Account')}<div class="scroll" data-scroll="c-acc">
@@ -1232,6 +1293,7 @@ function custAccount() {
       <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
       ${locRow('c')}${installRow()}${termsRow('customer', S.customer.cid || 'me')}
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
+      <button class="li" data-act="custGo" data-arg="points">${ic('sparkle', 20)}<div class="col grow"><b>BalikHome points</b><span class="small muted">${ptBal(S.customer.cid || 'me')} points · earn 1 for every ${peso(PTS().per)}</span></div><b class="num" style="color:var(--accent)">${ptBal(S.customer.cid || 'me')}</b>${ic('chev', 16)}</button>
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
     </div>
@@ -1307,8 +1369,9 @@ function custOverlays() {
     o += `<div class="overlay"><div class="sheet" data-stop="1"><div class="grab"></div>
       ${c.pay.stage === 'confirm' ? `<div class="row between"><h3 style="font-size:17px">Confirm payment</h3><button class="iconbtn" data-act="closePay" aria-label="Close">${ic('x', 20)}</button></div>
         <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row between"><span>${esc(b.services.map(s => s.name).join(' + '))}</span><b class="num">${peso(b.gross)}</b></div><div class="row between small muted"><span>Arrival</span><span>${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min after payment'}</span></div></div>
+        ${payExtras(b)}
         <div class="row" style="gap:10px;padding:12px;border:1.5px solid var(--accent);border-radius:12px"><span class="avatar" style="width:36px;height:36px;border-radius:9px;background:#0A63F6;color:#fff;font-size:13px">${S.customer.pay === 'Card' ? 'VISA' : S.customer.pay[0]}</span><div class="col grow"><b>${esc(S.customer.pay)}</b><span class="small muted">${S.customer.pay === 'GCash' ? '0917 ••• 0142' : S.customer.pay === 'Maya' ? 'Linked account' : 'Visa ending 4417'}</span></div>${ic('check', 18)}</div>
-        <button class="btn primary block" data-act="doPay">Pay ${peso(b.gross)}</button><p class="tiny muted" style="text-align:center">Held by BalikHome until the service ends. Processed by a BSP-registered payment partner.</p><p class="tiny muted" style="text-align:center">${policyText()}</p>`
+        <button class="btn primary block" data-act="doPay">${payCalc(b).cash > 0 ? 'Pay ' + peso(payCalc(b).cash) : 'Confirm · nothing to pay'}</button><p class="tiny muted" style="text-align:center">Held by BalikHome until the service ends. Processed by a BSP-registered payment partner.</p><p class="tiny muted" style="text-align:center">${policyText()}</p>`
       : c.pay.stage === 'processing' ? `<div class="col" style="align-items:center;gap:12px;padding:30px 0"><div class="spin"></div><b>Processing ${peso(b.gross)}…</b></div>`
       : `<div class="col" style="align-items:center;gap:10px;padding:24px 0"><span class="avatar" style="width:56px;height:56px;background:var(--good-soft);color:var(--good)">${ic('check', 28)}</span><b style="font-size:17px">Paid</b><span class="small muted">The provider has been told to depart.</span></div>`}
     </div></div>`;
@@ -1529,6 +1592,23 @@ function provHistory(me) {
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Credit history</h3><div class="list">${evs.map(e => `<div class="li"><div class="col grow"><b class="small">${esc(e.text)}</b><span class="tiny muted">${fmtD(e.at)} · ${e.applied ? 'applied' : 'counts on Sunday'}</span></div><span class="pill ${e.pts > 0 ? 'good' : 'bad'}">${sgn(e.pts)}</span></div>`).join('') || '<div class="empty">No credit changes yet.</div>'}</div></div>
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Requests and jobs</h3><div class="list">${reqs.map(x => `<div class="li"><div class="col grow"><b class="small">${esc(x.services.map(s => s.name).join(' + '))}</b><span class="tiny muted">${x.id} · ${esc(x.customer || '')} · ${fmtD(x.createdAt)} ${fmtT(x.createdAt)}</span></div>${statusPill(x.status)}</div>`).join('') || '<div class="empty">No requests yet.</div>'}</div></div>`;
 }
+function loyEditor(o, path, ownerTag) {
+  const L = o.loyalty, svcs = o.services.filter(s => s.on && String(s.name || '').trim()), on = loyOn(o);
+  if (!L || (!L.draft && !on)) return `<div class="card" style="gap:8px"><div class="row between"><span class="eyebrow">Loyalty: free service</span>${L && L.stoppedAt ? `<span class="pill ${L.stoppedBy === 'admin' ? 'bad' : ''}">${L.stoppedBy === 'admin' ? 'Stopped by BalikHome' : 'Ended'}</span>` : ''}</div>
+    <span class="small muted">Reward regular customers: after a set number of visits, the next service is free. ${o.staff ? 'Visits with any of your staff count. Your staff cannot run their own loyalty events.' : ''} You fund the free service; BalikHome takes no fee on it.</span>
+    <button class="btn primary sm" style="align-self:flex-start" data-act="loyNew" data-arg="${ownerTag}">${ic('plus', 15)} Create loyalty event</button></div>`;
+  const ed = !!L.draft, err = !String(L.title || '').trim() ? 'Give the event a name.' : !(L.need >= 2 && L.need <= 30) ? 'Choose between 2 and 30 visits.' : L.scope === 'items' && !(L.items || []).length ? 'Pick at least one service.' : '';
+  const members = on ? S.bookings.filter(b => ownerKeyOf(b) === ownerTag && b.cid).map(b => b.cid).filter((c, i, a) => a.indexOf(c) === i).map(c => loyStatus(ownerTag, c)).filter(x => x && x.visits) : [];
+  return `<div class="card" style="gap:10px;border-color:var(--accent)"><div class="row between"><span class="eyebrow">Loyalty: free service</span><span class="pill ${ed ? '' : 'good'}">${ed ? 'Draft' : 'Running'}</span></div>
+    <label class="field">Event name<input id="ly-title-${ownerTag}" class="input" maxlength="40" data-bind="${path}.title" value="${esc(L.title || '')}" placeholder="e.g. 10th visit free" ${ed ? '' : 'disabled'}></label>
+    <div class="seg" style="width:100%"><button style="flex:1" data-act="loyScope" data-arg="${ownerTag}|any" aria-pressed="${L.scope !== 'items'}" ${ed ? '' : 'disabled'}>Any service counts</button><button style="flex:1" data-act="loyScope" data-arg="${ownerTag}|items" aria-pressed="${L.scope === 'items'}" ${ed ? '' : 'disabled'}>Selected services</button></div>
+    ${L.scope === 'items' ? `<div class="list">${svcs.map(s => `<label class="li" style="cursor:pointer"><input type="checkbox" data-act="loyItem" data-arg="${ownerTag}|${o.services.indexOf(s)}" ${(L.items || []).includes(s.name) ? 'checked' : ''} ${ed ? '' : 'disabled'}><b class="small grow">${esc(s.name)}</b><span class="small muted num">${peso(s.price)}</span></label>`).join('')}</div>` : ''}
+    <label class="field">Visits needed for 1 free service<div class="row"><input id="ly-need-${ownerTag}" class="input num" type="number" min="2" max="30" data-bind="${path}.need" value="${L.need || 10}" style="max-width:110px" ${ed ? '' : 'disabled'}><span class="small muted">visits → the next one free</span></div></label>
+    <span class="tiny muted">Each completed booking counts as one visit${L.scope === 'items' ? ' if it includes a selected service' : ''}. The free service is the lower-priced eligible service in the booking. Visits count from the day the event starts.</span>
+    ${ed ? `${err ? `<span class="small" style="color:var(--bad)">${err}</span>` : ''}<div class="row" style="gap:8px"><button class="btn primary sm" data-act="loyStart" data-arg="${ownerTag}" ${err ? 'disabled' : ''}>Start event</button><button class="btn ghost sm" data-act="loyCancel" data-arg="${ownerTag}">Discard</button></div>`
+      : `<span class="small">${members.length} customer${members.length === 1 ? '' : 's'} collecting · ${members.reduce((a, m) => a + m.used, 0)} free service${members.reduce((a, m) => a + m.used, 0) === 1 ? '' : 's'} given</span><button class="btn secondary sm" style="color:var(--bad);align-self:flex-start" data-act="loyStop" data-arg="${ownerTag}">End loyalty event</button>`}
+  </div>`;
+}
 function promoEditor(me, i) {
   const st = promoState(me), e = me.promo, P = 'providers.' + i + '.promo';
   const svcs = me.services.filter(s => s.on && String(s.name || '').trim());
@@ -1573,6 +1653,7 @@ function provServices() {
       <span class="small" style="color:var(--accent)">Area average near ${esc(me.area.split(',')[0])}: ${peso(avg - 50)}–${peso(avg + 50)}</span></div>`; }).join('')}
     <button class="btn secondary block" data-act="addSvc">${ic('plus', 18)} Add service</button>
     ${promoEditor(me, i)}
+    ${me.biz ? `<div class="card tight"><span class="small muted">${ic('heart', 14)} Loyalty (free service) events are run by ${esc((biz(me.biz) || {}).name || 'your business')} for all its staff.</span></div>` : loyEditor(me, 'providers.' + i + '.loyalty', 'p:' + me.id)}
     <div class="card tight"><div class="row">${ic('pin', 18)}<div class="col grow"><b class="small">Base address</b><span class="small muted">${esc(me.area)} · customers see distance from here</span></div></div>
       <label class="field">Service radius (km)<input id="svc-radius" class="input num" type="number" min="1" max="30" data-bind="providers.${i}.radius" value="${me.radius}"></label></div>
   </div>`;
@@ -1849,6 +1930,7 @@ function bizServices(b) {
   const evH = ev.length ? `<div class="panel"><div class="panel-h"><h3>Staff discount events</h3><span class="small muted">Each therapist can run their own sale on this menu</span></div><div class="list">${ev.map(p => `<div class="li"><b class="grow small">${esc(p.name)} · ${esc(p.promo.title)}</b><span class="small muted">${p.promo.mode === 'items' ? 'Selected services' : '−' + p.promo.pct + '% all'} · ${fmtD(dayTs(p.promo.start))} – ${fmtD(dayTs(p.promo.end))}</span><span class="pill ${promoState(p) === 'active' ? 'good' : 'accent'}">${promoState(p) === 'active' ? 'Running' : 'Scheduled'}</span></div>`).join('')}</div></div>` : '';
   return `<div class="page-h"><div><h1>Services & prices</h1><p>Add or remove the services your business offers and set the price and time for each. Every staff member offers this menu at these prices, and changes show to customers right away.</p></div><button class="btn primary sm" data-act="bizAddSvc">${ic('plus', 14)} Add service</button></div>
     ${evH}
+    <div class="narrow" style="max-width:640px">${loyEditor(b, 'businesses.' + bi + '.loyalty', 'b:' + b.id)}</div>
     <div class="panel"><div class="panel-b"><div class="svcgrid">
       ${b.services.map((s, j) => { const named = String(s.name || '').trim(); return `<div class="card tight" style="${named ? '' : 'border-color:var(--accent)'}"><div class="row between"><label class="check" style="align-items:center"><input type="checkbox" id="bm-on-${j}" data-bind="businesses.${bi}.services.${j}.on" ${s.on && named ? 'checked' : ''} ${named ? '' : 'disabled'}>Active</label>${b.services.length > 1 ? `<button class="iconbtn" style="width:30px;height:30px" data-act="bizRemoveSvc" data-arg="${j}" aria-label="Remove ${esc(s.name || 'service')}">${ic('x', 15)}</button>` : ''}</div>
         <label class="field">Service name<input id="bm-n-${j}" class="input" maxlength="40" data-bind="businesses.${bi}.services.${j}.name" value="${esc(s.name)}" placeholder="e.g. Hot stone massage"></label>
@@ -1873,7 +1955,7 @@ function adminPane() {
     <span class="side-h">Monitor now</span>
     ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('jobs', 'Requests & jobs', 'list')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
-    ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Discount events', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
+    ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
 }
 function admLive() {
@@ -1956,7 +2038,7 @@ function expel(kind, id, reason, note) {
   const closeAcc = test => S.accounts.filter(test).forEach(a => { a.status = 'closed'; a.closed = rec; });
   const cancelOpen = test => S.bookings.filter(b => test(b) && ['requested', 'offered', 'paid', 'departed'].includes(b.status)).forEach(b => {
     const paid = !!b.paidAt; b.status = 'cancelled'; b.cancelledBy = 'admin'; b.cancelledAt = now(); logB(b, 'Cancelled: member removed by BalikHome');
-    if (paid && !b.refund) { const card = (b.payMethod || '') === 'Card'; b.refunded = true; b.refund = { amount: b.gross, fee: 0, method: b.payMethod || 'GCash', days: card ? 5 : 1, dueBy: now() + (card ? 5 : 1) * DAY, at: now(), free: true }; }
+    if (paid && !b.refund) { const card = (b.payMethod || '') === 'Card'; b.refunded = true; b.refund = { amount: b.cashPaid != null ? b.cashPaid : b.gross, fee: 0, method: b.payMethod || 'GCash', days: card ? 5 : 1, dueBy: now() + (card ? 5 : 1) * DAY, at: now(), free: true }; }
     if (b.cid && kind !== 'customer') pushAlert('customer', 'Booking cancelled by BalikHome', paid ? peso(b.gross) + ' is being refunded in full.' : 'You were not charged.', b.id, 'bad');
   });
   const offProv = p => { p.active = false; p.status = 'red'; p.expelled = rec; if (p.promo && p.promo.on && !p.promo.stoppedAt) { p.promo.stoppedAt = now(); p.promo.stoppedBy = 'admin'; p.promo.stopReason = 'Account closed'; } };
@@ -1966,6 +2048,13 @@ function expel(kind, id, reason, note) {
   (S.fin || (S.fin = {})).expulsions = ((S.fin && S.fin.expulsions) || []).concat([Object.assign({ kind, id, name: kind === 'provider' ? prov(id).name : kind === 'business' ? biz(id).name : ((S.customers || {})[id] || {}).name || id }, rec)]).slice(-200);
   toast('admin', 'Member removed', reason);
 }
+function admLoyalty() {
+  const owners = S.providers.filter(p => !p.biz && p.loyalty && p.loyalty.on).map(p => ['p:' + p.id, p]).concat(S.businesses.filter(b => b.loyalty && b.loyalty.on).map(b => ['b:' + b.id, b]));
+  return `<div class="panel"><div class="panel-h"><h3>Loyalty events (N visits → 1 free) · ${owners.filter(([, o]) => loyOn(o)).length} running</h3><span class="small muted">Individual providers and businesses only</span></div><div class="tablewrap"><table><thead><tr><th>Run by</th><th>Event</th><th>Since</th><th class="num">Free given</th><th>Status</th><th></th></tr></thead><tbody>
+    ${owners.map(([k, o]) => { const L = o.loyalty, given = S.bookings.filter(b => b.loyaltyFree && b.loyaltyFree.owner === k && !b.refunded).length; return `<tr><td><b class="small">${esc(o.name)}</b><br><span class="tiny muted">${k[0] === 'b' ? 'Business' : 'Individual provider'}</span></td><td class="small"><b>${esc(L.title || '')}</b><br><span class="tiny muted">${esc(loyText(o))}</span></td><td class="small">${L.startedAt ? fmtD(L.startedAt) : '—'}</td><td class="num">${given}</td><td>${loyOn(o) ? '<span class="pill good">Running</span>' : `<span class="pill ${L.stoppedBy === 'admin' ? 'bad' : ''}">${L.stoppedBy === 'admin' ? 'Stopped by admin' : 'Ended'}</span>`}</td>
+      <td>${loyOn(o) ? (S.admin.confirm === 'loy:' + k ? `<div class="row" style="gap:6px"><button class="btn danger xs" data-act="admLoyStop" data-arg="${k}">Stop now</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button></div>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="loy:${k}">Force stop</button>`) : ''}</td></tr>`; }).join('') || '<tr><td colspan="6"><div class="empty">No loyalty events yet.</div></td></tr>'}
+  </tbody></table></div></div>`;
+}
 function admPromos() {
   const rows = S.providers.filter(p => p.promo && p.promo.on).map(p => ({ p, st: promoState(p) })).sort((a, b) => ({ active: 0, scheduled: 1, stopped: 2, ended: 3 }[a.st] - { active: 0, scheduled: 1, stopped: 2, ended: 3 }[b.st]));
   const live = rows.filter(r => r.st === 'active' || r.st === 'scheduled'), past = rows.filter(r => r.st === 'ended' || r.st === 'stopped');
@@ -1974,9 +2063,10 @@ function admPromos() {
     return `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<div class="col"><b class="small">${esc(p.name)}</b><span class="tiny muted">${b ? esc(b.name) + ' · staff' : catName(p.cat) + ' · individual'}</span></div></div></td><td><b class="small">${esc(e.title || '')}</b><br><span class="tiny muted">${disc}</span></td><td class="small">${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}</td><td>${st === 'active' ? '<span class="pill good">Running</span>' : st === 'scheduled' ? '<span class="pill accent">Scheduled</span>' : st === 'stopped' ? `<span class="pill bad">Stopped${e.stoppedBy === 'admin' ? ' by admin' : ''}</span>` : '<span class="pill">Ended</span>'}</td>
       <td>${(st === 'active' || st === 'scheduled') && e === p.promo ? (S.admin.confirm === 'promo:' + p.id ? `<div class="row" style="gap:6px;flex-wrap:wrap"><select class="select" style="height:32px;font-size:12px;width:200px" data-bind="admin.promoReason"><option>Misleading or fake discount</option><option>Prices raised before the discount</option><option>Breaks BalikHome rules</option><option>Requested by the provider or business</option></select><button class="btn danger xs" data-act="admPromoStop" data-arg="${p.id}">Stop now</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button></div>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="promo:${p.id}">Force stop</button>`) : ''}</td></tr>`; };
   if (!S.admin.promoReason) S.admin.promoReason = 'Misleading or fake discount';
-  return `<div class="page-h"><div><h1>Discount events</h1><p>Sales that providers and spa staff run on their own services. Events disappear from customer pages automatically when they end. Stop any event that is misleading or breaks the rules; the provider is told why.</p></div></div>
+  return `<div class="page-h"><div><h1>Events & promotions</h1><p>Sales that providers and spa staff run on their own services. Events disappear from customer pages automatically when they end. Stop any event that is misleading or breaks the rules; the provider is told why.</p></div></div>
     <div class="kpis"><div class="kpi accent"><span class="l">Running now</span><span class="v">${rows.filter(r => r.st === 'active').length}</span></div><div class="kpi"><span class="l">Scheduled</span><span class="v">${rows.filter(r => r.st === 'scheduled').length}</span></div><div class="kpi"><span class="l">Ended or stopped</span><span class="v">${past.length}</span></div></div>
-    <div class="panel"><div class="panel-h"><h3>Running and scheduled</h3></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Event</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${live.map(line).join('') || '<tr><td colspan="5"><div class="empty">No discount events running.</div></td></tr>'}</tbody></table></div></div>
+    ${admLoyalty()}
+    <div class="panel"><div class="panel-h"><h3>Running and scheduled discounts</h3></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Event</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${live.map(line).join('') || '<tr><td colspan="5"><div class="empty">No discount events running.</div></td></tr>'}</tbody></table></div></div>
     ${past.length ? `<div class="panel"><div class="panel-h"><h3>Ended and stopped</h3></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Event</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${past.slice(0, 40).map(line).join('')}</tbody></table></div></div>` : ''}`;
 }
 function admBusinesses() {
@@ -2077,16 +2167,30 @@ function customerRows() {
   });
   return Object.values(map).sort((a, b) => b.last - a.last);
 }
+function admPointsSummary() {
+  const P = PTS(), n = now(), recs = Object.values(S.customers || {}), all = recs.flatMap(r => (r.ptLog || []).map(e => Object.assign({ cid: r.cid, name: r.name }, e)));
+  const total = recs.reduce((a, r) => a + ptBal(r.cid), 0), holders = recs.filter(r => ptBal(r.cid) > 0).length;
+  const mE = all.filter(e => e.kind === 'earn' && sameMonth(e.at, n)).reduce((a, e) => a + e.pts, 0), mU = -all.filter(e => e.kind === 'use' && sameMonth(e.at, n)).reduce((a, e) => a + e.pts, 0);
+  const sel = S.admin.ptsSel && custRec(S.admin.ptsSel);
+  return `<div class="panel"><div class="panel-h"><h3>BalikHome points · all customers</h3><span class="small muted">1 point per ${peso(P.per)} paid · usable from ${P.min} points · 1 point = ${peso(P.value)}</span></div>
+    <div class="kpis" style="padding:14px"><div class="kpi accent"><span class="l">Points outstanding</span><span class="v">${total.toLocaleString()}</span><span class="tiny muted">${holders} customer${holders === 1 ? '' : 's'} · liability ${peso(total * P.value)}</span></div>
+      <div class="kpi"><span class="l">Earned this month</span><span class="v">${mE.toLocaleString()}</span></div><div class="kpi"><span class="l">Redeemed this month</span><span class="v">${mU.toLocaleString()}</span><span class="tiny muted">${peso(mU * P.value)} paid by BalikHome</span></div></div>
+    ${sel ? `<div class="panel-b" style="border-top:1px solid var(--line)"><div class="row between"><b>${esc(sel.name)} · ${ptBal(sel.cid)} points</b><button class="btn ghost xs" data-act="admPtsOpen" data-arg="">Close</button></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap"><input class="input num" type="number" style="max-width:120px;height:36px" data-bind="admin.ptsAdj" value="${esc(S.admin.ptsAdj || '')}" placeholder="+/- points"><button class="btn secondary xs" data-act="admPtsAdj" data-arg="${esc(sel.cid)}">Adjust</button></div>
+      <div class="list">${(sel.ptLog || []).slice(0, 30).map(e => `<div class="li"><span class="small grow">${fmtD(e.at)} · ${esc(e.kind)}${e.bid ? ' · ' + e.bid : ''}${e.note ? ' · ' + esc(e.note) : ''}</span><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${e.pts > 0 ? '+' : ''}${e.pts}</b></div>`).join('') || '<div class="empty">No point history.</div>'}</div></div>` : ''}</div>`;
+}
 function admCustomers() {
   const flags = S.admin.custFlags || {};
   const rows = customerRows();
   const reviews = [];
   S.providers.forEach(p => p.reviews.forEach((r, k) => reviews.push({ p, r, k })));
-  return `${admAccounts()}<div class="page-h"><div><h1>Customers & reviews</h1><p>Customers sign up with a verified email and mobile number; government ID is optional. Suspended customers cannot send new requests. Hidden reviews disappear from provider profiles.</p></div></div>
-    <div class="panel"><div class="panel-h"><h3>Customers · ${rows.length}</h3></div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Verification</th><th class="num">Bookings</th><th class="num">Spent</th><th>Last booking</th><th>Status</th><th>Actions</th></tr></thead><tbody>
+  return `<div class="page-h"><div><h1>Customers & reviews</h1><p>Customers sign up with a verified email and mobile number; government ID is optional. Suspended customers cannot send new requests. Hidden reviews disappear from provider profiles.</p></div></div>
+    ${admPointsSummary()}
+    ${admAccounts()}
+    <div class="panel"><div class="panel-h"><h3>Customers · ${rows.length}</h3></div><div class="tablewrap"><table><thead><tr><th>Customer</th><th>Verification</th><th class="num">Bookings</th><th class="num">Spent</th><th class="num">Points</th><th>Last booking</th><th>Status</th><th>Actions</th></tr></thead><tbody>
     ${rows.map(c => { const r = c.rec || (S.customers || {})[c.key] || {}; const reg = !!(c.rec && c.rec.email); const susp = !!r.suspended; return `<tr style="${susp ? 'background:var(--bad-soft)' : ''}"><td><b>${esc(c.name)}</b>${reg ? `<br><span class="tiny muted">${esc(r.email)} · ${esc(r.phone)}</span>` : ''}${c.key === (S.customer.cid || 'me') && S.customer.signedIn ? ' <span class="pill accent" style="height:20px">This device</span>' : ''}</td>
       <td><span class="pill good">Email</span> <span class="pill good">Phone</span> ${r.idOk ? '<span class="pill good">ID</span>' : '<span class="pill outline">No ID</span>'}</td>
-      <td class="num">${c.jobs}</td><td class="num">${peso(c.spent)}</td><td class="mono small">${c.last ? fmtD(c.last) : '—'}</td><td>${susp ? '<span class="pill bad">Suspended</span>' : '<span class="pill good">Active</span>'}</td>
+      <td class="num">${c.jobs}</td><td class="num">${peso(c.spent)}</td><td class="num">${c.key.startsWith('n:') ? '—' : `<button class="btn ghost xs" data-act="admPtsOpen" data-arg="${esc(c.key)}">${ptBal(c.key)}</button>`}</td><td class="mono small">${c.last ? fmtD(c.last) : '—'}</td><td>${susp ? '<span class="pill bad">Suspended</span>' : '<span class="pill good">Active</span>'}</td>
       <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admCustJobs" data-arg="${esc(c.name)}">Bookings</button><button class="btn ${susp ? 'primary' : 'ghost'} xs" style="${susp ? '' : 'color:var(--bad)'}" data-act="admCustSusp" data-arg="${esc(c.key)}">${susp ? 'Reactivate' : 'Suspend'}</button>${r.expelled ? '<span class="pill bad">Removed</span>' : c.key.startsWith('n:') ? '' : `<button class="btn danger xs" data-act="admExpel" data-arg="customer|${esc(c.key)}">Remove</button>`}${reg && !r.idOk ? `<button class="btn ghost xs" data-act="admCustId" data-arg="${esc(c.key)}">Mark ID verified</button>` : ''}</div></td></tr>`; }).join('')}
     </tbody></table></div></div>
     <div class="panel"><div class="panel-h"><h3>Review moderation · ${reviews.length}</h3><span class="small muted">Text reviews appear on provider profiles</span></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>By</th><th>Rating</th><th>Review</th><th>Status</th><th></th></tr></thead><tbody>
@@ -2195,6 +2299,7 @@ function admSettings() {
       ${st.credit.bands.map((t, i) => `<tr><td><b>${t.label}</b></td><td>${t.min}${i === st.credit.bands.length - 1 ? '–' + st.credit.max : '–' + t.max}</td><td><div class="row"><input id="band-rate-${i}" class="input num" type="number" min="0" max="50" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.bands.${i}.rate" value="${t.rate}"><span class="small muted">%</span></div></td><td><div class="row"><input id="staff-rate-${i}" class="input num" type="number" min="${STAFF_MIN()}" max="${STAFF_MAX()}" step="0.5" style="width:100px;height:36px" data-bind="settings.credit.staffRates.${i}" value="${(st.credit.staffRates || [])[i]}"><span class="small muted">%${Number((st.credit.staffRates || [])[i]) !== staffRateAt(i) ? ' · applied ' + staffRateAt(i) + '%' : ''}</span></div></td></tr>`).join('')}
     </tbody></table></div>
     <div class="panel-h" style="border-top:1px solid var(--line)"><h3>Reward credit rules</h3><span class="small muted">Measured Monday–Sunday · updated every Sunday</span></div><div class="panel-b"><div class="formgrid">
+      ${(PTS(), '')}${num('pt-per', 'settings.points.per', st.points.per, 'Customer points: pesos per point', '₱ paid = 1 point')}${num('pt-min', 'settings.points.min', st.points.min, 'Points needed before use', 'points')}${num('pt-val', 'settings.points.value', st.points.value, 'Value of 1 point', '₱')}
       ${num('cr-start', 'settings.credit.start', st.credit.start, 'Credits at sign-up', 'credits')}${num('cr-max', 'settings.credit.max', st.credit.max, 'Maximum credits', 'credits')}
       ${num('cr-hours', 'settings.credit.rules.hours', st.credit.rules.hours, 'Weekly green target met', 'credits')}${num('cr-under', 'settings.credit.rules.under', st.credit.rules.under, 'Weekly green target missed', 'credits')}
       ${num('cr-daily', 'settings.credit.rules.daily', st.credit.rules.daily, 'Daily services target met', 'credits')}${num('cr-djobs', 'settings.credit.dailyJobs', st.credit.dailyJobs, 'Services a day', 'jobs')}
@@ -2542,6 +2647,8 @@ function normalizeCredits() {
   if (!S.settings.respondV6) { if (Number(S.settings.respond) === 5) S.settings.respond = 6; S.settings.respondV6 = true; }
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
   S.businesses.forEach(b => { if (!Array.isArray(b.photos)) b.photos = []; });
+  if (!PTS().seeded && S.customers && S.customers.me) { PTS().seeded = true; const me = S.customers.me; if (!(me.ptLog || []).length) { S.bookings.filter(b => b.cid === 'me' && ['ended', 'reviewed'].includes(b.status)).forEach(b => { const e = Math.floor(b.gross / PTS().per); if (e) { me.ptLog = me.ptLog || []; me.ptLog.push({ at: b.endedAt || b.createdAt, pts: e, kind: 'earn', bid: b.id, note: 'Earned on ' + peso(b.gross) }); b.ptsEarned = e; } }); } }
+  S.bookings.forEach(b => { if (b.refunded && b.pointsUsed && !b.ptsBack && custRec(b.cid)) { b.ptsBack = true; ptAdd(b.cid, b.pointsUsed, 'refund', b.id, 'Points returned · booking cancelled'); } });
   if (!S.settings.credit.staffFeeV1) { S.settings.credit.staffFeeV1 = true; S.bookings.forEach(b => { const p = b.ledger && !b.ledger.paidAt && prov(b.pid); if (p && p.biz) { b.ledger.rate = tierRate(p); b.ledger.fee = Math.round(b.gross * b.ledger.rate) / 100; b.ledger.net = Math.round((b.gross - b.ledger.fee - b.ledger.wht) * 100) / 100; b.ledger.staff = { pid: p.id, name: p.name, credits: p.credits }; } }); }
   S.bookings.forEach(x => { if (x.status === 'business_queue') { x.status = 'cancelled'; x.cancelNote = 'Business requests were retired: customers now book a business therapist directly.'; } });
   S.providers.forEach(p => { if (!p.avail) p.avail = defAvail(); });
@@ -2742,6 +2849,8 @@ const TERMS = {
       'After the service, the Company pays the Provider or Business Partner the amount received less the Platform Fee and any tax the Company must withhold. Individual Providers are paid to their registered GCash or bank account; Business Partners are paid on their chosen schedule (weekly, twice a month or monthly).',
       'The Platform Fee depends on the Provider\'s reward credits under Section 8 (currently 22% to 30% for individual Providers and 10% to 20% for staff of Business Partners). The Company may change fee rates with at least 7 days\' notice in the app.',
       'Providers and Business Partners may run time-limited discount events on all or selected services (5% to 70%, up to 60 days). The discounted price shown at booking is the price the Customer pays, and the Platform Fee is calculated on that price. An event ends automatically on its last day and is then removed from the app. Discounts must be genuine: raising prices before a discount, fake "original" prices or other misleading offers are not allowed, and the Company may stop any event at any time and tell the Provider why.',
+      'Individual Providers and Business Partners (not their staff separately) may also run loyalty events in which a Customer who completes a set number of visits receives one service free. The Provider or Business Partner funds the free service and no Platform Fee is charged on it. A free service already earned stays valid if the event ends. Loyalty rewards have no cash value and cannot be transferred.',
+      'BalikHome Points. Customers earn 1 point for every ₱100 paid in the app, credited when the service ends. From 20 points, points can be used to pay part or all of a booking at ₱1 per point; the Company funds point payments and Providers are paid as if the Customer had paid in full. Points have no cash value, cannot be transferred or exchanged for money, and are returned if a booking paid with points is cancelled. Points gained through fraud or abuse may be cancelled. The Company may change the earning rate or end the programme with at least 30 days\' notice in the app, and points already earned stay usable for at least that period.',
       'Under BIR Revenue Regulations No. 16-2023, the Company withholds 1% of one-half of the gross remittance once payments to a Provider or Business Partner exceed ₱500,000 in a year, and issues BIR Form 2307. Providers and Business Partners remain responsible for registering with the BIR and filing and paying their own taxes.'
     ]],
     ['7. Cancellations and refunds', [
@@ -3134,7 +3243,8 @@ function getPath(path) { return path.split('.').reduce((o, k) => o && o[k], S); 
 const POLICY = { freeHours: 24, feePct: 30 };
 function refundQuote(b) {
   const start = b.promisedAt || b.slotAt || now(), hrs = (start - now()) / HOUR, free = hrs >= POLICY.freeHours;
-  const fee = free ? 0 : Math.round(b.gross * POLICY.feePct) / 100, amount = Math.round((b.gross - fee) * 100) / 100;
+  const base = b.cashPaid != null ? b.cashPaid : b.gross;
+  const fee = free ? 0 : Math.round(base * POLICY.feePct) / 100, amount = Math.round((base - fee) * 100) / 100;
   const m = b.payMethod || S.customer.pay || 'GCash', card = m === 'Card';
   return { free, fee, amount, method: m, days: card ? 5 : 1, dueText: card ? 'within 5 days' : 'within 24 hours', hrs };
 }
@@ -3201,6 +3311,7 @@ function endService(b, auto = false) {
   logB(b, auto ? 'Service window ended · provider auto-returned to green' : 'Provider tapped End service · back to green', b.endedAt);
   p.status = 'green'; p.backAt = null;
   postLedger(b);
+  if (b.cid && !b.ptsEarned) { const cash = b.cashPaid != null ? b.cashPaid : b.gross; const e = Math.floor(cash / PTS().per); b.ptsEarned = e || 0.0001; if (e > 0) { ptAdd(b.cid, e, 'earn', b.id, 'Earned on ' + peso(cash)); pushAlert('customer', '+' + e + ' BalikHome points', `Earned on ${peso(cash)} · balance ${ptBal(b.cid)} points.`, b.id, 'good'); } }
   if (b.cid) {
     pushAlert('customer', 'Service ended · rate your provider', `How was ${p.name.split(' ')[0]}? Leave stars and a review.`, b.id, 'good');
     toast('customer', 'Service ended', `Rate ${p.name.split(' ')[0]} and leave a short review.`);
@@ -3275,11 +3386,18 @@ const A = {
   cancelReq: id => { const b = bk(id); b.status = 'cancelled'; logB(b, 'Customer cancelled the request'); if (b.pid) pushAlert('provider:' + b.pid, 'Request cancelled', b.id + ' was cancelled by the customer.', b.id); },
   openPay: id => { S.cust.pay = { bid: id, stage: 'confirm' }; },
   closePay: () => { S.cust.pay = null; },
+  custGo: sc => { S.cust.screen = sc; },
+  custBackAccount: () => { S.cust.screen = 'account'; },
+  payToggle: k => { const p = S.cust.pay; if (!p) return; if (k === 'useFree') p.useFree = p.useFree === false; else p.usePts = !p.usePts; },
   doPay: () => {
     const c = S.cust; c.pay.stage = 'processing'; render();
     setTimeout(() => {
       const b = bk(c.pay.bid), p = prov(b.pid);
       if (b.status !== 'offered') { c.pay = null; render(); return; }
+      const k = payCalc(b);
+      if (k.useFree && k.free) { b.listGross = b.gross; b.gross = Math.max(0, b.gross - k.free.value); b.loyaltyFree = k.free; logB(b, 'Loyalty reward used · ' + k.free.item + ' free'); }
+      if (k.ptsUse) { b.pointsUsed = k.ptsUse; b.pointsValue = k.ptsValue; ptAdd(b.cid, -k.ptsUse, 'use', b.id, 'Paid ' + peso(k.ptsValue) + ' with points'); logB(b, 'Paid ' + peso(k.ptsValue) + ' with ' + k.ptsUse + ' points'); }
+      b.cashPaid = k.cash;
       b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN; b.payMethod = S.customer.pay; if (!b.reminders || !b.reminders.length) planReminders(b);
       logB(b, `Customer accepted arrival time and paid ${peso(b.gross)} via ${S.customer.pay}`);
       pushAlert('provider:' + p.id, b.when === 'later' ? 'Payment received · booking confirmed' : 'Payment received · depart', `Arrive by ${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}.`, b.id, 'good');
@@ -3486,12 +3604,21 @@ const A = {
     S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
+  loyNew: k => { const o = ownerByKey(k); if (o.loyalty && !o.loyalty.draft) o.loyaltyLog = (o.loyaltyLog || []).concat([o.loyalty]).slice(-10); o.loyalty = { draft: true, on: false, title: '', scope: 'any', items: [], need: 10, createdAt: now() }; },
+  loyScope: arg => { const [k, v] = arg.split('|'); const o = ownerByKey(k); if (o.loyalty) o.loyalty.scope = v; },
+  loyItem: arg => { const [k, i] = arg.split('|'); const o = ownerByKey(k), L = o.loyalty, n = o.services[+i].name; L.items = L.items || []; L.items = L.items.includes(n) ? L.items.filter(x => x !== n) : L.items.concat([n]); },
+  loyCancel: k => { const o = ownerByKey(k); const last = (o.loyaltyLog || []).slice(-1)[0]; o.loyalty = last || null; if (last) o.loyaltyLog = o.loyaltyLog.slice(0, -1); },
+  loyStart: k => { const o = ownerByKey(k), L = o.loyalty; if (!L) return; L.need = Math.max(2, Math.min(30, Number(L.need) || 10)); L.draft = false; L.on = true; L.startedAt = now(); toast(k[0] === 'b' ? 'business' : 'provider', 'Loyalty event started', L.title + ' · every ' + L.need + ' visits, 1 free'); },
+  loyStop: k => { const o = ownerByKey(k); if (o.loyalty) { o.loyalty.stoppedAt = now(); o.loyalty.stoppedBy = 'owner'; } },
+  admLoyStop: k => { const o = ownerByKey(k); if (!o || !o.loyalty) return; o.loyalty.stoppedAt = now(); o.loyalty.stoppedBy = 'admin'; S.admin.confirm = ''; pushAlert(k[0] === 'b' ? 'business:' + o.id : 'provider:' + o.id, 'Loyalty event stopped by BalikHome', (o.loyalty.title || 'Loyalty') + ': ' + (S.admin.promoReason || 'Stopped by BalikHome') + '. Free services already earned by customers stay valid.', null, 'bad'); toast('admin', 'Loyalty event stopped', o.name); },
+  admPtsAdj: cid => { const v = Number(S.admin.ptsAdj || 0); if (!v) return; ptAdd(cid, v, 'admin', null, 'Adjusted by BalikHome'); S.admin.ptsAdj = ''; toast('admin', 'Points adjusted', cid + ' · ' + (v > 0 ? '+' : '') + v); },
   promoNew: () => { const p = prov(S.prov.id); if (p.promo && p.promo.on) { p.promoLog = (p.promoLog || []).concat([Object.assign({}, p.promo)]).slice(-20); } const t = now(); p.promo = { draft: true, on: false, title: '', mode: 'all', pct: 10, items: {}, start: ymd(t), end: ymd(t + 6 * DAY), createdAt: t }; },
   promoMode: m => { const p = prov(S.prov.id); if (p.promo) p.promo.mode = m; },
   promoCancel: () => { const p = prov(S.prov.id); const last = (p.promoLog || []).slice(-1)[0]; p.promo = last ? Object.assign({}, last) : null; if (last) p.promoLog = p.promoLog.slice(0, -1); },
   promoStart: () => { const p = prov(S.prov.id), e = p.promo; if (!e || promoErr(e, p.services.filter(s => s.on))) return; e.draft = false; e.on = true; e.startedAt = now(); toast('provider', 'Discount event ' + (promoState(p) === 'active' ? 'is live' : 'scheduled'), `${e.title} · ${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}`); },
   promoStop: () => { const p = prov(S.prov.id); if (p.promo) { p.promo.stoppedAt = now(); p.promo.stoppedBy = 'provider'; toast('provider', 'Discount event ended', 'Customers now see your regular prices.'); } },
   admPromoStop: id => { const p = prov(id); if (!p || !p.promo) return; p.promo.stoppedAt = now(); p.promo.stoppedBy = 'admin'; p.promo.stopReason = S.admin.promoReason || 'Stopped by BalikHome'; S.admin.confirm = ''; pushAlert('provider:' + p.id, 'Discount event stopped by BalikHome', `${p.promo.title}: ${p.promo.stopReason}. Customers now see your regular prices.`, null, 'bad'); toast('admin', 'Event stopped', p.name + ' · ' + p.promo.title); },
+  admPtsOpen: id => { S.admin.ptsSel = id || null; },
   admBizOpen: id => { S.admin.bizOpen = S.admin.bizOpen === id ? null : id; },
   syncRetry: () => { location.reload(); },
   soundToggle: () => { S.sound = !soundOn(); if (S.sound) chime('note', true); },
@@ -3785,7 +3912,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 52;
+const BUILD = 53;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
