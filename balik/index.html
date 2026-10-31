@@ -337,6 +337,8 @@ ol.steps{margin:0;padding:0}
 .tlight::after{left:16px;top:-10px;width:14px;height:8px}
 .pt-now{display:flex;gap:14px;align-items:flex-start;padding:14px 16px;border-radius:14px;background:linear-gradient(135deg,#FFF6D6,#FFE7A3);color:#2A2205;border:1px solid #F5C842}
 .pt-now .muted{color:#5B4A12}.pt-nowx{flex-shrink:0;width:52px;height:52px;border-radius:14px;background:#FFB800;color:#14213D;display:grid;place-items:center;font-weight:800;font-size:20px}
+.push-card{border-color:#F5C842;background:linear-gradient(135deg,#FFF9E6,#FFF1C2);color:#2A2205;margin-bottom:10px}.push-card .muted{color:#5B4A12}.push-card.on{background:var(--surface);border-color:var(--line);color:var(--fg)}.push-card.on .muted{color:var(--muted)}
+.push-ic{width:36px;height:36px;border-radius:10px;background:#FFB800;color:#14213D;display:grid;place-items:center;flex-shrink:0}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1334,7 +1336,7 @@ function alertList(to) {
   const list = S.alerts.filter(a => a.to === to);
   return list.length ? `<div class="list">${list.map(a => `<button class="li" data-act="openAlert" data-arg="${a.id}"><span class="avatar" style="width:36px;height:36px;background:${a.kind === 'bad' ? 'var(--bad-soft)' : a.kind === 'good' ? 'var(--good-soft)' : 'var(--accent-soft)'};color:${a.kind === 'bad' ? 'var(--bad)' : a.kind === 'good' ? 'var(--good)' : 'var(--accent)'}">${ic(a.kind === 'bad' ? 'alert' : a.kind === 'good' ? 'check' : 'bell', 18)}</span><div class="col grow"><b class="small">${esc(a.title)}</b><span class="small muted">${esc(a.body)}</span></div><span class="tiny muted num">${fmtT(a.at)}</span>${a.read ? '' : '<span class="dot green" style="background:var(--accent);box-shadow:none"></span>'}</button>`).join('')}</div>` : '<div class="empty">No alerts yet. Updates about your bookings show up here.</div>';
 }
-function custAlerts() { return `${bar('Alerts', null, `<button class="btn ghost xs" data-act="readAll" data-arg="customer">Mark all read</button>`)}<div class="scroll" data-scroll="c-al">${alertList('customer')}</div>`; }
+function custAlerts() { return `${bar('Alerts', null, `<button class="btn ghost xs" data-act="readAll" data-arg="customer">Mark all read</button>`)}<div class="scroll" data-scroll="c-al">${pushCard(false)}${alertList('customer')}</div>`; }
 function custPoints() {
   const cid = S.customer.cid || 'me', P = PTS(), log = (custRec(cid) || {}).ptLog || [], bal = ptBal(cid);
   const lo = S.bookings.filter(b => b.cid === cid).map(b => ownerKeyOf(b)).filter((k, i, a) => a.indexOf(k) === i).map(k => loyStatus(k, cid)).filter(Boolean);
@@ -1502,7 +1504,7 @@ function provJobs() {
   const today = myLedger(me, b => sameDay(b.endedAt, n));
   const wk = weekTotal(me), staff = !!me.biz;
   const goalBase = staff ? monthGross : monthNet;
-  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${liveLine()}${offlineBanner('provider')}
+  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${liveLine()}${offlineBanner('provider')}${pushCard(true)}
     ${reqs.map(b => `<button class="card" data-act="openReq" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
       <div class="row between"><span class="eyebrow" style="color:var(--accent)">New request · also sent by SMS</span><span class="pill warn num" data-cd="${b.respondBy}">${mmss(b.respondBy - n)}</span></div>
       <b style="font-size:17px">${esc(b.services.map(s => s.name).join(' + '))}</b>
@@ -1847,7 +1849,7 @@ function bizPane() {
   if (tab === 'profile') main = bizProfile(b);
   return `<div class="web" data-pane="business"><aside class="side"><div class="org">${bizLogo(b, 36, 10, 19, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
     ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
-    <main class="main">${main}</main>${toastsFor('business', true)}</div>`;
+    <main class="main">${pushCard(true)}${main}</main>${toastsFor('business', true)}</div>`;
 }
 function bizRequests(b, q) {
   const active = S.bookings.filter(x => x.bizId === b.id && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status));
@@ -3748,6 +3750,8 @@ const A = {
   admSetTab: t => { S.admin.setTab = S.admin.setTab === t ? null : t; if (S.admin.setTab) setTimeout(() => { const el = document.getElementById('setbtn-' + t); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); },
   admBizOpen: id => { S.admin.bizOpen = S.admin.bizOpen === id ? null : id; },
   syncRetry: () => { location.reload(); },
+  pushOn: () => { pushEnable(); },
+  pushOff: () => { pushDisable(); },
   soundToggle: () => { S.sound = !soundOn(); if (S.sound) chime('note', true); },
   soundTest: k => { chime(k, true); },
   provAs: id => { if (prov(id)) { S.prov.id = id; S.prov.bid = null; S.prov.screen = 'jobs'; S.prov.apply = null; } },
@@ -4039,7 +4043,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 68;
+const BUILD = 69;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
@@ -4078,6 +4082,76 @@ async function firebaseAdapter(cfg, room) {
     reset: () => ref.remove()
   };
 }
+/* ---------- lock-screen alerts (Firebase Cloud Messaging) ---------- */
+const PUSH = { busy: false, err: '' };
+const pushKey = () => { const c = fbConfig(); return (c && c.vapidKey) || ''; };
+const pushTarget = () => ({ provider: 'provider:' + S.prov.id, business: 'business:' + S.biz.id, customer: 'customer:' + (S.customer.cid || 'me'), admin: 'admin' })[S.role] || null;
+const pushIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const pushStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
+const pushLsKey = t => 'tt-push:' + SYNC.room + ':' + t;
+function pushState() {
+  if (window.BALIK_PREVIEW) return 'preview';
+  if (!pushSupported()) return pushIOS() && !pushStandalone() ? 'ios-home' : 'unsupported';
+  if (!pushKey() || SYNC.mode !== 'live') return 'setup';
+  if (Notification.permission === 'denied') return 'denied';
+  const t = pushTarget(); if (!t) return 'unsupported';
+  return Notification.permission === 'granted' && lsGet(pushLsKey(t)) ? 'on' : 'off';
+}
+async function pushToken() {
+  const V = '10.14.1';
+  if (!firebase.messaging) await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-messaging-compat.js`);
+  let reg = await navigator.serviceWorker.getRegistration();
+  if (!reg) reg = await navigator.serviceWorker.register('sw.js');
+  await navigator.serviceWorker.ready;
+  return firebase.messaging().getToken({ vapidKey: pushKey(), serviceWorkerRegistration: reg });
+}
+async function pushSave(t, tok) {
+  const db = firebase.app().database(), base = 'rooms/' + SYNC.room + '/push/';
+  const prev = lsGet('tt-push-last:' + SYNC.room);
+  if (prev && prev !== t) { await db.ref(base + encK(prev) + '/' + DEVICE).remove().catch(() => { }); lsSet(pushLsKey(prev), null); }
+  await db.ref(base + encK(t) + '/' + DEVICE).set({ token: tok, at: Date.now(), ua: navigator.userAgent.slice(0, 120) });
+  lsSet(pushLsKey(t), DEVICE); lsSet('tt-push-last:' + SYNC.room, t);
+}
+async function pushEnable() {
+  const t = pushTarget(); if (!t) return;
+  PUSH.busy = true; PUSH.err = '';
+  try {
+    const perm = await Notification.requestPermission();   // must run first, inside the tap
+    render();
+    if (perm !== 'granted') throw new Error(perm === 'denied' ? 'Notifications are blocked for this site. Allow them in the browser or phone settings, then try again.' : 'Permission was not given.');
+    const tok = await pushToken();
+    if (!tok) throw new Error('This browser did not return a push token.');
+    await pushSave(t, tok);
+    toast(S.role, 'Lock-screen alerts on', 'This phone will alert you even when the screen is locked.');
+    try { chime('note', true); } catch (e) { }
+  } catch (e) { PUSH.err = String(e && e.message || e); }
+  PUSH.busy = false; render();
+}
+async function pushDisable() {
+  const t = pushTarget(); if (!t) return;
+  try { await firebase.app().database().ref('rooms/' + SYNC.room + '/push/' + encK(t) + '/' + DEVICE).remove(); } catch (e) { }
+  lsSet(pushLsKey(t), null); render();
+}
+// keep the token fresh (browsers rotate them) once the live room is ready
+async function pushRefresh() {
+  try { const t = pushTarget(); if (!t || pushState() !== 'on') return; const tok = await pushToken(); if (tok) await pushSave(t, tok); } catch (e) { }
+}
+function pushCard(compact) {
+  const st = pushState(); if (st === 'on' && compact) return '';
+  if (st === 'preview' || st === 'unsupported' || (st === 'setup' && compact)) return '';
+  const who = { provider: 'new requests', business: 'new spa requests', customer: 'replies from your provider', admin: 'new applications' }[S.role] || 'alerts';
+  const body = {
+    off: `Get ${who} even when the phone is locked or the app is closed.`,
+    on: `On for this phone. Alerts for ${who} arrive on the lock screen.`,
+    denied: 'Notifications are blocked for this site. Allow them in your browser or phone settings, then reload.',
+    setup: SYNC.mode !== 'live' ? 'Connect to the live server first.' : 'Waiting for Ticktap to finish the server setup.',
+    'ios-home': 'On iPhone, tap Share › Add to Home Screen, open Ticktap from the home screen, then turn this on.'
+  }[st];
+  const btn = st === 'off' ? `<button class="btn primary sm" data-act="pushOn" ${PUSH.busy ? 'disabled' : ''}>${PUSH.busy ? 'Turning on…' : 'Turn on'}</button>`
+    : st === 'on' ? `<button class="btn ghost xs" data-act="pushOff">Turn off</button>` : '';
+  return `<div class="card tight push-card ${st}"><div class="row" style="gap:12px;align-items:center"><span class="push-ic">${ic('bell', 18)}</span><div class="col grow" style="gap:2px;min-width:0"><b class="small">Lock-screen alerts${st === 'on' ? ' · on' : ''}</b><span class="tiny muted">${body}</span>${PUSH.err ? `<span class="tiny" style="color:var(--bad)">${esc(PUSH.err)}</span>` : ''}</div>${btn}</div></div>`;
+}
 async function startSync() {
   const cfg = fbConfig();
   try {
@@ -4100,7 +4174,7 @@ async function startSync() {
       SHARED_ONE.forEach(n => { if (root[n]) { try { S[n] = JSON.parse(root[n]); SYNC.last[n] = root[n]; } catch (e) { } } });
     }
     if (!S.customers[S.customer.cid || 'me'] && S.customer.signedIn) S.customers[S.customer.cid || 'me'] = custRecordFromLocal();
-    SYNC.ready = true; setTimeout(() => landOnBooking(), 50);
+    SYNC.ready = true; setTimeout(() => landOnBooking(), 50); if (SYNC.mode === 'live') setTimeout(pushRefresh, 4000);
     SYNC.status = SYNC.mode === 'live' ? 'Live' : 'This device only';
     SYNC.adapter.onChange(r => { if (applyRemote(r)) render(); });
     const beat = () => SYNC.adapter.update({ ['presence/' + DEVICE]: Date.now() }).catch(() => { });
