@@ -120,6 +120,8 @@ button.brand:hover{background:var(--surface-2)}
 .payopt{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .loy-card{background:#18301F;border-color:#2B4F36;color:#C8F0D6}:root:not([data-theme="light"]) .stamps span.free{color:#C8F0D6}}
 :root[data-theme="dark"] .loy-card{background:#18301F;border-color:#2B4F36;color:#C8F0D6}:root[data-theme="dark"] .stamps span.free{color:#C8F0D6}
+.pt-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:linear-gradient(120deg,#F5B83D,#FF8A3D 55%,#E2557A);color:#2A1300;box-shadow:0 6px 18px rgba(226,85,122,.25)}
+.pt-banner .small{color:#3A1D05}.pt-x{flex-shrink:0;width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.9);color:#C2410C;display:grid;place-items:center;font-weight:900;font-size:22px;font-family:var(--mono)}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -915,7 +917,14 @@ function loyCard(key, cid) {
     <span class="tiny">${st.avail ? `<b>You have ${st.avail} free service${st.avail > 1 ? 's' : ''} ready.</b> Use it when you pay.` : `${st.prog} of ${st.need} visits`}</span></div>`;
 }
 /* ---------- BalikHome points (platform-funded) ---------- */
-const PTS = () => S.settings.points || (S.settings.points = { per: 100, min: 20, value: 1 });
+const PTS = () => { const p = S.settings.points || (S.settings.points = { per: 100, min: 20, value: 1 }); if (p.on == null) p.on = true; if (!Array.isArray(p.events)) p.events = []; return p; };
+// bonus-point events set by BalikHome (2x to 5x), shown as a banner on the customer home screen
+const ptEventAt = t => PTS().events.filter(e => !e.stoppedAt && t >= dayTs(e.start) && t < dayTs(e.end) + DAY).sort((a, b) => b.mult - a.mult)[0] || null;
+const ptMultNow = () => { const e = ptEventAt(now()); return e ? e.mult : 1; };
+function ptBanner() {
+  const P = PTS(), e = ptEventAt(now()); if (!P.on || !e) return '';
+  return `<div class="pt-banner"><span class="pt-x">${e.mult}×</span><div class="col grow" style="gap:2px"><b>${esc(e.title || e.mult + '× points event')}</b><span class="small">Earn ${e.mult}× BalikHome points on every booking paid until ${fmtD(dayTs(e.end))}. That's ${e.mult} points for every ${peso(P.per)}.</span></div></div>`;
+}
 const custRec = cid => (S.customers || {})[cid];
 const ptBal = cid => ((custRec(cid) || {}).ptLog || []).reduce((a, e) => a + e.pts, 0);
 function ptAdd(cid, pts, kind, bid, note) { const r = custRec(cid); if (!r || !pts) return; r.ptLog = r.ptLog || []; r.ptLog.unshift({ at: now(), pts, kind, bid: bid || null, note: note || '' }); }
@@ -980,6 +989,7 @@ function custHome() {
         <span class="row" style="gap:4px;font-weight:600;font-size:15px">${esc(a.short)} ${ic('down', 16)}</span></button>
       <button class="iconbtn" data-act="custTab" data-arg="alerts" aria-label="Alerts">${ic('bell', 22)}${unread('customer') ? `<span class="badge-n">${unread('customer')}</span>` : ''}</button></header>
     <div class="scroll" data-scroll="c-home">
+      ${ptBanner()}
       ${act ? activeCard(act) : ''}
       <label class="row" style="height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
@@ -1094,6 +1104,7 @@ function payExtras(b) {
   let h = '';
   if (k.free) h += `<label class="row payopt" style="gap:10px"><input type="checkbox" data-act="payToggle" data-arg="useFree" ${k.useFree ? 'checked' : ''}><div class="col grow"><b class="small">${ic('heart', 14)} Use your free service</b><span class="tiny muted">${esc(k.free.item)} is free (loyalty reward)</span></div><b class="num" style="color:var(--good)">−${peso(k.free.value)}</b></label>`;
   if (k.bal > 0) h += `<label class="row payopt" style="gap:10px;${k.canPts ? '' : 'opacity:.6'}"><input type="checkbox" data-act="payToggle" data-arg="usePts" ${k.ptsUse ? 'checked' : ''} ${k.canPts ? '' : 'disabled'}><div class="col grow"><b class="small">${ic('sparkle', 14)} Pay with BalikHome points</b><span class="tiny muted">${k.bal} points available${k.canPts ? ` · 1 point = ${peso(P.value)}` : ` · usable from ${P.min} points`}</span></div><b class="num" style="color:var(--good)">${k.ptsUse ? '−' + peso(k.ptsValue) : ''}</b></label>`;
+  { const P2 = PTS(), m = P2.on ? ptMultNow() : 0, e = Math.floor(k.cash / P2.per) * m; if (e > 0) h += `<div class="row" style="gap:6px;padding:0 4px;color:var(--good)">${ic('sparkle', 14)}<span class="small">This booking earns <b>${e} point${e > 1 ? 's' : ''}</b>${m > 1 ? ` (${m}× event)` : ''} when the service ends</span></div>`; }
   if (k.useFree || k.ptsUse) h += `<div class="row between" style="padding:0 4px"><b>You pay</b><b class="num" style="font-size:18px">${peso(k.cash)}</b></div>`;
   return h;
 }
@@ -1277,6 +1288,7 @@ function custPoints() {
   const cid = S.customer.cid || 'me', P = PTS(), log = (custRec(cid) || {}).ptLog || [], bal = ptBal(cid);
   const lo = S.bookings.filter(b => b.cid === cid).map(b => ownerKeyOf(b)).filter((k, i, a) => a.indexOf(k) === i).map(k => loyStatus(k, cid)).filter(Boolean);
   return `${bar('BalikHome points', 'custBackAccount')}<div class="scroll" data-scroll="c-pts">
+    ${ptBanner()}${P.on ? '' : '<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><b class="small">Earning points is paused for now.</b><span class="tiny">You can still use the points you have.</span></div>'}
     <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent;gap:4px"><span class="eyebrow" style="color:inherit;opacity:.75">Your points</span><span class="num" style="font-size:40px;font-weight:600">${bal}</span><span class="small" style="opacity:.85">Worth ${peso(bal * P.value)} · ${bal >= P.min ? 'ready to use when you pay' : `usable from ${P.min} points (${P.min - bal} more)`}</span></div>
     <div class="card tight" style="gap:4px"><b class="small">How points work</b><span class="small muted">Earn 1 point for every ${peso(P.per)} you pay, credited when the service ends. From ${P.min} points you can pay part or all of a booking (1 point = ${peso(P.value)}). Points used on a cancelled booking are returned.</span></div>
     ${lo.length ? `<div class="col" style="gap:8px"><h3 style="font-size:15px">Loyalty rewards</h3>${lo.map(l => `<div class="li" style="border:1px solid var(--line);border-radius:12px;background:var(--surface)"><div class="col grow"><b class="small">${esc(l.o.name)} · ${esc(l.L.title || 'Loyalty')}</b><span class="tiny muted">${l.prog} of ${l.need} visits${l.avail ? ' · ' + l.avail + ' free ready' : ''}</span></div>${l.avail ? '<span class="pill good">Free ready</span>' : ''}</div>`).join('')}</div>` : ''}
@@ -2048,6 +2060,23 @@ function expel(kind, id, reason, note) {
   (S.fin || (S.fin = {})).expulsions = ((S.fin && S.fin.expulsions) || []).concat([Object.assign({ kind, id, name: kind === 'provider' ? prov(id).name : kind === 'business' ? biz(id).name : ((S.customers || {})[id] || {}).name || id }, rec)]).slice(-200);
   toast('admin', 'Member removed', reason);
 }
+function admPointsPolicy() {
+  const P = PTS(), d = S.admin.ptEv || (S.admin.ptEv = { title: '', mult: 2, start: ymd(now()), end: ymd(now() + 2 * DAY) });
+  const cur = ptEventAt(now()), list = P.events.slice().sort((a, b) => dayTs(b.start) - dayTs(a.start));
+  const st = e => e.stoppedAt ? 'stopped' : now() < dayTs(e.start) ? 'scheduled' : now() >= dayTs(e.end) + DAY ? 'ended' : 'active';
+  const err = !String(d.title || '').trim() ? 'Name the event.' : isNaN(dayTs(d.start)) || isNaN(dayTs(d.end)) ? 'Choose dates.' : dayTs(d.end) < dayTs(d.start) ? 'End must be on or after start.' : '';
+  return `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><div class="col"><h3>BalikHome points policy</h3><span class="small muted">Standing rule: ${peso(P.per)} paid = 1 point · usable from ${P.min} points · 1 point = ${peso(P.value)}</span></div>
+      <div class="row" style="gap:8px"><span class="small ${P.on ? '' : 'muted'}">${P.on ? 'Earning on' : 'Earning paused'}</span><button class="switch" role="switch" aria-checked="${P.on}" data-act="ptPolicyToggle" aria-label="Points earning"><span></span></button></div></div>
+    <div class="panel-b" style="gap:12px">
+      ${cur && P.on ? `<div class="pt-banner" style="margin:0"><span class="pt-x">${cur.mult}×</span><div class="col grow"><b>Live now: ${esc(cur.title)}</b><span class="small">Until ${fmtD(dayTs(cur.end))} · customers see this banner on their home screen</span></div></div>` : ''}
+      <b class="small">Bonus points event (2× to 5×)</b>
+      <div class="formgrid"><label class="field">Event name<input id="pe-title" class="input" maxlength="40" data-bind="admin.ptEv.title" value="${esc(d.title)}" placeholder="e.g. Christmas triple points"></label>
+        <label class="field">Multiplier<select id="pe-mult" class="select" data-bind="admin.ptEv.mult" data-type="num">${[2, 3, 4, 5].map(m => `<option value="${m}" ${+d.mult === m ? 'selected' : ''}>${m}× points</option>`).join('')}</select></label>
+        <label class="field">Starts<input id="pe-start" class="input" type="date" data-bind="admin.ptEv.start" value="${d.start}"></label><label class="field">Ends (last day)<input id="pe-end" class="input" type="date" data-bind="admin.ptEv.end" value="${d.end}" min="${d.start}"></label></div>
+      <div class="row" style="gap:8px;align-items:center">${err ? `<span class="small" style="color:var(--bad)">${err}</span>` : ''}<button class="btn primary sm" data-act="ptEventAdd" ${err ? 'disabled' : ''}>Schedule event</button><span class="tiny muted">Points are multiplied for bookings paid during the event. When events overlap, the highest multiplier applies.</span></div>
+      ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Event</th><th class="num">Multiplier</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${list.map(e => `<tr><td><b class="small">${esc(e.title)}</b></td><td class="num">${e.mult}×</td><td class="small">${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}</td><td>${{ active: '<span class="pill good">Running</span>', scheduled: '<span class="pill accent">Scheduled</span>', ended: '<span class="pill">Ended</span>', stopped: '<span class="pill bad">Stopped</span>' }[st(e)]}</td><td>${['active', 'scheduled'].includes(st(e)) ? `<button class="btn ghost xs" style="color:var(--bad)" data-act="ptEventStop" data-arg="${e.id}">Stop</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+    </div></div>`;
+}
 function admLoyalty() {
   const owners = S.providers.filter(p => !p.biz && p.loyalty && p.loyalty.on).map(p => ['p:' + p.id, p]).concat(S.businesses.filter(b => b.loyalty && b.loyalty.on).map(b => ['b:' + b.id, b]));
   return `<div class="panel"><div class="panel-h"><h3>Loyalty events (N visits → 1 free) · ${owners.filter(([, o]) => loyOn(o)).length} running</h3><span class="small muted">Individual providers and businesses only</span></div><div class="tablewrap"><table><thead><tr><th>Run by</th><th>Event</th><th>Since</th><th class="num">Free given</th><th>Status</th><th></th></tr></thead><tbody>
@@ -2063,8 +2092,9 @@ function admPromos() {
     return `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<div class="col"><b class="small">${esc(p.name)}</b><span class="tiny muted">${b ? esc(b.name) + ' · staff' : catName(p.cat) + ' · individual'}</span></div></div></td><td><b class="small">${esc(e.title || '')}</b><br><span class="tiny muted">${disc}</span></td><td class="small">${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}</td><td>${st === 'active' ? '<span class="pill good">Running</span>' : st === 'scheduled' ? '<span class="pill accent">Scheduled</span>' : st === 'stopped' ? `<span class="pill bad">Stopped${e.stoppedBy === 'admin' ? ' by admin' : ''}</span>` : '<span class="pill">Ended</span>'}</td>
       <td>${(st === 'active' || st === 'scheduled') && e === p.promo ? (S.admin.confirm === 'promo:' + p.id ? `<div class="row" style="gap:6px;flex-wrap:wrap"><select class="select" style="height:32px;font-size:12px;width:200px" data-bind="admin.promoReason"><option>Misleading or fake discount</option><option>Prices raised before the discount</option><option>Breaks BalikHome rules</option><option>Requested by the provider or business</option></select><button class="btn danger xs" data-act="admPromoStop" data-arg="${p.id}">Stop now</button><button class="btn ghost xs" data-act="admConfirm" data-arg="">Keep</button></div>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admConfirm" data-arg="promo:${p.id}">Force stop</button>`) : ''}</td></tr>`; };
   if (!S.admin.promoReason) S.admin.promoReason = 'Misleading or fake discount';
-  return `<div class="page-h"><div><h1>Events & promotions</h1><p>Sales that providers and spa staff run on their own services. Events disappear from customer pages automatically when they end. Stop any event that is misleading or breaks the rules; the provider is told why.</p></div></div>
-    <div class="kpis"><div class="kpi accent"><span class="l">Running now</span><span class="v">${rows.filter(r => r.st === 'active').length}</span></div><div class="kpi"><span class="l">Scheduled</span><span class="v">${rows.filter(r => r.st === 'scheduled').length}</span></div><div class="kpi"><span class="l">Ended or stopped</span><span class="v">${past.length}</span></div></div>
+  return `<div class="page-h"><div><h1>Events & promotions</h1><p>BalikHome points policy and bonus-point events, loyalty events run by providers and businesses, and provider discounts. Events disappear from customer pages automatically when they end. Stop any event that is misleading or breaks the rules; the owner is told why.</p></div></div>
+    <div class="kpis"><div class="kpi accent"><span class="l">Provider discounts running</span><span class="v">${rows.filter(r => r.st === 'active').length}</span></div><div class="kpi"><span class="l">Discounts scheduled</span><span class="v">${rows.filter(r => r.st === 'scheduled').length}</span></div><div class="kpi"><span class="l">Ended or stopped</span><span class="v">${past.length}</span></div></div>
+    ${admPointsPolicy()}
     ${admLoyalty()}
     <div class="panel"><div class="panel-h"><h3>Running and scheduled discounts</h3></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Event</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${live.map(line).join('') || '<tr><td colspan="5"><div class="empty">No discount events running.</div></td></tr>'}</tbody></table></div></div>
     ${past.length ? `<div class="panel"><div class="panel-h"><h3>Ended and stopped</h3></div><div class="tablewrap"><table><thead><tr><th>Provider</th><th>Event</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${past.slice(0, 40).map(line).join('')}</tbody></table></div></div>` : ''}`;
@@ -2172,7 +2202,7 @@ function admPointsSummary() {
   const total = recs.reduce((a, r) => a + ptBal(r.cid), 0), holders = recs.filter(r => ptBal(r.cid) > 0).length;
   const mE = all.filter(e => e.kind === 'earn' && sameMonth(e.at, n)).reduce((a, e) => a + e.pts, 0), mU = -all.filter(e => e.kind === 'use' && sameMonth(e.at, n)).reduce((a, e) => a + e.pts, 0);
   const sel = S.admin.ptsSel && custRec(S.admin.ptsSel);
-  return `<div class="panel"><div class="panel-h"><h3>BalikHome points · all customers</h3><span class="small muted">1 point per ${peso(P.per)} paid · usable from ${P.min} points · 1 point = ${peso(P.value)}</span></div>
+  return `<div class="panel"><div class="panel-h"><h3>BalikHome points · all customers</h3><span class="small muted">${P.on ? '' : '<b style="color:var(--warn)">Earning paused · </b>'}1 point per ${peso(P.per)} paid${ptEventAt(now()) && P.on ? ` · <b style="color:var(--good)">${ptEventAt(now()).mult}× event running</b>` : ''} · usable from ${P.min} points · 1 point = ${peso(P.value)}</span></div>
     <div class="kpis" style="padding:14px"><div class="kpi accent"><span class="l">Points outstanding</span><span class="v">${total.toLocaleString()}</span><span class="tiny muted">${holders} customer${holders === 1 ? '' : 's'} · liability ${peso(total * P.value)}</span></div>
       <div class="kpi"><span class="l">Earned this month</span><span class="v">${mE.toLocaleString()}</span></div><div class="kpi"><span class="l">Redeemed this month</span><span class="v">${mU.toLocaleString()}</span><span class="tiny muted">${peso(mU * P.value)} paid by BalikHome</span></div></div>
     ${sel ? `<div class="panel-b" style="border-top:1px solid var(--line)"><div class="row between"><b>${esc(sel.name)} · ${ptBal(sel.cid)} points</b><button class="btn ghost xs" data-act="admPtsOpen" data-arg="">Close</button></div>
@@ -2850,7 +2880,7 @@ const TERMS = {
       'The Platform Fee depends on the Provider\'s reward credits under Section 8 (currently 22% to 30% for individual Providers and 10% to 20% for staff of Business Partners). The Company may change fee rates with at least 7 days\' notice in the app.',
       'Providers and Business Partners may run time-limited discount events on all or selected services (5% to 70%, up to 60 days). The discounted price shown at booking is the price the Customer pays, and the Platform Fee is calculated on that price. An event ends automatically on its last day and is then removed from the app. Discounts must be genuine: raising prices before a discount, fake "original" prices or other misleading offers are not allowed, and the Company may stop any event at any time and tell the Provider why.',
       'Individual Providers and Business Partners (not their staff separately) may also run loyalty events in which a Customer who completes a set number of visits receives one service free. The Provider or Business Partner funds the free service and no Platform Fee is charged on it. A free service already earned stays valid if the event ends. Loyalty rewards have no cash value and cannot be transferred.',
-      'BalikHome Points. Customers earn 1 point for every ₱100 paid in the app, credited when the service ends. From 20 points, points can be used to pay part or all of a booking at ₱1 per point; the Company funds point payments and Providers are paid as if the Customer had paid in full. Points have no cash value, cannot be transferred or exchanged for money, and are returned if a booking paid with points is cancelled. Points gained through fraud or abuse may be cancelled. The Company may change the earning rate or end the programme with at least 30 days\' notice in the app, and points already earned stay usable for at least that period.',
+      'BalikHome Points. Customers earn 1 point for every ₱100 paid in the app, credited when the service ends. From 20 points, points can be used to pay part or all of a booking at ₱1 per point; the Company funds point payments and Providers are paid as if the Customer had paid in full. Points have no cash value, cannot be transferred or exchanged for money, and are returned if a booking paid with points is cancelled. Points gained through fraud or abuse may be cancelled. From time to time the Company may run bonus-point events (for example 2 to 5 times the usual points) for bookings paid during the event period. The Company may pause earning, change the earning rate or end the programme; points already earned are not affected by a pause, and ending the programme requires at least 30 days\' notice in the app, during which earned points stay usable.',
       'Under BIR Revenue Regulations No. 16-2023, the Company withholds 1% of one-half of the gross remittance once payments to a Provider or Business Partner exceed ₱500,000 in a year, and issues BIR Form 2307. Providers and Business Partners remain responsible for registering with the BIR and filing and paying their own taxes.'
     ]],
     ['7. Cancellations and refunds', [
@@ -3311,7 +3341,7 @@ function endService(b, auto = false) {
   logB(b, auto ? 'Service window ended · provider auto-returned to green' : 'Provider tapped End service · back to green', b.endedAt);
   p.status = 'green'; p.backAt = null;
   postLedger(b);
-  if (b.cid && !b.ptsEarned) { const cash = b.cashPaid != null ? b.cashPaid : b.gross; const e = Math.floor(cash / PTS().per); b.ptsEarned = e || 0.0001; if (e > 0) { ptAdd(b.cid, e, 'earn', b.id, 'Earned on ' + peso(cash)); pushAlert('customer', '+' + e + ' BalikHome points', `Earned on ${peso(cash)} · balance ${ptBal(b.cid)} points.`, b.id, 'good'); } }
+  if (b.cid && !b.ptsEarned) { const cash = b.cashPaid != null ? b.cashPaid : b.gross; const mult = b.ptMult != null ? b.ptMult : (PTS().on ? 1 : 0); const e = Math.floor(cash / PTS().per) * mult; b.ptsEarned = e || 0.0001; if (e > 0) { ptAdd(b.cid, e, 'earn', b.id, 'Earned on ' + peso(cash) + (mult > 1 ? ' · ' + mult + '× event' : '')); pushAlert('customer', '+' + e + ' BalikHome points', `Earned on ${peso(cash)} · balance ${ptBal(b.cid)} points.`, b.id, 'good'); } }
   if (b.cid) {
     pushAlert('customer', 'Service ended · rate your provider', `How was ${p.name.split(' ')[0]}? Leave stars and a review.`, b.id, 'good');
     toast('customer', 'Service ended', `Rate ${p.name.split(' ')[0]} and leave a short review.`);
@@ -3397,7 +3427,7 @@ const A = {
       const k = payCalc(b);
       if (k.useFree && k.free) { b.listGross = b.gross; b.gross = Math.max(0, b.gross - k.free.value); b.loyaltyFree = k.free; logB(b, 'Loyalty reward used · ' + k.free.item + ' free'); }
       if (k.ptsUse) { b.pointsUsed = k.ptsUse; b.pointsValue = k.ptsValue; ptAdd(b.cid, -k.ptsUse, 'use', b.id, 'Paid ' + peso(k.ptsValue) + ' with points'); logB(b, 'Paid ' + peso(k.ptsValue) + ' with ' + k.ptsUse + ' points'); }
-      b.cashPaid = k.cash;
+      b.cashPaid = k.cash; b.ptMult = PTS().on ? ptMultNow() : 0;
       b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN; b.payMethod = S.customer.pay; if (!b.reminders || !b.reminders.length) planReminders(b);
       logB(b, `Customer accepted arrival time and paid ${peso(b.gross)} via ${S.customer.pay}`);
       pushAlert('provider:' + p.id, b.when === 'later' ? 'Payment received · booking confirmed' : 'Payment received · depart', `Arrive by ${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}.`, b.id, 'good');
@@ -3619,6 +3649,9 @@ const A = {
   promoStop: () => { const p = prov(S.prov.id); if (p.promo) { p.promo.stoppedAt = now(); p.promo.stoppedBy = 'provider'; toast('provider', 'Discount event ended', 'Customers now see your regular prices.'); } },
   admPromoStop: id => { const p = prov(id); if (!p || !p.promo) return; p.promo.stoppedAt = now(); p.promo.stoppedBy = 'admin'; p.promo.stopReason = S.admin.promoReason || 'Stopped by BalikHome'; S.admin.confirm = ''; pushAlert('provider:' + p.id, 'Discount event stopped by BalikHome', `${p.promo.title}: ${p.promo.stopReason}. Customers now see your regular prices.`, null, 'bad'); toast('admin', 'Event stopped', p.name + ' · ' + p.promo.title); },
   admPtsOpen: id => { S.admin.ptsSel = id || null; },
+  ptPolicyToggle: () => { const P = PTS(); P.on = !P.on; P.changedAt = now(); toast('admin', P.on ? 'Points earning resumed' : 'Points earning paused', P.on ? 'Customers earn points again.' : 'Customers keep and can use the points they have.'); },
+  ptEventAdd: () => { const P = PTS(), d = S.admin.ptEv; if (!d) return; P.events.push({ id: 'pe' + Date.now().toString(36), title: d.title.trim(), mult: Math.max(2, Math.min(5, +d.mult || 2)), start: d.start, end: d.end, createdAt: now() }); S.admin.ptEv = null; toast('admin', 'Bonus points event scheduled', 'Shown to customers on the home screen while it runs.'); },
+  ptEventStop: id => { const e = PTS().events.find(x => x.id === id); if (e) { e.stoppedAt = now(); toast('admin', 'Event stopped', e.title); } },
   admBizOpen: id => { S.admin.bizOpen = S.admin.bizOpen === id ? null : id; },
   syncRetry: () => { location.reload(); },
   soundToggle: () => { S.sound = !soundOn(); if (S.sound) chime('note', true); },
@@ -3912,7 +3945,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 53;
+const BUILD = 54;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
