@@ -7,5 +7,6 @@ window.BALIK_FIREBASE = {
   projectId: "balik-service",
   storageBucket: "balik-service.firebasestorage.app",
   messagingSenderId: "192858043364",
-  appId: "1:192858043364:web:6ebe32b04f96ed33c68df1"
+  appId: "1:192858043364:web:6ebe32b04f96ed33c68df1",
+  vapidKey: "BPVkVVjn3GhdFk5GfB3lKQCmuWaHTqkhqrUJxjGPIlQXmDEVeiMYPaJY8IL8M0tKYdYbgijL1kW9LQfL0LNZV-4"
 };
