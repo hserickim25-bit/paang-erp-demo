@@ -950,6 +950,9 @@ const ptBal = cid => ((custRec(cid) || {}).ptLog || []).reduce((a, e) => a + e.p
 function ptAdd(cid, pts, kind, bid, note) { const r = custRec(cid); if (!r || !pts) return; r.ptLog = r.ptLog || []; r.ptLog.unshift({ at: now(), pts, kind, bid: bid || null, note: note || '' }); }
 const fromPrice = o => Math.min(...o.services.filter(s => s.on && String(s.name || '').trim()).map(s => o.staff ? s.price : svcPrice(o, s)));
 
+const bizStaffOn = b => b.staff.map(id => prov(id)).filter(p => p && p.active !== false);
+const bizFrom = b => { const st = bizStaffOn(b); return st.length ? Math.min(...st.map(p => fromPrice(p))) : fromPrice(b); };
+const bizPromoBadge = b => { const on = bizStaffOn(b).filter(promoOn); if (!on.length) return ''; const m = Math.max(...on.map(promoMax)); const until = Math.max(...on.map(p => dayTs(p.promo.end))); return `<span class="promo-b">${ic('sparkle', 11)} ${on.length === bizStaffOn(b).length ? 'Sale' : on.length + ' on sale'} −${m}% · until ${fmtD(until)}</span>`; };
 function entryCard(e) {
   const o = e.o;
   if (e.kind === 'b') {
@@ -959,8 +962,8 @@ function entryCard(e) {
       <span class="meta"><span class="name ellipsis">${esc(o.name)}</span>
         <span class="small muted">Business · ${o.staff.length} verified therapists</span>
         <span class="small">${starsH(o.rating)} <b>${o.rating}</b> <span class="muted">(${o.count})</span></span>
-        <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g ? g + ' on stand-by' : 'No one on stand-by'}</span></span>
-      <span class="right"><b class="num">${fmtKm(e.d)}</b><span class="small muted">from ${peso(fromPrice(o))}</span></span></button>`;
+        <span class="status-line ${g ? 'green' : 'yellow'}">${tlMini(g ? 'green' : 'yellow')}${g ? g + ' on stand-by' : 'No one on stand-by'}</span>${bizPromoBadge(o)}</span>
+      <span class="right"><b class="num">${fmtKm(e.d)}</b><span class="small muted">from ${peso(bizFrom(o))}</span></span></button>`;
   }
   const b = o.biz ? biz(o.biz) : null;
   return `<button class="pcard" data-act="openProvider" data-arg="${o.id}">
@@ -1102,6 +1105,7 @@ function custBiz() {
         <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px"><span class="pill good">${ic('shield', 14)} Business documents checked</span><span class="pill good">Staff ID-verified</span></div></div>
       ${b.story ? `<div class="card"><p class="small">${esc(b.story)}</p></div>` : ''}
       ${loyCard('b:' + b.id, S.customer.cid || 'me')}
+      ${bizPromoBadge(b) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc((bizStaffOn(b).find(promoOn) || {}).promo.title)}</b><span class="small">${bizPromoBadge(b).replace(/<[^>]+>/g, '').trim()}. Sale prices show when you choose a therapist.</span></div>` : ''}
       <div class="col" style="gap:8px"><h3 style="font-size:16px">Choose a therapist to book</h3><span class="small muted">You book a therapist directly. Each one works for ${esc(b.name)} and offers the menu below.</span>
         <div class="list">${staff.map(p => `<button class="li" data-act="openProvider" data-arg="${p.id}">${zav(p, 48, true)}<div class="col grow"><b>${esc(p.name)}</b>${statusLine(p)}<span class="tiny muted">${starsH(p.rating)} ${p.rating} · ${p.years} yrs</span></div><span class="small muted num">${fmtKm(distTo(p))}</span>${ic('chev', 16)}</button>`).join('') || '<div class="empty">No therapists listed yet.</div>'}</div></div>
       ${ratingBlock(b)}
@@ -2697,6 +2701,23 @@ function addTestPros() {
   if (!SYNC.ready && SYNC.adapter) return;
   TEST_BIZ.forEach(o => { if (!S.businesses.some(b => b.id === o.id)) S.businesses.push(JSON.parse(JSON.stringify(o))); });
   TEST_PROS.concat(TEST_STAFF).forEach(o => { if (!S.providers.some(p => p.id === o.id)) { const p = mkProv(JSON.parse(JSON.stringify(o))); p.avail = defAvail(); S.providers.push(p); } });
+  // demo launch promotions (once per room): provider discounts, one business-wide sale, and the 2x points opening event
+  if (!S.settings.demoPromos2026) {
+    S.settings.demoPromos2026 = true;
+    const t0 = now();
+    const ev = (title, mode, pct, items, start, end) => ({ draft: false, on: true, title, mode, pct, items: items || {}, start, end, createdAt: t0, startedAt: t0, demo: true });
+    const setP = (id, e) => { const p = prov(id); if (p && !(p.promo && p.promo.on && !p.promo.stoppedAt)) p.promo = e; };
+    setP('p1', ev('Ticktap welcome sale', 'items', 0, { 'Hilot (traditional)': 20, 'Swedish massage': 15 }, '2026-10-31', '2026-11-30'));
+    setP('p2', ev('Nail day promo', 'all', 15, null, '2026-10-31', '2026-11-15'));
+    setP('p111', ev('Color & cut special', 'all', 20, null, '2026-10-31', '2026-11-30'));
+    setP('p107', ev('Pink November', 'all', 10, null, '2026-10-31', '2026-11-20'));
+    setP('p116', ev('Grooming launch deal', 'all', 15, null, '2026-10-31', '2026-11-30'));
+    const fac = biz('bz-fac'); if (fac) fac.staff.forEach(id => setP(id, ev('Ganda Glow grand opening', 'all', 20, null, '2026-10-31', '2026-11-30')));
+    const P = PTS(); if (!P.events.some(e => e.id === 'pe-open2026')) {
+      P.events.filter(e => !e.stoppedAt && dayTs(e.start) <= dayTs('2026-12-31') && dayTs(e.end) >= dayTs('2026-11-01')).forEach(e => { e.stoppedAt = t0; });
+      P.events.push({ id: 'pe-open2026', title: 'Grand opening · double points', mult: 2, start: '2026-11-01', end: '2026-12-31', createdAt: t0 });
+    }
+  }
   // test accounts have accepted the terms like the original demo accounts
   if (Array.isArray(S.consents) && S.consents.length) {
     const has = (role, who) => S.consents.some(c => c.role === role && c.who === who);
@@ -3983,7 +4004,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 57;
+const BUILD = 58;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
