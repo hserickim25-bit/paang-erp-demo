@@ -122,11 +122,11 @@ button.brand:hover{background:var(--surface-2)}
 :root[data-theme="dark"] .loy-card{background:#18301F;border-color:#2B4F36;color:#C8F0D6}:root[data-theme="dark"] .stamps span.free{color:#C8F0D6}
 .pt-banner{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:linear-gradient(120deg,#F5B83D,#FF8A3D 55%,#E2557A);color:#2A1300;box-shadow:0 6px 18px rgba(226,85,122,.25)}
 .pt-banner .small{color:#3A1D05}.pt-x{flex-shrink:0;width:52px;height:52px;border-radius:14px;background:rgba(255,255,255,.9);color:#C2410C;display:grid;place-items:center;font-weight:900;font-size:22px;font-family:var(--mono)}
-.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.setgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(260px,100%),1fr));gap:10px;min-width:0}.setgrid>*{min-width:0}
 .setbtn{display:flex;align-items:center;gap:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);font:inherit;color:var(--fg);text-align:left;cursor:pointer;min-width:0}
 .setbtn:hover{border-color:var(--accent)}.setbtn .si{width:40px;height:40px;border-radius:11px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex-shrink:0}
 .setbtn[aria-expanded="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}.setbtn[aria-expanded="true"] > svg{transform:rotate(90deg)}
-.setopen{display:flex;flex-direction:column;gap:12px;margin-top:6px}
+.setopen{grid-column:1/-1;display:flex;flex-direction:column;gap:12px;margin:2px 0 10px;min-width:0}
 .th-d{display:none!important}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .th-l{display:none!important}:root:not([data-theme="light"]) .th-d{display:block!important}}
 :root[data-theme="dark"] .th-l{display:none!important}:root[data-theme="dark"] .th-d{display:block!important}
@@ -2411,8 +2411,7 @@ function admSettings() {
       ${num('s-thr', 'settings.whtThreshold', st.whtThreshold, 'Yearly threshold per payee', '₱')}${num('s-rate', 'settings.whtRate', st.whtRate, 'Rate', '%')}${num('s-base', 'settings.whtBase', st.whtBase, 'Share of gross subject to tax', '%')}
       <p class="tiny muted">Defaults follow BIR RR 16-2023: 1% on one-half of gross remittances above ₱500,000 a year.</p></div></div>` };
   return `<div class="page-h"><div><h1>Rules & settings</h1><p>Choose a setting to open it. Changes apply immediately across every app.</p></div></div>
-    <div class="setgrid">${SEC.map(([id, icn, t, sub]) => `<button class="setbtn" data-act="admSetTab" data-arg="${id}" aria-expanded="${open === id}"><span class="si">${ic(icn, 20)}</span><span class="col grow" style="gap:2px;min-width:0"><b>${t}</b><span class="tiny muted ellipsis">${sub}</span></span>${ic('chev', 16)}</button>`).join('')}</div>
-    ${open && BODY[open] ? `<div class="setopen"><div class="row between"><h2 style="font-size:18px">${SEC.find(x => x[0] === open)[2]}</h2><button class="btn ghost xs" data-act="admSetTab" data-arg="${open}">Close</button></div>${BODY[open]()}</div>` : ''}`;
+    <div class="setgrid">${SEC.map(([id, icn, t, sub]) => `<button class="setbtn" id="setbtn-${id}" data-act="admSetTab" data-arg="${id}" aria-expanded="${open === id}"><span class="si">${ic(icn, 20)}</span><span class="col grow" style="gap:2px;min-width:0"><b>${t}</b><span class="tiny muted ellipsis">${sub}</span></span>${ic('chev', 16)}</button>${open === id && BODY[id] ? `<div class="setopen"><div class="row between"><h2 style="font-size:18px">${t}</h2><button class="btn ghost xs" data-act="admSetTab" data-arg="${id}">Close</button></div>${BODY[id]()}</div>` : ''}`).join('')}</div>`;
 }
 
 
@@ -3737,7 +3736,7 @@ const A = {
   ptPolicyToggle: () => { const P = PTS(); P.on = !P.on; P.changedAt = now(); toast('admin', P.on ? 'Points earning resumed' : 'Points earning paused', P.on ? 'Customers earn points again.' : 'Customers keep and can use the points they have.'); },
   ptEventAdd: () => { const P = PTS(), d = S.admin.ptEv; if (!d || ptOverlap(d.start, d.end)) return; P.events.push({ id: 'pe' + Date.now().toString(36), title: d.title.trim(), mult: Math.max(2, Math.min(5, +d.mult || 2)), start: d.start, end: d.end, createdAt: now() }); S.admin.ptEv = null; toast('admin', 'Bonus points event scheduled', 'Shown to customers on the home screen while it runs.'); },
   ptEventStop: id => { const e = PTS().events.find(x => x.id === id); if (e) { e.stoppedAt = now(); toast('admin', 'Event stopped', e.title); } },
-  admSetTab: t => { S.admin.setTab = S.admin.setTab === t ? null : t; },
+  admSetTab: t => { S.admin.setTab = S.admin.setTab === t ? null : t; if (S.admin.setTab) setTimeout(() => { const el = document.getElementById('setbtn-' + t); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); },
   admBizOpen: id => { S.admin.bizOpen = S.admin.bizOpen === id ? null : id; },
   syncRetry: () => { location.reload(); },
   soundToggle: () => { S.sound = !soundOn(); if (S.sound) chime('note', true); },
@@ -4031,7 +4030,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 66;
+const BUILD = 67;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
