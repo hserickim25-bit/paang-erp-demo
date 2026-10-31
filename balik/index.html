@@ -104,6 +104,8 @@ button.brand:hover{background:var(--surface-2)}
 .liveline{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;max-width:100%;flex-wrap:wrap}
 .liveline .dot{width:8px;height:8px;border-radius:50%;background:#22B573}.liveline.bad{color:var(--bad);border-color:var(--bad)}.liveline.bad .dot{background:#E5484D}.liveline .muted{font-weight:500}
 .fab{position:fixed}.fabdot{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#22B573}.fabdot.bad{background:#E5484D}
+.switch{position:relative;width:46px;height:28px;border-radius:14px;border:0;background:var(--line-2);cursor:pointer;flex-shrink:0;transition:background .15s}.switch span{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.switch[aria-checked="true"]{background:#22B573}.switch[aria-checked="true"] span{left:21px}
 .duo-label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .intro{max-width:880px;margin:0 auto 24px;text-align:center;display:flex;flex-direction:column;gap:6px}
 .intro h1{font-size:22px}
@@ -784,7 +786,9 @@ seedHistory(); SEEDING = false;
 })();
 
 /* ---------- alerts, sms, toasts ---------- */
-function pushAlert(to, title, body, bid, kind = 'info') { if (to === 'customer') { const b = bid && bk(bid); to = 'customer:' + ((b && b.cid) || S.customer.cid || 'me'); } S.alerts.unshift({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, title, body, bid: bid || null, kind, at: now(), read: false }); }
+function pushAlert(to, title, body, bid, kind = 'info') { if (to === 'customer') { const b = bid && bk(bid); to = 'customer:' + ((b && b.cid) || S.customer.cid || 'me'); }
+  try { const mt = myTargets()[to]; if (mt && mt === S.role && SYNC.ready) { const ck = chimeKind({ title, kind }); if (ck) setTimeout(() => chime(ck), 0); } } catch (e) { }
+  S.alerts.unshift({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, title, body, bid: bid || null, kind, at: now(), read: false }); }
 function sendSms(to, text, kind = 'info') { S.sms.unshift({ id: 'sm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to, text, at: now(), kind }); }
 function toast(pane, title, body, sms = false, bid = null) {
   if (!bid) { const m = String(body || '').match(/balik\.ph\/r\/(\d+)/) || String(body || '').match(/\b(B-\d+)\b/); if (m) bid = m[1].startsWith('B-') ? m[1] : 'B-' + m[1]; if (bid && !bk(bid)) bid = null; }
@@ -2131,6 +2135,8 @@ function demoSheet() {
   return `<div class="demo-sheet" data-act="demo"><div class="sheet" data-stop="1"><div class="grab"></div>
     <div class="row between"><h3 style="font-size:17px">Demo controls</h3><button class="iconbtn" data-act="demo" aria-label="Close">${ic('x', 20)}</button></div>
     ${liveLine()}
+    <div class="card tight" style="gap:8px"><div class="row between"><div class="col" style="gap:2px"><b class="small">Alert sounds & vibration</b><span class="tiny muted">Plays while the app is open. Tap the screen once after opening so the phone allows sound.</span></div><button class="switch" role="switch" aria-checked="${soundOn()}" data-act="soundToggle" aria-label="Alert sounds"><span></span></button></div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(CHIMES).map(([k, c]) => `<button class="btn secondary xs" data-act="soundTest" data-arg="${k}">${ic('bell', 13)} ${c.label}</button>`).join('')}</div></div>
     <span class="eyebrow">Test accounts · password ${DEMO_PW}</span>
     ${[['customer', 'Customers'], ['provider', 'Providers'], ['staff', 'Spa staff'], ['business', 'Businesses']].map(([rl, l]) => { const xs = S.accounts.filter(a => a.role === rl && a.status === 'active' && a.demo); return xs.length ? `<div class="col" style="gap:4px"><span class="tiny muted">${l}</span><div class="row" style="gap:6px;flex-wrap:wrap">${xs.map(a => { const p = a.link && a.link.pid, n = p ? pendingFor(p) : 0; return `<button class="btn ${meAcct() && meAcct().id === a.id ? 'primary' : 'secondary'} xs" data-act="demoLogin" data-arg="${esc(a.loginId)}">${esc(a.loginId)}${n ? ` <span class="pill bad" style="height:18px;padding:0 6px">${n}</span>` : ''}</button>`; }).join('')}</div></div>` : ''; }).join('')}
     ${meAcct() ? `<div><button class="btn ghost xs" data-act="authLogout">Log out (${esc(meAcct().loginId)})</button></div>` : ''}
@@ -2486,6 +2492,40 @@ function callSync() {
   return ch;
 }
 let ringT = null, ringCtx = null;
+/* ---------- alert sounds and vibration (while the app is open) ---------- */
+const CHIMES = {
+  request: { notes: [[880, .14], [1175, .14], [1568, .26], [0, .12], [880, .14], [1175, .14], [1568, .26]], vib: [400, 150, 400, 150, 400], label: 'New request' },
+  pay: { notes: [[1047, .12], [1319, .26]], vib: [200, 100, 200], label: 'Payment / accepted' },
+  msg: { notes: [[1319, .08], [0, .05], [1568, .1]], vib: [80, 60, 80], label: 'Message' },
+  remind: { notes: [[784, .18], [988, .3]], vib: [250, 120, 250], label: 'Reminder' },
+  bad: { notes: [[523, .2], [392, .32]], vib: [350], label: 'Cancelled / problem' },
+  note: { notes: [[988, .18]], vib: [150], label: 'Other update' }
+};
+const soundOn = () => S.sound !== false;
+function audioCtx() { try { ringCtx = ringCtx || new (window.AudioContext || window.webkitAudioContext)(); if (ringCtx.state === 'suspended') ringCtx.resume(); return ringCtx; } catch (e) { return null; } }
+['pointerdown', 'keydown', 'touchstart'].forEach(ev => document.addEventListener(ev, () => { const c = audioCtx(); if (c && !window.__audioUnlocked) { window.__audioUnlocked = true; const o = c.createOscillator(), g = c.createGain(); g.gain.value = 0; o.connect(g); g.connect(c.destination); o.start(); o.stop(c.currentTime + .01); } }, { passive: true }));
+let lastChime = { at: 0, kind: '' };
+function chime(kind, force) {
+  if (!soundOn() && !force) return;
+  const c = CHIMES[kind] || CHIMES.note, t0 = Date.now();
+  if (!force && t0 - lastChime.at < 1500 && (lastChime.kind === 'request' || kind !== 'request')) return;   // one sound per burst; a request wins
+  lastChime = { at: t0, kind };
+  const ctx = audioCtx();
+  if (ctx) { let t = ctx.currentTime + .02; c.notes.forEach(([f, d]) => { if (f) { const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'sine'; o.frequency.value = f; g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(.22, t + .015); g.gain.exponentialRampToValueAtTime(.001, t + d); o.connect(g); g.connect(ctx.destination); o.start(t); o.stop(t + d + .02); } t += d; }); }
+  try { navigator.vibrate && navigator.vibrate(c.vib); } catch (e) { }
+}
+function chimeKind(a) {
+  const t = String(a.title || '');
+  if (/incoming call/i.test(t)) return null;   // the ringtone handles calls
+  if (/^New request|New spa request/i.test(t)) return 'request';
+  if (/^Message from/i.test(t)) return 'msg';
+  if (/Payment received|accepted|Therapist assigned|has arrived|has departed|refund on the way/i.test(t)) return 'pay';
+  if (/Reminder|BalikHome · |Payment request/i.test(t)) return 'remind';
+  if (a.kind === 'bad' || /cancel|declined|expired|late|can't|didn't/i.test(t)) return 'bad';
+  return 'note';
+}
+// keep reminding a provider who has not answered a request yet
+setInterval(() => { try { if (document.hidden || !soundOn()) return; const role = isPhone() ? S.role : null; if (role !== 'provider') return; if (S.bookings.some(b => b.pid === S.prov.id && b.status === 'requested' && b.respondBy > now())) chime('request'); } catch (e) { } }, 30000);
 function startRing() { if (ringT) return; const beep = () => { try { ringCtx = ringCtx || new (window.AudioContext || window.webkitAudioContext)(); const o = ringCtx.createOscillator(), g = ringCtx.createGain(); o.frequency.value = 660; g.gain.value = 0.06; o.connect(g); g.connect(ringCtx.destination); o.start(); o.stop(ringCtx.currentTime + 0.35); } catch (e) { } try { navigator.vibrate && navigator.vibrate([300, 150, 300]); } catch (e) { } }; beep(); ringT = setInterval(beep, 1600); }
 function stopRing() { if (ringT) { clearInterval(ringT); ringT = null; } }
 function callScreen(role) {
@@ -3270,6 +3310,8 @@ const A = {
   // business
   bizTab: t => { S.biz.tab = t; },
   syncRetry: () => { location.reload(); },
+  soundToggle: () => { S.sound = !soundOn(); if (S.sound) chime('note', true); },
+  soundTest: k => { chime(k, true); },
   provAs: id => { if (prov(id)) { S.prov.id = id; S.prov.bid = null; S.prov.screen = 'jobs'; S.prov.apply = null; } },
   bizAs: id => { if (biz(id)) S.biz.id = id; },
   bizBF: f => { S.biz.bf = f; },
@@ -3526,7 +3568,7 @@ function applyRemote(root) {
       if (!localChanged && remote[k] != null && last[k] == null && local[k] == null) {   // brand-new record from another device
         try {
           const r = JSON.parse(remote[k]);
-          if (n === 'alerts' && mine[r.to] && SYNC.ready) toast(mine[r.to], r.title, r.body, false, r.bid || null);
+          if (n === 'alerts' && mine[r.to] && SYNC.ready) { toast(mine[r.to], r.title, r.body, false, r.bid || null); const ck = chimeKind(r); if (ck) chime(ck); }
           if (n === 'sms' && SYNC.ready) { if (r.to === myPhone) toast('provider', 'SMS · BalikHome', r.text, true); if (r.kind === 'late') toast('admin', 'SMS · Late arrival', r.text, true); }
         } catch (e) { }
       }
@@ -3556,7 +3598,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 49;
+const BUILD = 50;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
