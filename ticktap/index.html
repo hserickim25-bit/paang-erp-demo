@@ -431,6 +431,15 @@ ol.steps{margin:0;padding:0}
 .act-staff{display:flex;flex-direction:column;gap:10px}
 .act-msg{background:var(--surface-2);border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
 .act-later{align-self:center}
+
+/* provider profile: merged hours, about block */
+.prof-hours{width:100%;border-top:1px solid var(--line);margin-top:6px;padding-top:12px;display:flex;flex-direction:column;gap:3px;align-items:center}
+.bg-card{gap:8px}.bg-text{margin:0;line-height:1.5;word-break:break-word}
+.bg-more{align-self:flex-start;padding-left:0;color:var(--accent);font-weight:700}
+.bg-ph{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.bg-ph button{border:0;padding:0;background:none;border-radius:12px;overflow:hidden;aspect-ratio:1;cursor:pointer}.bg-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.bg-ed{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.bg-ed-ph{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden}.bg-ed-ph img{width:100%;height:100%;object-fit:cover;display:block}.bg-ed-ph .iconbtn{position:absolute;top:4px;right:4px;width:28px;height:28px;background:rgba(0,0,0,.55);color:#fff;border-radius:50%}
+.bg-ed-add{aspect-ratio:1;border:1.5px dashed var(--line);border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;color:var(--muted);text-align:center;cursor:pointer}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1200,9 +1209,9 @@ function custProfile() {
           <span class="pill good">${ic('shield', 14)} ID verified</span><span class="pill good">TIN registered</span><span class="pill">${p.years} yrs experience</span>
           ${p.cert ? `<span class="pill accent">${esc(p.cert)}</span>` : '<span class="pill outline">No certificate · experience verified</span>'}
           ${p.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
+        <div class="prof-hours"><span class="eyebrow">Usual working hours</span><b class="small">${availText(availOf(p))}</b><span class="tiny muted">For reference only · the traffic light shows who is available right now.</span></div>
       </div>
-      <div class="card tight" style="gap:6px"><div class="row between"><span class="eyebrow">Usual working hours</span>${statusLine(p)}</div><b class="small">${availText(availOf(p))}</b><span class="tiny muted">For reference. The traffic light shows whether ${esc(p.name.split(' ')[0])} is available right now, and it always comes first.</span></div>
-      <div class="card"><span class="eyebrow">Background</span><p>${esc(p.past)}</p><p class="small muted">${esc(p.story)}</p></div>
+      ${bgBlock(p)}
       ${loyCard(p.biz ? 'b:' + p.biz : 'p:' + p.id, S.customer.cid || 'me')}
       ${promoOn(p) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc(p.promo.title || 'Discount event')}</b><span class="small">${p.promo.mode === 'items' ? 'Discounts on selected services' : '−' + p.promo.pct + '% on all services'} · until ${promoUntil(p)}</span><span class="tiny">Prices below already include the discount.</span></div>` : ''}
       ${ratingBlock(p)}
@@ -2293,10 +2302,36 @@ function guideTip(role) {
   const seen = S.guideSeen || {}; if (seen[role]) return '';
   return `<div class="card tight gd-tip"><div class="row" style="gap:10px;align-items:center"><span class="gd-i">${ic('doc', 18)}</span><div class="col grow" style="gap:2px;min-width:0"><b class="small">Bago sa Ticktap?</b><span class="tiny muted">Tingnan ang bawat hakbang mula sign-up hanggang matapos ang trabaho.</span></div><button class="btn primary xs" data-act="guideOpen" data-arg="${role}">Ipakita</button><button class="iconbtn" data-act="guideHide" data-arg="${role}" aria-label="Hide">${ic('x', 16)}</button></div></div>`;
 }
+
+/* provider self-introduction: up to 100 characters and 3 photos */
+const BG_MAX = 100, BG_SHOW = 50, BG_PHOTOS = 3;
+const introOf = p => String(p.intro != null ? p.intro : (p.story || p.past || '')).slice(0, BG_MAX);
+function bgBlock(p) {
+  const t = introOf(p), ph = (p.bgPhotos || []).slice(0, BG_PHOTOS), open = S.cust.bgOpen === p.id;
+  if (!t && !ph.length) return '';
+  const long = t.length > BG_SHOW || ph.length;
+  return `<div class="card bg-card"><span class="eyebrow">About ${esc(p.name.split(' ')[0])}</span>
+    <p class="bg-text">${esc(open || t.length <= BG_SHOW ? t : t.slice(0, BG_SHOW).trimEnd() + '…')}</p>
+    ${open && ph.length ? `<div class="bg-ph">${ph.map((u, k) => `<button data-act="bgZoom" data-arg="${k}" aria-label="Photo ${k + 1}"><img src="${u}" alt="Photo ${k + 1} from ${esc(p.name)}"></button>`).join('')}</div>` : ''}
+    ${long ? `<button class="btn ghost xs bg-more" data-act="bgToggle" data-arg="${p.id}">${open ? 'Show less' : 'Read more' + (ph.length ? ' · ' + ph.length + ' photo' + (ph.length > 1 ? 's' : '') : '')}</button>` : ''}
+  </div>`;
+}
+function bgEditor(me, i) {
+  if (!Array.isArray(me.bgPhotos)) me.bgPhotos = [];
+  if (me.intro == null) me.intro = introOf(me);
+  const n = String(me.intro || '').length;
+  return `<div class="card" style="gap:10px"><div class="row between"><b>About me</b><span class="tiny muted">Shown on your profile</span></div>
+    <label class="field">Introduce yourself (up to ${BG_MAX} characters)<textarea id="p-intro" class="textarea" maxlength="${BG_MAX}" data-bind="providers.${i}.intro" placeholder="e.g. Hilot and deep-tissue specialist, 9 years in hotel spas." oninput="var c=document.getElementById('p-intro-n');if(c)c.textContent=this.value.length+'/${BG_MAX}'">${esc(me.intro || '')}</textarea><span id="p-intro-n" class="tiny muted" style="text-align:right">${n}/${BG_MAX}</span></label>
+    <span class="tiny muted">Customers see the first ${BG_SHOW} characters. "Read more" shows the rest and your photos.</span>
+    <div class="bg-ed">${me.bgPhotos.map((u, k) => `<div class="bg-ed-ph"><img src="${u}" alt="Your photo ${k + 1}"><button class="iconbtn" data-act="bgDel" data-arg="${k}" aria-label="Remove photo ${k + 1}">${ic('x', 14)}</button></div>`).join('')}
+      ${me.bgPhotos.length < BG_PHOTOS ? `<label class="bg-ed-add">${ic('camera', 20)}<span class="tiny">Add photo<br>${me.bgPhotos.length}/${BG_PHOTOS}</span><input type="file" accept="image/*" class="sr" data-file="providers.${i}.bgPhotos" data-compress="wide" id="p-bgph"></label>` : ''}</div>
+    <span class="tiny muted">Up to ${BG_PHOTOS} photos of your work, tools or certificates.</span></div>`;
+}
 function provAccount() {
   const me = prov(S.prov.id), i = S.providers.indexOf(me);
   return `${provHeader('Account')}<div class="scroll" data-scroll="p-acc">
     <div class="card" style="align-items:center;text-align:center">${avatar(me.name, me.hue, 96)}<label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} Change photo<input type="file" accept="image/*" class="sr" data-file="providers.${i}.photo" data-compress="1" id="p-photo"></label><b style="font-size:18px">${esc(me.name)}</b><span class="small muted">${catName(me.cat)} · ${me.years} yrs · ${esc(me.area)}</span>${me.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
+    ${bgEditor(me, i)}
     <div class="card"><span class="eyebrow">Your household goal</span><label class="field">Monthly goal (₱)<input id="p-goal" class="input num" type="number" min="0" step="1000" data-bind="providers.${i}.goal" value="${me.goal}"></label><span class="small muted">We show your progress on the Jobs screen.</span></div>
     <div class="list">
       ${guideRow('provider')}
@@ -4120,6 +4155,9 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  bgToggle: id => { S.cust.bgOpen = S.cust.bgOpen === id ? null : id; },
+  bgDel: k => { const p = prov(S.prov.id); if (p && Array.isArray(p.bgPhotos)) p.bgPhotos.splice(+k, 1); },
+  bgZoom: k => { const p = prov(S.cust.pid); const u = p && (p.bgPhotos || [])[+k]; if (u) S.modal = { kind: 'photo', name: p.name + ' · photo ' + (+k + 1), src: u }; },
   popLater: k => { S.popSeen = Object.assign({}, S.popSeen, { [k]: /^chat:/.test(k) ? now() + 365 * DAY : now() + POP_SNOOZE }); },
   ratePick: n => { if (S.modal && S.modal.kind === 'rate') { S.modal.stars = +n; A.rateGo(); } },
   rateGo: () => { const m = S.modal; if (!m || m.kind !== 'rate') return; S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.rateQuiet = now() + 30 * MIN; S.modal = null; S.cust.bid = m.bid; S.cust.screen = 'review'; S.cust.review = { stars: m.stars || 5, tags: (m.stars || 5) >= 4 ? ['On time'] : [], text: '', photos: [] }; },
@@ -4718,7 +4756,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 83;
+const BUILD = 84;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
