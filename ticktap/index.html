@@ -102,7 +102,7 @@ button.brand:hover{background:var(--surface-2)}
 .apimg button{padding:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--surface-2);cursor:zoom-in;aspect-ratio:1;max-width:100%;width:100%}.apimg img{width:100%;height:100%;object-fit:cover;display:block}
 .apimg-none{aspect-ratio:1;border:1.5px dashed var(--line-2);border-radius:12px;display:grid;place-items:center;font-size:12px;color:var(--muted)}.apimg figcaption{display:flex;flex-direction:column;font-size:12px}.apimg figcaption span{color:var(--muted)}
 .liveline{align-self:flex-start;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 10px;font:inherit;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer;max-width:100%;flex-wrap:wrap}
-.liveline .dot{width:8px;height:8px;border-radius:50%;background:#22B573}.liveline.bad{color:var(--bad);border-color:var(--bad)}.liveline.bad .dot{background:#E5484D}.liveline .muted{font-weight:500}
+.liveline .dot{width:8px;height:8px;border-radius:50%;background:#22B573}.liveline.bad{color:var(--bad);border-color:var(--bad)}.liveline.prev{color:var(--warn);border-color:var(--warn)}.liveline.prev .dot{background:#FFB800}.liveline.bad .dot{background:#E5484D}.liveline .muted{font-weight:500}
 .fab{position:fixed}.fabdot{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#22B573}.fabdot.bad{background:#E5484D}
 .switch{position:relative;width:46px;height:28px;border-radius:14px;border:0;background:var(--line-2);cursor:pointer;flex-shrink:0;transition:background .15s}.switch span{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
 .switch[aria-checked="true"]{background:#22B573}.switch[aria-checked="true"] span{left:21px}
@@ -1526,7 +1526,7 @@ function provHeader(title) {
     <button class="pill ${st.cls === 'green' ? 'good' : st.cls === 'yellow' ? 'warn' : 'bad'}" data-act="provTab" data-arg="status" style="border:0;height:30px"><span class="dot ${st.cls}"></span>${st.cls === 'green' ? 'Stand by' : st.cls === 'yellow' ? 'Away' : 'Off today'}</button></header>`;
 }
 function myLedger(p, filter = () => true) { return S.bookings.filter(b => b.pid === p.id && b.ledger && filter(b)); }
-const LIVE_URL = 'https://hserickim25-bit.github.io/paang-erp-demo/balik/';
+const LIVE_URL = 'https://hserickim25-bit.github.io/paang-erp-demo/ticktap/';
 const liveBroken = () => (SYNC.mode === 'live' || SYNC.mode === 'error') && (SYNC.mode === 'error' || !!SYNC.err || (SYNC.online === false && SYNC.offSince && Date.now() - SYNC.offSince > 6000));
 function offlineBanner(role) {
   if (liveBroken()) return `<div class="card tight" style="gap:6px;background:var(--bad-soft);border-color:transparent">
@@ -1536,10 +1536,10 @@ function offlineBanner(role) {
     <div class="row" style="gap:8px"><button class="btn secondary xs" data-act="syncRetry">Reconnect</button><span class="tiny muted">If this stays, send a screenshot of this message.</span></div></div>`;
   if (SYNC.mode === 'live') return '';
   if (window.BALIK_PREVIEW) return `<div class="card tight" style="gap:6px;background:var(--warn-soft);border-color:transparent">
-    <b class="small" style="color:var(--warn)">${ic('alert', 15)} Preview only · not connected to other phones</b>
-    <span class="small">This Claude preview cannot reach the live server, so ${role === 'provider' ? 'requests sent from other phones never arrive here' : 'your request only reaches a provider inside this same preview'}. To test with two phones, open the live site on both phones:</span>
+    <b class="small" style="color:var(--warn)">${ic('alert', 15)} Demo preview inside Claude</b>
+    <span class="small">Everything works here on one phone. Features that need the live server, such as ${role === 'provider' ? 'requests from other phones, lock-screen alerts and printing your ID card' : 'reaching providers on other phones and lock-screen alerts'}, work in the Ticktap app. Open it here:</span>
     <a href="${LIVE_URL}" target="_blank" rel="noopener" class="small" style="color:var(--accent);font-weight:700;word-break:break-all;user-select:all">${LIVE_URL}</a>
-    <span class="tiny muted">To test here on one phone, tap ⚙ and switch between Customer and Provider.</span></div>`;
+    <span class="tiny muted">To try both sides here, tap ⚙ and switch between Customer and Provider.</span></div>`;
   return `<button class="card tight" data-act="demo" style="text-align:left;gap:6px;background:var(--warn-soft);border-color:transparent">
     <b class="small" style="color:var(--warn)">${ic('alert', 15)} Not connected to other phones yet</b>
     <span class="small">${role === 'provider' ? 'Requests sent from a customer on another phone cannot reach this phone until the live server (Firebase) is connected.' : 'Your request only reaches a provider using this same browser until the live server (Firebase) is connected.'} To test on one phone now, tap ⚙ and switch between Customer and Provider.</span>
@@ -4198,11 +4198,12 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 70;
+const BUILD = 71;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
-  const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
-  return `<button class="liveline ${live ? 'ok' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>`;
+  const prev = !!window.BALIK_PREVIEW && !live;
+  const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : prev ? 'Demo preview · this device only' : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
+  return `<button class="liveline ${live ? 'ok' : prev ? 'prev' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>`;
 }
 function devicesOnline() { const t = Date.now(); return new Set(Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE])).size; }
 
