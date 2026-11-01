@@ -1563,6 +1563,7 @@ function provPane() {
     case 'earnings': h = provEarnings(); tab = 'earnings'; break;
     case 'account': h = provAccount(); tab = 'account'; break;
     case 'idcard': h = provIdCard(); tab = 'account'; break;
+    case 'alerts': h = `${provHeader('Alerts')}<div class="scroll" data-scroll="p-al"><div class="row between"><h3 style="font-size:16px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${S.prov.id}">Mark all read</button></div>${alertList('provider:' + S.prov.id)}</div>`; tab = 'jobs'; break;
   }
   return `<div class="screen" data-pane="provider">${h}${f ? `<div class="footer-bar">${f}</div>` : ''}${tab ? provTabs(tab) : ''}${provOverlays()}${toastsFor('provider')}</div>`;
 }
@@ -1570,6 +1571,7 @@ function provHeader(title) {
   const me = prov(S.prov.id), st = statusOf(me);
   return `<header class="appbar">${avatar(me.name, me.hue, 34)}
     <div class="col grow">${meAcct() && isPhone() ? `<b style="font-size:15px">${esc(me.name)}${me.biz ? ' · ' + esc(biz(me.biz).name) : ''}</b>` : `<label class="sr" for="p-who">Viewing as</label><select id="p-who" data-bind="prov.id" data-rerender="1" style="border:0;background:transparent;font-weight:600;font-size:15px;padding:0;max-width:100%">${S.providers.map(p => `<option value="${p.id}" ${p.id === me.id ? 'selected' : ''}>${esc(p.name)}${p.biz ? ' · ' + esc(biz(p.biz).name) : ''}</option>`).join('')}</select>`}<span class="tiny muted">${title}</span></div>
+    <button class="iconbtn" data-act="provTab" data-arg="alerts" aria-label="Alerts" style="position:relative">${ic('bell', 22)}${unread('provider:' + me.id) ? `<span class="badge-n">${unread('provider:' + me.id)}</span>` : ''}</button>
     <button class="pill ${st.cls === 'green' ? 'good' : st.cls === 'yellow' ? 'warn' : 'bad'}" data-act="provTab" data-arg="status" style="border:0;height:30px"><span class="dot ${st.cls}"></span>${st.cls === 'green' ? 'Stand by' : st.cls === 'yellow' ? 'Away' : 'Off today'}</button></header>`;
 }
 function myLedger(p, filter = () => true) { return S.bookings.filter(b => b.pid === p.id && b.ledger && filter(b)); }
@@ -4713,7 +4715,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 80;
+const BUILD = 81;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
