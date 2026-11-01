@@ -385,6 +385,12 @@ ol.steps{margin:0;padding:0}
   #printArea .pa-cut{border:1px dashed #888;padding:0;line-height:0}
   #printArea .tid{--w:54mm;box-shadow:none;border:none;border-radius:3mm;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:normal}
 }
+
+/* Ticktap ID pop-up after arrival */
+.pid-ov{position:fixed;inset:0;z-index:80;background:#0B1B30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px));overflow-y:auto}
+.pid-top{display:flex;flex-direction:column;align-items:center;gap:6px;color:#fff;text-align:center}.pid-top b{font-size:20px}.pid-top .small{opacity:.85}
+.pid-card .tid{--w:min(290px,74vw,calc((100dvh - 230px) * 54 / 85.6))}
+.pid-close{max-width:320px;height:52px;font-size:16px;background:#FFB800!important;color:#14213D!important;border-color:#FFB800!important}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1609,6 +1615,7 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack')}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
+    ${['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
     ${canTalk(b) ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${b.reminders && b.reminders.length && b.status === 'paid' ? remindersCard(b) : ''}
@@ -2578,6 +2585,11 @@ function admSettings() {
 /* ---------- 2307 modal ---------- */
 function modal() {
   const m = S.modal; if (!m) return '';
+  if (m.kind === 'pid') { const p = prov(S.prov.id); if (!p) return ''; const b = m.bid ? bk(m.bid) : null;
+    return `<div class="pid-ov" role="dialog" aria-label="Your Ticktap ID">
+      <div class="pid-top">${m.after ? `<span class="pill good">${ic('check', 14)} Arrived ${b && b.arrivedAt ? fmtT(b.arrivedAt) : ''} · check-in photo saved</span>` : ''}<b>Show this to the guard</b><span class="small">They can scan the QR code to confirm you are active${b ? ' and booked here today' : ''}.</span></div>
+      <div class="pid-card">${idFront(p, true)}</div>
+      <button class="btn primary block pid-close" data-act="closeModal">${ic('x', 18)} Close${b ? ' · back to job ' + b.id : ''}</button></div>`; }
   if (m.kind === 'expel') return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Remove member" style="width:min(520px,100%);gap:12px;display:flex;flex-direction:column">
     <div class="row between"><h2 style="font-size:18px;color:var(--bad)">Remove from Ticktap</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
     <p class="small"><b>${esc(m.name)}</b> · ${{ provider: 'Provider', customer: 'Customer', business: 'Business member' }[m.who]}</p>
@@ -3763,7 +3775,8 @@ const A = {
   camShot: () => { const o = Object.values(KEEP).find(x => x.kind === 'cam'); const b = bk(S.prov.cam); if (!o || !b || !o.v.videoWidth) { toast('provider', 'Camera not ready', 'Wait a moment for the picture, then tap again.'); return; }
     S.prov.camShot = stampPhoto({ w: o.v.videoWidth, h: o.v.videoHeight, draw: (g, W, H) => g.drawImage(o.v, 0, 0, W, H) }, b); stopCam(); },
   camDemo: () => { const b = bk(S.prov.cam); if (!b) return; S.prov.camShot = stampPhoto({ w: 4, h: 3, draw: (g, W, H) => { const gr = g.createLinearGradient(0, 0, 0, H); gr.addColorStop(0, '#C9D3DE'); gr.addColorStop(1, '#8A97A6'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.fillStyle = '#5B4636'; g.fillRect(W * .36, H * .16, W * .28, H * .7); g.fillStyle = '#E8C36A'; g.beginPath(); g.arc(W * .6, H * .52, 7, 0, 7); g.fill(); g.fillStyle = '#fff'; g.font = 'bold 26px Arial'; g.fillText('Unit door · demo frame', W * .3, H * .1); } }, b); },
-  camConfirm: () => { const b = bk(S.prov.cam); if (!b || !S.prov.camShot) return; b.checkin = { photo: S.prov.camShot, at: now(), live: true }; logB(b, 'Check-in photo taken with live camera'); stopCam(); S.prov.cam = null; S.prov.camShot = null; arrive(b); },
+  camConfirm: () => { const b = bk(S.prov.cam); if (!b || !S.prov.camShot) return; b.checkin = { photo: S.prov.camShot, at: now(), live: true }; logB(b, 'Check-in photo taken with live camera'); stopCam(); S.prov.cam = null; S.prov.camShot = null; arrive(b); S.modal = { kind: 'pid', bid: b.id, after: true }; },
+  idShow: id => { S.modal = { kind: 'pid', bid: id || null }; },
   locAllow: () => { S.loc.asked = true; refreshHere(ok => { if (ok) { S.loc.ask = false; S.prov.gps = !!S.loc.shareProv; toast(S.role === 'provider' ? 'provider' : 'customer', 'Location sharing on', 'Thanks. You can change this in Account.'); } }); },
   locLater: () => { S.loc.asked = true; S.loc.ask = false; },
   locAsk: () => { S.loc.ask = true; },
@@ -4198,7 +4211,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 72;
+const BUILD = 73;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
