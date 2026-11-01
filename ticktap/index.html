@@ -410,7 +410,7 @@ ol.steps{margin:0;padding:0}
 
 /* thank-you and rating pop-up */
 .modal.rate-pop{display:flex;flex-direction:column;gap:12px;padding-top:0!important;overflow:hidden}
-.rate-top{margin:0 -20px 4px;background:#0D2846;display:flex;justify-content:center;padding:14px 0}.rate-top img{height:36px;border-radius:8px}
+.rate-top{margin:0 -20px 4px;background:#0D2846;display:flex;justify-content:center;padding:14px 0;position:relative}.rate-x{position:absolute;right:10px;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:#fff;display:grid;place-items:center;cursor:pointer}.rate-top img{height:36px;border-radius:8px}
 .rate-star{border:0;background:transparent;font-size:44px;line-height:1;padding:2px 4px;color:#D5DAE1;cursor:pointer;transition:transform .12s}
 .rate-star.on{color:#FFB800;text-shadow:0 0 10px rgba(255,184,0,.45)}.rate-star:active{transform:scale(1.15)}
 
@@ -2980,14 +2980,14 @@ function modal() {
   const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
   if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
     return `<div class="modal-bg"><div class="modal rate-pop" role="dialog" aria-label="Rate your service" style="width:min(420px,100%)">
-      <div class="rate-top"><img src="${LOGO_D}" alt="Ticktap"></div>
+      <div class="rate-top"><img src="${LOGO_D}" alt="Ticktap"><button class="rate-x" data-act="rateLater" aria-label="Close">${ic('x', 20)}</button></div>
       <div class="col" style="align-items:center;text-align:center;gap:6px">${avatar(p.name, p.hue, 72)}
         <h2 style="font-size:20px;margin:6px 0 0">Thank you for choosing Ticktap today!</h2>
         <span class="small muted">Salamat sa paggamit ng Ticktap ngayong araw!</span>
         <span class="small">How was your ${esc(b.services.map(x => x.name).join(' + '))} with <b>${esc(p.name.split(' ')[0])}</b>?</span></div>
       <div class="row" style="justify-content:center;gap:2px" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-act="ratePick" data-arg="${n}" aria-label="${n} stars" class="rate-star ${n <= (m.stars || 0) ? 'on' : ''}">★</button>`).join('')}</div>
-      <span class="tiny muted" style="text-align:center">Tap the stars, then add a short review. It helps other customers and ${esc(p.name.split(' ')[0])}.</span>
-      <div class="col" style="gap:8px"><button class="btn primary block" data-act="rateGo" ${m.stars ? '' : 'disabled'}>Write a review</button><button class="btn ghost sm" data-act="rateLater">Later · rate from Bookings</button></div>
+      <span class="tiny muted" style="text-align:center">Tap a star to rate. You can add a short review on the next screen.</span>
+      <div class="col" style="gap:8px"><button class="btn ghost sm" data-act="rateLater">Later · rate from Bookings</button></div>
     </div></div>`; }
   if (m.kind === 'guide') return guideOverlay(m.role);
   if (m.kind === 'pid') { const p = prov(S.prov.id); if (!p) return ''; const b = m.bid ? bk(m.bid) : null;
@@ -3952,7 +3952,8 @@ function maybeRatePrompt() {
   if (S.role !== 'customer' && !(S.role === 'both')) return;
   if (S.modal || VERIFY_ID) return;
   const cid = S.customer.cid || 'me', seen = S.rateSeen || {};
-  const b = S.bookings.find(x => x.cid === cid && x.status === 'ended' && !x.review && !seen[x.id] && x.endedAt && now() - x.endedAt < 2 * DAY);
+  if (S.rateQuiet && now() < S.rateQuiet) return;   // one prompt at a time; others wait in Bookings
+  const b = S.bookings.filter(x => x.cid === cid && x.status === 'ended' && !x.review && !seen[x.id] && x.endedAt && now() - x.endedAt < 3 * HOUR).sort((a, c) => c.endedAt - a.endedAt)[0];
   if (!b) return;
   if (S.cust.screen === 'review' && S.cust.bid === b.id) return;
   S.modal = { kind: 'rate', bid: b.id, stars: 0 };
@@ -4116,9 +4117,9 @@ const A = {
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
   popLater: k => { S.popSeen = Object.assign({}, S.popSeen, { [k]: /^chat:/.test(k) ? now() + 365 * DAY : now() + POP_SNOOZE }); },
-  ratePick: n => { if (S.modal && S.modal.kind === 'rate') S.modal.stars = +n; },
-  rateGo: () => { const m = S.modal; if (!m || m.kind !== 'rate') return; S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.modal = null; S.cust.bid = m.bid; S.cust.screen = 'review'; S.cust.review = { stars: m.stars || 5, tags: (m.stars || 5) >= 4 ? ['On time'] : [], text: '', photos: [] }; },
-  rateLater: () => { const m = S.modal; if (m && m.kind === 'rate') S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.modal = null; },
+  ratePick: n => { if (S.modal && S.modal.kind === 'rate') { S.modal.stars = +n; A.rateGo(); } },
+  rateGo: () => { const m = S.modal; if (!m || m.kind !== 'rate') return; S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.rateQuiet = now() + 30 * MIN; S.modal = null; S.cust.bid = m.bid; S.cust.screen = 'review'; S.cust.review = { stars: m.stars || 5, tags: (m.stars || 5) >= 4 ? ['On time'] : [], text: '', photos: [] }; },
+  rateLater: () => { const m = S.modal; if (m && m.kind === 'rate') S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.rateQuiet = now() + 30 * MIN; S.modal = null; },
   guideOpen: r => { S.modal = { kind: 'guide', role: r }; S.guideSeen = Object.assign({}, S.guideSeen, { [r]: true }); },
   guideLangSet: arg => { const [r, l] = arg.split(':'); S.guideLang = Object.assign({}, S.guideLang, { [r]: l }); const sc = document.querySelector('.gd-scroll'); if (sc) sc.scrollTop = 0; },
   guideHide: r => { S.guideSeen = Object.assign({}, S.guideSeen, { [r]: true }); },
@@ -4202,7 +4203,7 @@ const A = {
   rmPhoto: i => { S.cust.review.photos.splice(Number(i), 1); },
   submitReview: () => {
     const r = S.cust.review, b = bk(S.cust.bid), p = prov(b.pid);
-    b.review = { stars: r.stars, tags: r.tags.slice(), text: r.text, photos: [] }; b.status = 'reviewed';
+    b.review = { stars: r.stars, tags: r.tags.slice(), text: r.text, photos: [] }; b.status = 'reviewed'; S.rateSeen = Object.assign({}, S.rateSeen, { [b.id]: now() }); S.rateQuiet = now() + 30 * MIN; if (S.modal && S.modal.kind === 'rate') S.modal = null;
     logB(b, `Customer rated ${r.stars}★${r.photos.length ? ' with ' + r.photos.length + ' photo(s)' : ''}`);
     p.reviews.unshift({ by: 'Maria S.', stars: r.stars, text: r.text, tags: r.tags.slice(), photos: [], ago: 'Just now' });
     p.rating = Math.round(((p.rating * p.count) + r.stars) / (p.count + 1) * 10) / 10; p.count++;
@@ -4712,7 +4713,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 79;
+const BUILD = 80;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
