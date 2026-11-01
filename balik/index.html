@@ -406,6 +406,12 @@ ol.steps{margin:0;padding:0}
 .gd-i{width:34px;height:34px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex-shrink:0}
 .gd-no{color:var(--accent);font-weight:800}
 .gd-tip{border-color:#F5C842;background:linear-gradient(135deg,#FFF9E6,#FFF1C2);color:#2A2205;margin-bottom:10px}.gd-tip .muted{color:#5B4A12}
+
+/* thank-you and rating pop-up */
+.modal.rate-pop{display:flex;flex-direction:column;gap:12px;padding-top:0!important;overflow:hidden}
+.rate-top{margin:0 -20px 4px;background:#0D2846;display:flex;justify-content:center;padding:14px 0}.rate-top img{height:36px;border-radius:8px}
+.rate-star{border:0;background:transparent;font-size:44px;line-height:1;padding:2px 4px;color:#D5DAE1;cursor:pointer;transition:transform .12s}
+.rate-star.on{color:#FFB800;text-shadow:0 0 10px rgba(255,184,0,.45)}.rate-star:active{transform:scale(1.15)}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -2726,6 +2732,17 @@ function admSettings() {
 /* ---------- 2307 modal ---------- */
 function modal() {
   const m = S.modal; if (!m) return '';
+  if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
+    return `<div class="modal-bg"><div class="modal rate-pop" role="dialog" aria-label="Rate your service" style="width:min(420px,100%)">
+      <div class="rate-top"><img src="${LOGO_D}" alt="Ticktap"></div>
+      <div class="col" style="align-items:center;text-align:center;gap:6px">${avatar(p.name, p.hue, 72)}
+        <h2 style="font-size:20px;margin:6px 0 0">Thank you for choosing Ticktap today!</h2>
+        <span class="small muted">Salamat sa paggamit ng Ticktap ngayong araw!</span>
+        <span class="small">How was your ${esc(b.services.map(x => x.name).join(' + '))} with <b>${esc(p.name.split(' ')[0])}</b>?</span></div>
+      <div class="row" style="justify-content:center;gap:2px" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-act="ratePick" data-arg="${n}" aria-label="${n} stars" class="rate-star ${n <= (m.stars || 0) ? 'on' : ''}">★</button>`).join('')}</div>
+      <span class="tiny muted" style="text-align:center">Tap the stars, then add a short review. It helps other customers and ${esc(p.name.split(' ')[0])}.</span>
+      <div class="col" style="gap:8px"><button class="btn primary block" data-act="rateGo" ${m.stars ? '' : 'disabled'}>Write a review</button><button class="btn ghost sm" data-act="rateLater">Later · rate from Bookings</button></div>
+    </div></div>`; }
   if (m.kind === 'guide') return guideOverlay(m.role);
   if (m.kind === 'pid') { const p = prov(S.prov.id); if (!p) return ''; const b = m.bid ? bk(m.bid) : null;
     return `<div class="pid-ov" role="dialog" aria-label="Your Ticktap ID">
@@ -3606,8 +3623,19 @@ function pendingPane(a) {
   </div>${toastsFor('auth')}</div>`;
 }
 
+// After a service ends, the customer's phone shows a thank-you and rating pop-up (once per booking)
+function maybeRatePrompt() {
+  if (S.role !== 'customer' && !(S.role === 'both')) return;
+  if (S.modal || VERIFY_ID) return;
+  const cid = S.customer.cid || 'me', seen = S.rateSeen || {};
+  const b = S.bookings.find(x => x.cid === cid && x.status === 'ended' && !x.review && !seen[x.id] && x.endedAt && now() - x.endedAt < 2 * DAY);
+  if (!b) return;
+  if (S.cust.screen === 'review' && S.cust.bid === b.id) return;
+  S.modal = { kind: 'rate', bid: b.id, stars: 0 };
+}
 function render() {
   normalizeCredits();
+  try { maybeRatePrompt(); } catch (e) { }
   if (!S.consents || !S.consents.length) S.consents = seedConsents();
   // Shared data loaded from the live room may predate accounts: make sure every demo account exists
   if (!Array.isArray(S.accounts)) S.accounts = [];
@@ -3763,6 +3791,9 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  ratePick: n => { if (S.modal && S.modal.kind === 'rate') S.modal.stars = +n; },
+  rateGo: () => { const m = S.modal; if (!m || m.kind !== 'rate') return; S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.modal = null; S.cust.bid = m.bid; S.cust.screen = 'review'; S.cust.review = { stars: m.stars || 5, tags: (m.stars || 5) >= 4 ? ['On time'] : [], text: '', photos: [] }; },
+  rateLater: () => { const m = S.modal; if (m && m.kind === 'rate') S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.modal = null; },
   guideOpen: r => { S.modal = { kind: 'guide', role: r }; S.guideSeen = Object.assign({}, S.guideSeen, { [r]: true }); },
   guideHide: r => { S.guideSeen = Object.assign({}, S.guideSeen, { [r]: true }); },
   admExpel: arg => { const [kind, id] = arg.split('|'); const name = kind === 'provider' ? prov(id).name : kind === 'business' ? biz(id).name : ((S.customers || {})[id] || {}).name || id; S.modal = { kind: 'expel', who: kind, id, name, reason: EXPEL_REASONS[0], note: '', ok: false }; },
@@ -4355,7 +4386,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 75;
+const BUILD = 76;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
