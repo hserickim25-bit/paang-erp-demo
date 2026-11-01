@@ -1920,84 +1920,84 @@ setInterval(() => { try { const t = new Date().toLocaleTimeString('en-US', { hou
 function guideData(role) {
   const st = S.settings || {}, rsp = st.respond || 6, P = PTS(), ev = ptEventAt(now());
   const C = {
-    title: 'How to use Ticktap · Customer', lead: 'From sign-up to a finished, paid and reviewed home service in 5 stages.',
+    title: 'Paano Gamitin ang Ticktap · Customer', lead: 'Mula sa pag-sign up hanggang sa natapos, bayad at na-review na home service, sa 5 hakbang.',
     stages: [
-      ['Sign up (once)', [
-        ['user', 'Create your account', 'Tap Sign up. Enter your name, email and mobile number, choose a password and accept the Terms.'],
-        ['shield', 'Verify email and mobile', 'Type the codes sent to your email and phone. Both must be verified before you book.'],
-        ['pin', 'Set your home address', 'Pin your home (condo tower and unit, or village street). Distances and travel times are measured from here. Add more addresses in Account › Addresses.'],
-        ['doc', 'Optional: verify your ID', 'Account › Government ID. Providers see a "Verified" badge, so they accept your requests faster.']]],
-      ['Find a pro and send a request', [
-        ['search', 'Browse by service', 'Pick Hair, Nails, Massage, Waxing & facial or Pet grooming, or search. The EVENT badge marks a discount.'],
-        ['light', 'Read the traffic light', 'Green = available now. Yellow = away, back at the time shown. Red = off today. Book now only with green; book later with anyone.'],
-        ['user', 'Open the profile', 'Check services and prices, reviews, usual hours, distance and certificates.'],
-        ['send', 'Send the request', 'Choose services, then Now or Later (date and time, up to ' + (st.bookAheadHours || 72) + ' hours ahead). Confirm the address and tap Request.'],
-        ['clock', 'Wait for the answer', 'The provider has ' + rsp + ' minutes to reply with an arrival time. If they decline or do not answer, choose another pro.']]],
-      ['Pay to confirm', [
-        ['wallet', 'Pay inside the app', 'Accept the offered time and pay with GCash, Maya or card before the offer expires. Your booking is confirmed only after payment.'],
-        ['sparkle', 'Use Ticktap Points', 'With ' + P.min + ' or more points you can take them off the price (1 point = ' + peso(P.value || 1) + '). Free-visit rewards apply automatically.']]],
-      ['The visit', [
-        ['pin', 'Track the provider', 'When they tap Depart you see them on the map with the arrival time.'],
-        ['chat', 'Message or call in the app', 'Your phone numbers stay hidden from each other. The chat closes when the service ends.'],
-        ['camera', 'Arrival check', 'On arrival the provider takes a check-in photo, which you see. Ask to see their Ticktap ID; the guard can scan its QR code.'],
-        ['sos', 'Safety', 'Use the SOS button on the booking screen if anything feels wrong.']]],
-      ['Finish', [
-        ['check', 'Service ends', 'The provider taps End service, or it ends automatically at the booked time.'],
-        ['heart', 'Rate and review', 'Rate the service. Reviews help other customers and set the provider\'s reward credits.'],
-        ['sparkle', 'Collect points', 'You earn 1 point for every ' + peso(P.per) + ' paid' + (ev ? ' (' + ev.mult + '× during ' + esc(ev.title || 'the current event') + ')' : '') + '. See Account › Ticktap Points.'],
-        ['receipt', 'Cancellation and refunds', 'Free cancellation up to ' + POLICY.freeHours + ' hours before the booking; after that a ' + POLICY.feePct + '% fee applies. Refunds go back to the method you paid with.']]]
+      ['Mag-sign up (isang beses)', [
+        ['user', 'Gumawa ng account', 'I-tap ang Sign up. Ilagay ang iyong pangalan, email at mobile number, pumili ng password at tanggapin ang Terms.'],
+        ['shield', 'I-verify ang email at mobile', 'I-type ang mga code na ipinadala sa iyong email at phone. Kailangang ma-verify ang dalawa bago ka makapag-book.'],
+        ['pin', 'Itakda ang iyong home address', 'I-pin ang iyong bahay (condo tower at unit, o kalye sa village). Dito sinusukat ang layo at oras ng biyahe. Magdagdag ng iba pang address sa Account › Addresses.'],
+        ['doc', 'Opsyonal: i-verify ang iyong ID', 'Account › Government ID. Makikita ng mga provider ang "Verified" badge, kaya mas mabilis nilang tinatanggap ang request mo.']]],
+      ['Maghanap ng pro at magpadala ng request', [
+        ['search', 'Pumili ng serbisyo', 'Piliin ang Hair, Nails, Massage, Waxing & facial o Pet grooming, o mag-search. May discount ang may EVENT badge.'],
+        ['light', 'Basahin ang traffic light', 'Green = available ngayon. Yellow = wala sandali, babalik sa oras na nakalagay. Red = off ngayong araw. Mag-book ng "Now" sa green lang; puwedeng mag-book ng "Later" kahit kanino.'],
+        ['user', 'Buksan ang profile', 'Tingnan ang mga serbisyo at presyo, reviews, karaniwang oras, layo at mga certificate.'],
+        ['send', 'Ipadala ang request', 'Pumili ng serbisyo, tapos Now o Later (petsa at oras, hanggang ' + (st.bookAheadHours || 72) + ' oras in advance). Kumpirmahin ang address at i-tap ang Request.'],
+        ['clock', 'Hintayin ang sagot', 'May ' + rsp + ' minuto ang provider para sumagot ng oras ng pagdating. Kung tumanggi o hindi sumagot, pumili ng ibang pro.']]],
+      ['Magbayad para makumpirma', [
+        ['wallet', 'Magbayad sa loob ng app', 'Tanggapin ang inalok na oras at magbayad gamit ang GCash, Maya o card bago mag-expire ang offer. Kumpirmado lang ang booking kapag bayad na.'],
+        ['sparkle', 'Gamitin ang Ticktap Points', 'Kapag may ' + P.min + ' points ka o higit pa, puwede mo itong ibawas sa presyo (1 point = ' + peso(P.value || 1) + '). Kusang naa-apply ang free-visit rewards.']]],
+      ['Ang pagbisita', [
+        ['pin', 'I-track ang provider', 'Kapag na-tap nila ang Depart, makikita mo sila sa mapa kasama ang oras ng pagdating.'],
+        ['chat', 'Mag-message o tumawag sa app', 'Nakatago ang phone number ninyo sa isa\'t isa. Magsasara ang chat pagkatapos ng serbisyo.'],
+        ['camera', 'Pag-check sa pagdating', 'Pagdating, kukuha ang provider ng check-in photo na makikita mo. Hilingin na makita ang kanilang Ticktap ID; puwedeng i-scan ng guard ang QR code nito.'],
+        ['sos', 'Kaligtasan', 'Gamitin ang SOS button sa booking screen kung may hindi tama.']]],
+      ['Pagtatapos', [
+        ['check', 'Tapos na ang serbisyo', 'I-tap ng provider ang End service, o kusa itong matatapos sa naka-book na oras.'],
+        ['heart', 'Mag-rate at mag-review', 'I-rate ang serbisyo. Nakakatulong ang reviews sa ibang customer at sa reward credits ng provider.'],
+        ['sparkle', 'Kumita ng points', 'Kumikita ka ng 1 point sa bawat ' + peso(P.per) + ' na binayad' + (ev ? ' (' + ev.mult + '× habang may ' + esc(ev.title || 'event') + ')' : '') + '. Tingnan sa Account › Ticktap Points.'],
+        ['receipt', 'Pagkansela at refund', 'Libre ang pagkansela hanggang ' + POLICY.freeHours + ' oras bago ang booking; pagkatapos nito, may ' + POLICY.feePct + '% na fee. Ibinabalik ang refund sa paraang ginamit mo sa pagbayad.']]]
     ]
   };
   const PR = {
-    title: 'How to use Ticktap · Provider', lead: 'From your application to getting paid for each job.',
+    title: 'Paano Gamitin ang Ticktap · Provider', lead: 'Mula sa iyong application hanggang mabayaran ka sa bawat trabaho.',
     stages: [
-      ['Apply (once)', [
-        ['user', 'Create your account', 'Sign up as a Provider with a login ID, password and mobile number.'],
-        ['doc', 'Fill in the application', 'Your service type, profile photo, government ID, a live face photo, certificates (TESDA and so on), TIN and payout account. Accept the Terms.'],
-        ['shield', 'Wait for approval', 'Ticktap compares your face photo with your ID and checks your documents. You get an alert and SMS when you are approved.']]],
-      ['Set up', [
-        ['list', 'Services and prices', 'Services tab: turn on what you offer and set your own prices and durations.'],
-        ['clock', 'Usual hours', 'Account: set your usual working days and hours. Customers see them as a guide.'],
-        ['bell', 'Turn on lock-screen alerts', 'Jobs tab › Lock-screen alerts › Turn on, so requests reach you even when the phone is locked.'],
-        ['shield', 'Print your Ticktap ID', 'Account › My Ticktap ID › Print. Carry it on a lanyard for condo and village gates.'],
-        ['sparkle', 'Optional: discounts and loyalty', 'Run your own discount event or a free-visit reward for regulars (individual providers only).']]],
-      ['Take requests', [
-        ['light', 'Go green', 'Status tab: Green = stand-by (you get requests), Yellow = away 1–3 hours, Red = off today.'],
-        ['bell', 'A request arrives', 'You hear a sound and feel a vibration, with a lock-screen alert and SMS.'],
-        ['clock', 'Answer within ' + rsp + ' minutes', 'Offer your arrival time, or decline. Two unanswered requests in a row cost 1 reward credit.']]],
-      ['Do the job', [
-        ['wallet', 'Wait for payment', 'The customer pays in the app. You see "Payment received" and the arrive-by time.'],
-        ['send', 'Tap Depart', 'Tap it when you leave. The customer sees you on the map.'],
-        ['shield', 'At the gate', 'Job screen › Show my Ticktap ID to the guard. The guard can scan the QR code.'],
-        ['camera', 'Tap Arrived', 'Take the check-in photo at the door. Your Ticktap ID appears right after; tap Close to return to the job. Arriving after the promised time costs a credit.'],
-        ['check', 'End service', 'Tap End service when you finish, or it ends at the booked time. You go back to green.']]],
-      ['Get paid and grow', [
-        ['wallet', 'Earnings', 'Earnings tab shows your take-home after the platform fee and withholding tax, and your payout dates.'],
-        ['chart', 'Reward credits', 'Updated every Sunday. More credits = lower platform fee (Kaya Mo! › Starter · Standard › Silver › Gold). Record tab shows the history and your reviews.']]]
+      ['Mag-apply (isang beses)', [
+        ['user', 'Gumawa ng account', 'Mag-sign up bilang Provider gamit ang login ID, password at mobile number.'],
+        ['doc', 'Sagutan ang application', 'Uri ng serbisyo mo, profile photo, government ID, live na litrato ng mukha, mga certificate (TESDA at iba pa), TIN at payout account. Tanggapin ang Terms.'],
+        ['shield', 'Hintayin ang approval', 'Ikinukumpara ng Ticktap ang litrato ng mukha mo sa iyong ID at sinusuri ang mga dokumento. Makakatanggap ka ng alert at SMS kapag approved ka na.']]],
+      ['Ihanda ang account', [
+        ['list', 'Serbisyo at presyo', 'Services tab: i-on ang mga serbisyong inaalok mo at itakda ang sarili mong presyo at tagal.'],
+        ['clock', 'Karaniwang oras', 'Account: itakda ang karaniwang araw at oras ng trabaho mo. Gabay lang ito para sa customer.'],
+        ['bell', 'I-on ang lock-screen alerts', 'Jobs tab › Lock-screen alerts › Turn on, para dumating ang request kahit naka-lock ang phone.'],
+        ['shield', 'I-print ang iyong Ticktap ID', 'Account › My Ticktap ID › Print. Isabit sa lanyard para sa gate ng condo at village.'],
+        ['sparkle', 'Opsyonal: discount at loyalty', 'Magpatakbo ng sarili mong discount event o free-visit reward para sa mga suki (individual provider lang).']]],
+      ['Tumanggap ng request', [
+        ['light', 'Mag-green', 'Status tab: Green = stand-by (makakatanggap ka ng request), Yellow = wala ng 1–3 oras, Red = off ngayong araw.'],
+        ['bell', 'May dumating na request', 'May tunog at vibration, kasama ang lock-screen alert at SMS.'],
+        ['clock', 'Sumagot sa loob ng ' + rsp + ' minuto', 'Ialok ang oras ng pagdating mo, o tumanggi. Kapag dalawang sunod na request ang hindi nasagot, mababawasan ka ng 1 reward credit.']]],
+      ['Gawin ang trabaho', [
+        ['wallet', 'Hintayin ang bayad', 'Magbabayad ang customer sa app. Makikita mo ang "Payment received" at ang oras na dapat kang dumating.'],
+        ['send', 'I-tap ang Depart', 'I-tap ito pag-alis mo. Makikita ka ng customer sa mapa.'],
+        ['shield', 'Sa gate', 'Job screen › Show my Ticktap ID to the guard. Puwedeng i-scan ng guard ang QR code.'],
+        ['camera', 'I-tap ang Arrived', 'Kunan ang check-in photo sa pinto. Lalabas agad ang iyong Ticktap ID; i-tap ang Close para bumalik sa job. Kapag nahuli ka sa ipinangakong oras, mababawasan ka ng credit.'],
+        ['check', 'End service', 'I-tap ang End service pagkatapos, o kusa itong matatapos sa naka-book na oras. Babalik ka sa green.']]],
+      ['Mabayaran at umangat', [
+        ['wallet', 'Kita', 'Ipinapakita ng Earnings tab ang take-home mo pagkatapos ng platform fee at withholding tax, at ang petsa ng payout.'],
+        ['chart', 'Reward credits', 'Ina-update tuwing Linggo. Mas maraming credits = mas mababang platform fee (Kaya Mo! › Starter · Standard › Silver › Gold). Nasa Record tab ang history at mga review mo.']]]
     ]
   };
   const B = {
-    title: 'How to use Ticktap · Business', lead: 'For spas and salons that send their own staff. Part A is for the owner, part B for staff.',
+    title: 'Paano Gamitin ang Ticktap · Business', lead: 'Para sa mga spa at salon na nagpapadala ng sariling staff. Part A para sa may-ari, Part B para sa staff.',
     stages: [
-      ['A1 · Apply (owner)', [
-        ['building', 'Sign up as a Business', 'Enter the business name, owner details and permits (DTI or SEC, Mayor\'s permit, BIR). Accept the Terms.'],
-        ['shield', 'Approval', 'Ticktap checks your documents. You get an alert when the business is approved.']]],
-      ['A2 · Set up the console', [
-        ['building', 'Profile & photos', 'Add your logo, shop photos, description and address. Customers see them on your page.'],
-        ['receipt', 'Services & prices', 'Set the menu and prices your staff offer.'],
-        ['users', 'Staff', 'Register each therapist. They get their own login and must pass the ID and face check before taking jobs.'],
-        ['wallet', 'Settlement details', 'Choose your payout account and cycle in Settlement.']]],
-      ['A3 · Handle requests', [
-        ['list', 'Spa requests', 'When a customer books the business, the request lands in Bookings & services. Assign the nearest staff member on stand-by, or decline so the customer can book elsewhere.'],
-        ['users', 'Direct staff bookings', 'Customers can also book a staff member directly; the staff member answers in their own app.'],
-        ['alert', 'Watch progress', 'Every job shows paid, departed, arrived and ended, with late alerts.']]],
-      ['A4 · Settle', [
-        ['wallet', 'Statements and payouts', 'Settlement shows each cycle. Ticktap deducts its staff fee (10–20%, set by reward credits) and pays the business; you pay your staff.']]],
-      ['B · For staff', [
-        ['user', 'Sign in', 'Use the login your business created. Turn on lock-screen alerts and print your Ticktap ID.'],
-        ['light', 'Go green and answer', 'Answer requests within ' + rsp + ' minutes with an arrival time.'],
-        ['camera', 'Do the job', 'Depart › show your ID at the gate › Arrived with a check-in photo › End service.'],
-        ['wallet', 'Pay', 'Job payouts go to your business, which pays you.']]]
+      ['A1 · Mag-apply (may-ari)', [
+        ['building', 'Mag-sign up bilang Business', 'Ilagay ang pangalan ng business, detalye ng may-ari at mga permit (DTI o SEC, Mayor\'s permit, BIR). Tanggapin ang Terms.'],
+        ['shield', 'Approval', 'Sinusuri ng Ticktap ang mga dokumento. Makakatanggap ka ng alert kapag approved na ang business.']]],
+      ['A2 · Ihanda ang console', [
+        ['building', 'Profile & photos', 'Idagdag ang logo, mga litrato ng shop, description at address. Makikita ito ng customer sa page mo.'],
+        ['receipt', 'Services & prices', 'Itakda ang menu at mga presyong iniaalok ng staff mo.'],
+        ['users', 'Staff', 'I-register ang bawat therapist. May sarili silang login at kailangan nilang pumasa sa ID at face check bago tumanggap ng trabaho.'],
+        ['wallet', 'Detalye ng settlement', 'Piliin ang payout account at cycle sa Settlement.']]],
+      ['A3 · Asikasuhin ang mga request', [
+        ['list', 'Spa requests', 'Kapag nag-book ang customer sa business, papasok ang request sa Bookings & services. I-assign ang pinakamalapit na staff na naka-stand-by, o tumanggi para makapag-book ang customer sa iba.'],
+        ['users', 'Direktang booking sa staff', 'Puwede ring direktang i-book ng customer ang isang staff; sasagot ang staff sa sarili niyang app.'],
+        ['alert', 'Bantayan ang progress', 'Makikita sa bawat job kung paid, departed, arrived o ended, kasama ang late alerts.']]],
+      ['A4 · Settlement', [
+        ['wallet', 'Statements at payouts', 'Ipinapakita ng Settlement ang bawat cycle. Ibinabawas ng Ticktap ang staff fee nito (10–20%, depende sa reward credits) at binabayaran ang business; ikaw ang magbabayad sa staff mo.']]],
+      ['B · Para sa staff', [
+        ['user', 'Mag-sign in', 'Gamitin ang login na ginawa ng business mo. I-on ang lock-screen alerts at i-print ang iyong Ticktap ID.'],
+        ['light', 'Mag-green at sumagot', 'Sagutin ang request sa loob ng ' + rsp + ' minuto at ibigay ang oras ng pagdating.'],
+        ['camera', 'Gawin ang trabaho', 'Depart › ipakita ang ID sa gate › Arrived na may check-in photo › End service.'],
+        ['wallet', 'Bayad', 'Napupunta ang bayad sa trabaho sa business mo, at sila ang magbabayad sa iyo.']]]
     ]
   };
   const A = {
@@ -2027,17 +2027,17 @@ function guideBody(role) {
   return `<p class="small muted" style="margin:0">${g.lead}</p>
     ${g.stages.map(([t, steps], si) => `<section class="gd-stage"><div class="gd-sh"><span class="gd-sn">${si + 1}</span><b>${t}</b></div>
       <ol class="gd-steps">${steps.map(([icn, h, d]) => { n++; return `<li><span class="gd-i">${ic(icn, 18)}</span><div class="col" style="gap:2px;min-width:0"><b><span class="gd-no">${n}.</span> ${h}</b><span class="small muted">${d}</span></div></li>`; }).join('')}</ol></section>`).join('')}
-    <p class="tiny muted">Questions? Contact Ticktap support from the app. This guide follows the current platform rules.</p>`;
+    <p class="tiny muted">${role === 'admin' ? 'This guide follows the current platform rules.' : 'May tanong? Makipag-ugnayan sa Ticktap support mula sa app. Sumusunod ang gabay na ito sa kasalukuyang patakaran ng platform.'}</p>`;
 }
 function guideOverlay(role) {
   const g = guideData(role);
-  return `<div class="gd-ov" role="dialog" aria-label="${g.title}"><header class="appbar"><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 22)}</button><h2>How to use</h2></header>
-    <div class="gd-scroll"><h1 class="gd-title">${g.title}</h1>${guideBody(role)}<button class="btn primary block" data-act="closeModal" style="margin-top:8px">Got it</button></div></div>`;
+  return `<div class="gd-ov" role="dialog" aria-label="${g.title}"><header class="appbar"><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 22)}</button><h2>${role === 'admin' ? 'How to use' : 'Paano Gamitin'}</h2></header>
+    <div class="gd-scroll"><h1 class="gd-title">${g.title}</h1>${guideBody(role)}<button class="btn primary block" data-act="closeModal" style="margin-top:8px">${role === 'admin' ? 'Got it' : 'Okay, naintindihan ko'}</button></div></div>`;
 }
-const guideRow = role => `<button class="li" data-act="guideOpen" data-arg="${role}">${ic('doc', 20)}<div class="col grow"><b>How to use Ticktap</b><span class="small muted">Step by step, from sign-up to a finished job</span></div>${ic('chev', 16)}</button>`;
+const guideRow = role => `<button class="li" data-act="guideOpen" data-arg="${role}">${ic('doc', 20)}<div class="col grow"><b>Paano Gamitin ang Ticktap</b><span class="small muted">Hakbang-hakbang, mula sign-up hanggang matapos ang trabaho</span></div>${ic('chev', 16)}</button>`;
 function guideTip(role) {
   const seen = S.guideSeen || {}; if (seen[role]) return '';
-  return `<div class="card tight gd-tip"><div class="row" style="gap:10px;align-items:center"><span class="gd-i">${ic('doc', 18)}</span><div class="col grow" style="gap:2px;min-width:0"><b class="small">New to Ticktap?</b><span class="tiny muted">See every step from sign-up to a finished job.</span></div><button class="btn primary xs" data-act="guideOpen" data-arg="${role}">Show me</button><button class="iconbtn" data-act="guideHide" data-arg="${role}" aria-label="Hide">${ic('x', 16)}</button></div></div>`;
+  return `<div class="card tight gd-tip"><div class="row" style="gap:10px;align-items:center"><span class="gd-i">${ic('doc', 18)}</span><div class="col grow" style="gap:2px;min-width:0"><b class="small">Bago sa Ticktap?</b><span class="tiny muted">Tingnan ang bawat hakbang mula sign-up hanggang matapos ang trabaho.</span></div><button class="btn primary xs" data-act="guideOpen" data-arg="${role}">Ipakita</button><button class="iconbtn" data-act="guideHide" data-arg="${role}" aria-label="Hide">${ic('x', 16)}</button></div></div>`;
 }
 function provAccount() {
   const me = prov(S.prov.id), i = S.providers.indexOf(me);
@@ -2143,9 +2143,9 @@ function bizPane() {
   if (tab === 'staff') main = bizStaff(b);
   if (tab === 'settle') main = bizSettle(b);
   if (tab === 'profile') main = bizProfile(b);
-  if (tab === 'guide') main = `<div class="page-h"><div><h1>How to use Ticktap</h1></div></div><div class="gd-page">${guideBody('business')}</div>`;
+  if (tab === 'guide') main = `<div class="page-h"><div><h1>Paano Gamitin ang Ticktap</h1></div></div><div class="gd-page">${guideBody('business')}</div>`;
   return `<div class="web" data-pane="business"><aside class="side"><div class="org">${bizLogo(b, 36, 10, 19, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
-    ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${nav('guide', 'How to use', 'doc')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
+    ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${nav('guide', 'Paano Gamitin', 'doc')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
     <main class="main">${pushCard(true)}${main}</main>${toastsFor('business', true)}</div>`;
 }
 function bizRequests(b, q) {
@@ -4355,7 +4355,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 74;
+const BUILD = 75;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
