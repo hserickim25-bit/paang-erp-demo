@@ -412,6 +412,24 @@ ol.steps{margin:0;padding:0}
 .rate-top{margin:0 -20px 4px;background:#0D2846;display:flex;justify-content:center;padding:14px 0}.rate-top img{height:36px;border-radius:8px}
 .rate-star{border:0;background:transparent;font-size:44px;line-height:1;padding:2px 4px;color:#D5DAE1;cursor:pointer;transition:transform .12s}
 .rate-star.on{color:#FFB800;text-shadow:0 0 10px rgba(255,184,0,.45)}.rate-star:active{transform:scale(1.15)}
+
+/* response pop-ups */
+.act-ov{position:fixed;inset:0;z-index:75;background:rgba(9,22,40,.55);display:flex;align-items:flex-end;justify-content:center;padding:12px max(12px,env(safe-area-inset-left,0px)) calc(12px + env(safe-area-inset-bottom,0px));animation:actin .2s ease-out}
+@media (min-width:700px){.act-ov{align-items:center}}
+@keyframes actin{from{opacity:0}}
+.act-card{width:min(440px,100%);max-height:92dvh;overflow:auto;background:var(--surface);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:12px;box-shadow:0 18px 50px rgba(0,0,0,.35);border-top:5px solid #FFB800;animation:actup .25s ease-out}
+@keyframes actup{from{transform:translateY(24px)}}
+.act-card.offer{border-top-color:var(--good-dot)}.act-card.chat{border-top-color:var(--accent)}
+.act-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.act-badge{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:14px;color:var(--warn)}.act-badge.good{color:var(--good)}
+.act-title{font-size:20px;margin:0;line-height:1.25}
+.act-rows{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:12px}
+.act-rows>div{display:flex;justify-content:space-between;gap:12px;padding:9px 12px;font-size:14px}.act-rows>div+div{border-top:1px solid var(--line)}.act-rows span{color:var(--muted)}.act-rows b{text-align:right;min-width:0}
+.act-eta{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}.act-eta .chip{height:44px;padding:0;font-family:var(--mono);font-weight:700;justify-content:center}
+.act-btns{display:grid;grid-template-columns:1fr 1.5fr;gap:10px}.act-btns.one{grid-template-columns:1fr}.act-btns .btn{height:52px;font-size:16px}
+.act-staff{display:flex;flex-direction:column;gap:10px}
+.act-msg{background:var(--surface-2);border-radius:14px;padding:12px 14px;font-size:15px;line-height:1.45;white-space:pre-wrap;word-break:break-word}
+.act-later{align-self:center}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -2731,7 +2749,7 @@ function admSettings() {
 
 /* ---------- 2307 modal ---------- */
 function modal() {
-  const m = S.modal; if (!m) return '';
+  const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
   if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
     return `<div class="modal-bg"><div class="modal rate-pop" role="dialog" aria-label="Rate your service" style="width:min(420px,100%)">
       <div class="rate-top"><img src="${LOGO_D}" alt="Ticktap"></div>
@@ -3623,6 +3641,84 @@ function pendingPane(a) {
   </div>${toastsFor('auth')}</div>`;
 }
 
+/* ---------- response pop-ups: answer the other side right where you are ---------- */
+const POP_SNOOZE = 90 * 1000;
+const popSnoozed = k => { const t = (S.popSeen || {})[k]; return !!t && now() < t; };
+const areaOf = a => String(a || '').split(',').map(x => x.trim()).filter(Boolean).slice(-2).join(', ');
+function popShell(kind, head, body, later) {
+  return `<div class="act-ov" data-ov="pop-${later}" role="dialog" aria-label="${esc(head)}"><div class="act-card ${kind}" data-ov="pop-${later}">${body}
+    <button class="btn ghost sm act-later" data-act="popLater" data-arg="${later}">Later</button></div></div>`;
+}
+function popReq(b, me) {
+  if (!S.prov.eta) S.prov.eta = 30;
+  const net = b.gross - b.gross * tierRate(me) / 100;
+  return popShell('req', 'New request', `
+    <div class="act-head"><span class="act-badge">${ic('bell', 16)} New request</span><span class="pill warn num" data-cd="${b.respondBy}">${mmss(b.respondBy - now())}</span></div>
+    <h2 class="act-title">${esc(b.services.map(s => s.name).join(' + '))}</h2>
+    <div class="act-rows">
+      <div><span>When</span><b>${b.when === 'later' ? fmtWhen(b.slotAt) : 'Now'}</b></div>
+      <div><span>Where</span><b>${esc(areaOf(b.address))} · ${fmtKm(haversine(me, b))}</b></div>
+      <div><span>${b.bizId ? 'Job value' : 'You receive'}</span><b class="num">${b.bizId ? peso(b.gross) : peso(net)}</b></div>
+    </div>
+    ${b.when === 'later' ? '' : `<span class="eyebrow">Arrival time</span><div class="act-eta">${[10, 20, 30, 40, 50, 60].map(m => `<button class="chip" data-act="setEta" data-arg="${m}" aria-pressed="${S.prov.eta === m}">${m}′</button>`).join('')}</div>`}
+    <div class="act-btns"><button class="btn danger" data-act="declineReq" data-arg="${b.id}">Not available</button><button class="btn primary" data-act="acceptReq" data-arg="${b.id}">Accept${b.when === 'later' ? '' : ' · ' + S.prov.eta + ' min'}</button></div>
+    <span class="tiny muted" style="text-align:center">Answer before the timer ends. Two missed requests in a row cost 1 reward credit.</span>`, 'req:' + b.id);
+}
+function popOffer(b) {
+  const p = b.pid ? prov(b.pid) : null, first = (p ? p.name : 'Your pro').split(' ')[0];
+  return popShell('offer', first + ' accepted', `
+    <div class="act-head"><span class="act-badge good">${ic('check', 16)} ${esc(first)} accepted</span>${b.when === 'later' ? '' : `<span class="pill warn num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</span>`}</div>
+    <div class="row" style="gap:12px;align-items:center">${p ? avatar(p.name, p.hue, 56) : ''}<div class="col" style="gap:2px;min-width:0"><span class="small muted">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span><b style="font-size:30px;letter-spacing:-.02em" class="num">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</b></div></div>
+    <div class="act-rows"><div><span>Service</span><b>${esc(b.services.map(s => s.name).join(' + '))}</b></div><div><span>Total</span><b class="num">${peso(b.gross)}</b></div></div>
+    <span class="small" style="color:var(--warn)">${b.when === 'later' ? 'Pay by ' + fmtWhen(b.offerExpires) + '. Unpaid bookings are cancelled automatically.' : 'Pay before the timer ends to confirm.'}</span>
+    <div class="act-btns one"><button class="btn primary" data-act="openPay" data-arg="${b.id}">Accept & pay ${peso(b.gross)}</button></div>
+    <button class="btn secondary sm" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button>`, 'offer:' + b.id);
+}
+function popBiz(r, bz) {
+  const roster = bz.staff.map(id => prov(id)).filter(p => p && p.active !== false).map(p => ({ p, d: haversine(p, r) }))
+    .sort((x, y) => ({ green: 0, yellow: 1, red: 2 }[x.p.status] - { green: 0, yellow: 1, red: 2 }[y.p.status]) || x.d - y.d).slice(0, 4);
+  return popShell('biz', 'New spa request', `
+    <div class="act-head"><span class="act-badge">${ic('bell', 16)} New spa request</span><span class="pill outline">${r.id}</span></div>
+    <h2 class="act-title">${esc(r.services.map(s => s.name).join(' + '))} · ${peso(r.gross)}</h2>
+    <div class="act-rows"><div><span>When</span><b>${r.when === 'later' ? fmtWhen(r.slotAt) : 'Now'}</b></div><div><span>Where</span><b>${esc(areaOf(r.address))}</b></div></div>
+    <span class="eyebrow">Assign a therapist</span>
+    <div class="act-staff">${roster.map(({ p, d }) => `<div class="row" style="gap:10px;align-items:center">${avatar(p.name, p.hue, 36)}<div class="col grow" style="min-width:0"><b class="small ellipsis">${esc(p.name)}</b><span class="tiny muted">${p.status === 'green' ? 'On stand-by' : p.status === 'yellow' ? 'Away' : 'Off today'} · ${fmtKm(d)}</span></div><button class="btn primary xs" data-act="assign" data-arg="${r.id}:${p.id}" ${p.status === 'red' ? 'disabled' : ''}>Assign</button></div>`).join('') || '<span class="small muted">No staff on stand-by.</span>'}</div>
+    <button class="btn secondary sm" data-act="bizDecline" data-arg="${r.id}">Decline · customer books elsewhere</button>`, 'bq:' + r.id);
+}
+function popChat(role) {
+  const st = role === 'customer' ? S.cust : S.prov; if (st.chat) return '';
+  const mine = role === 'customer' ? (b => b.cid === (S.customer.cid || 'me')) : (b => b.pid === S.prov.id);
+  const b = S.bookings.find(x => mine(x) && canTalk(x) && unreadChat(x, role) > 0 && !popSnoozed('chat:' + x.id + ':' + (x.chat || []).length));
+  if (!b) return '';
+  const last = (b.chat || []).slice(-1)[0] || {}, who = role === 'customer' ? (prov(b.pid) || {}).name || 'Your pro' : b.customer;
+  return popShell('chat', 'New message', `
+    <div class="act-head"><span class="act-badge">${ic('chat', 16)} Message from ${esc(String(who).split(' ')[0])}</span><span class="pill outline">${b.id}</span></div>
+    <div class="act-msg">${esc(last.text || '')}</div>
+    <div class="act-btns one"><button class="btn primary" data-act="chatOpen" data-arg="${role}:${b.id}">Reply</button></div>`, 'chat:' + b.id + ':' + (b.chat || []).length);
+}
+function actPop() {
+  if (VERIFY_ID) return '';
+  if (S.bookings.some(x => x.call && ['ringing', 'active'].includes(x.call.state))) return '';   // never cover a call
+  const r = S.role === 'both' ? 'customer' : S.role;
+  if (r === 'provider') {
+    const me = prov(S.prov.id); if (!me || S.prov.apply || S.prov.cam || (S.prov.screen === 'request')) return '';
+    const b = S.bookings.find(x => x.pid === me.id && x.status === 'requested' && x.respondBy > now() && !popSnoozed('req:' + x.id));
+    return b ? popReq(b, me) : popChat('provider');
+  }
+  if (r === 'customer') {
+    if (!S.customer.signedIn || S.cust.pay || S.cust.signup) return '';
+    const cid = S.customer.cid || 'me';
+    const b = S.bookings.find(x => x.cid === cid && x.status === 'offered' && x.offerExpires > now() && !popSnoozed('offer:' + x.id));
+    if (b && !(S.cust.screen === 'request' && S.cust.bid === b.id)) return popOffer(b);
+    return popChat('customer');
+  }
+  if (r === 'business') {
+    const bz = biz(S.biz.id); if (!bz) return '';
+    const q = S.bookings.find(x => x.bizId === bz.id && x.status === 'business_queue' && !popSnoozed('bq:' + x.id));
+    return q ? popBiz(q, bz) : '';
+  }
+  return '';
+}
 // After a service ends, the customer's phone shows a thank-you and rating pop-up (once per booking)
 function maybeRatePrompt() {
   if (S.role !== 'customer' && !(S.role === 'both')) return;
@@ -3791,6 +3887,7 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  popLater: k => { S.popSeen = Object.assign({}, S.popSeen, { [k]: /^chat:/.test(k) ? now() + 365 * DAY : now() + POP_SNOOZE }); },
   ratePick: n => { if (S.modal && S.modal.kind === 'rate') S.modal.stars = +n; },
   rateGo: () => { const m = S.modal; if (!m || m.kind !== 'rate') return; S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.modal = null; S.cust.bid = m.bid; S.cust.screen = 'review'; S.cust.review = { stars: m.stars || 5, tags: (m.stars || 5) >= 4 ? ['On time'] : [], text: '', photos: [] }; },
   rateLater: () => { const m = S.modal; if (m && m.kind === 'rate') S.rateSeen = Object.assign({}, S.rateSeen, { [m.bid]: now() }); S.modal = null; },
@@ -4386,7 +4483,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 76;
+const BUILD = 77;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
