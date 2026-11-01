@@ -3053,6 +3053,7 @@ function liveSection() {
   return `<div class="card tight" style="gap:8px;${live ? 'border-color:var(--good-dot)' : ''}">
     <div class="row between"><span class="eyebrow">Live connection</span><span class="pill ${live ? 'good' : SYNC.mode === 'tabs' ? 'warn' : 'bad'}">${live ? 'Live · ' + devicesOnline() + ' device' + (devicesOnline() > 1 ? 's' : '') + ' online' : esc(SYNC.status)}</span></div>
     ${(live || SYNC.mode === 'error') ? `<span class="tiny ${liveBroken() ? '' : 'muted'}" style="${liveBroken() ? 'color:var(--bad)' : ''}">Server ${SYNC.online === false ? 'not connected' : SYNC.online ? 'connected' : 'checking…'} · last sent ${SYNC.lastOut ? fmtT(SYNC.lastOut) : '—'} · last received ${SYNC.lastIn ? fmtT(SYNC.lastIn) : '—'}${SYNC.err ? ' · ' + esc(SYNC.err) : ''}</span>` : ''}
+    ${SYNC.room !== 'demo' ? `<div class="card tight" style="gap:6px;background:var(--warn-soft);border-color:transparent"><b class="small" style="color:var(--warn)">This phone is in room "${esc(SYNC.room)}"</b><span class="small">Phones only see each other inside the same room. The main test room is "demo".</span><button class="btn primary xs" data-act="joinDemo">Switch to room demo</button></div>` : ''}
     ${live ? `<div class="col" style="gap:4px"><span class="tiny muted">Server ${esc(SYNC.dbHost || '')} · room ${esc(SYNC.room)} · clock offset ${Math.round((SYNC.skew || 0) / 1000)} s</span><span class="small"><b>This phone</b> · ${esc(presenceWho())} · build ${BUILD}</span>${onlineList().map(o => `<span class="small">${ic('phone', 13)} ${esc(o.who)}${o.b ? ' · build ' + o.b : ''} <span class="tiny muted">· seen ${o.age} s ago</span></span>`).join('') || '<span class="small" style="color:var(--warn)">No other phone in this room right now.</span>'}</div>
     <span class="small">Room <b class="num">${esc(SYNC.room)}</b>. Open the same link on each phone or PC: the customer, provider, business and admin then share bookings, alerts and payments in real time.</span>`
       : `<span class="small">${SYNC.cfgErr ? 'Firebase could not start (' + esc(SYNC.cfgErr) + '). ' : ''}Not connected to Firebase yet, so only tabs on this device share data.</span>`}
@@ -4241,6 +4242,7 @@ const A = {
   goPro: () => { if (isPhone() || !wide()) S.role = 'provider'; A.startApply(); },
   resetDemo: () => { try { localStorage.removeItem(STORE); } catch (e) { } location.reload(); },
   resetRoom: () => { if (S.demoConfirm !== 'room') { S.demoConfirm = 'room'; return; } try { localStorage.removeItem(STORE); localStorage.setItem('balik-reseed', '1'); } catch (e) { } location.reload(); },
+  joinDemo: () => { S.roomInput = 'demo'; A.joinRoom(); },
   joinRoom: () => { const r = String(S.roomInput || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); if (!r) return; try { localStorage.setItem('balik-room', r); localStorage.removeItem(STORE); } catch (e) { } const u = new URL(location.href); u.searchParams.set('room', r); location.href = u.toString(); },
   saveFb: () => { let t = String(S.fbInput || '').trim(); const m = t.match(/\{[\s\S]*\}/); if (m) t = m[0]; let cfg = null; try { cfg = JSON.parse(t); } catch (e) { try { cfg = Function('return (' + t + ')')(); } catch (e2) { } }
     if (!cfg || !cfg.databaseURL) { S.fbErr = 'Paste the firebaseConfig object. It must include databaseURL.'; return; } try { localStorage.setItem('balik-fb-config', JSON.stringify(cfg)); } catch (e) { } location.reload(); },
@@ -4716,11 +4718,11 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 82;
+const BUILD = 83;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
-  const txt = live ? `Live · room ${esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : prev ? 'Demo preview · this device only' : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
+  const txt = live ? `Live · room ${SYNC.room === 'demo' ? esc(SYNC.room) : '⚠ ' + esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : prev ? 'Demo preview · this device only' : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
   return `<button class="liveline ${live ? 'ok' : prev ? 'prev' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>`;
 }
 // presence uses the server clock, so phones whose clocks differ still see each other
