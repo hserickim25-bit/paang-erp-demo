@@ -343,12 +343,12 @@ ol.steps{margin:0;padding:0}
 /* Ticktap ID card: sized in em so the same card prints at 54 x 85.6 mm (CR80, portrait) */
 .tid-wrap{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
 .tid{--w:250px;width:var(--w);height:calc(var(--w) * 85.6 / 54);font-size:calc(var(--w) / 26);position:relative;overflow:hidden;border-radius:.9em;background:#fff;color:#14213D;display:flex;flex-direction:column;align-items:center;box-shadow:0 6px 22px rgba(13,40,70,.18);border:1px solid #DDE3EA;flex-shrink:0;font-family:Inter,system-ui,sans-serif}
-.tid-band{width:100%;height:7.4em;background:#0D2846;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
+.tid-band{width:100%;height:8.2em;background:#0D2846;display:flex;align-items:center;justify-content:center;position:relative;flex-shrink:0}
 .tid-band.sm{height:4.4em;color:#fff;font-size:1.05em;letter-spacing:.04em}
 .tid-slot{position:absolute;top:.8em;left:50%;transform:translateX(-50%);width:4.6em;height:.9em;border-radius:1em;background:#fff;opacity:.92;box-shadow:inset 0 0 0 .08em #9AA6B5}
-.tid-logo{height:3.2em;width:auto;margin-top:1.1em;border-radius:.4em}
-.tid-photo{width:11.6em;height:11.6em;border-radius:1em;overflow:hidden;margin-top:-1.6em;border:.3em solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);background:#EEF2F7;flex-shrink:0}
-.tid-photo img,.verify-ph img{width:100%;height:100%;object-fit:cover;display:block}
+.tid-logo{height:3.2em;width:auto;margin-top:0;border-radius:.4em}
+.tid-photo{position:relative;z-index:2;width:11.2em;height:11.2em;border-radius:1em;overflow:hidden;margin-top:-1.3em;border:.3em solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.18);background:#EEF2F7;flex-shrink:0}
+.tid-photo img,.verify-ph img{width:100%;height:100%;object-fit:cover;object-position:center 22%;display:block}
 .tid-ini{width:100%;height:100%;display:grid;place-items:center;font-weight:800;font-size:3.2em}
 .tid-name{font-weight:800;font-size:1.95em;margin-top:.5em;text-align:center;line-height:1.1;padding:0 .5em;color:#0D2846}
 .tid-role{margin-top:.55em;background:#FFB800;color:#14213D;font-weight:800;font-size:1.12em;padding:.32em .9em;border-radius:2em;text-align:center;max-width:92%;letter-spacing:.01em}
@@ -4198,7 +4198,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 71;
+const BUILD = 72;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
