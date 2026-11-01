@@ -1956,18 +1956,18 @@ function guideData(role) {
         ['light', 'Basahin ang traffic light', 'Green = available ngayon. Yellow = wala sandali, babalik sa oras na nakalagay. Red = off ngayong araw. Mag-book ng "Now" sa green lang; puwedeng mag-book ng "Later" kahit kanino.'],
         ['user', 'Buksan ang profile', 'Tingnan ang mga serbisyo at presyo, reviews, karaniwang oras, layo at mga certificate.'],
         ['send', 'Ipadala ang request', 'Pumili ng serbisyo, tapos Now o Later (petsa at oras, hanggang ' + (st.bookAheadHours || 72) + ' oras in advance). Kumpirmahin ang address at i-tap ang Request.'],
-        ['clock', 'Hintayin ang sagot', 'May ' + rsp + ' minuto ang provider para sumagot ng oras ng pagdating. Kung tumanggi o hindi sumagot, pumili ng ibang pro.']]],
+        ['clock', 'Hintayin ang sagot', 'May ' + rsp + ' minuto ang provider para sumagot ng oras ng pagdating. Lalabas ang sagot bilang pop-up saan ka man sa app. Kung tumanggi o hindi sumagot, pumili ng ibang pro.']]],
       ['Magbayad para makumpirma', [
-        ['wallet', 'Magbayad sa loob ng app', 'Tanggapin ang inalok na oras at magbayad gamit ang GCash, Maya o card bago mag-expire ang offer. Kumpirmado lang ang booking kapag bayad na.'],
+        ['wallet', 'Magbayad mula sa pop-up', 'Kapag tinanggap ng provider, may pop-up na may oras ng pagdating at timer. I-tap ang Accept & pay at magbayad gamit ang GCash, Maya o card bago matapos ang timer. Kumpirmado lang ang booking kapag bayad na. Kapag Later ang pinili mo, babalik ang pop-up pagkalipas ng 90 segundo.'],
         ['sparkle', 'Gamitin ang Ticktap Points', 'Kapag may ' + P.min + ' points ka o higit pa, puwede mo itong ibawas sa presyo (1 point = ' + peso(P.value || 1) + '). Kusang naa-apply ang free-visit rewards.']]],
       ['Ang pagbisita', [
         ['pin', 'I-track ang provider', 'Kapag na-tap nila ang Depart, makikita mo sila sa mapa kasama ang oras ng pagdating.'],
-        ['chat', 'Mag-message o tumawag sa app', 'Nakatago ang phone number ninyo sa isa\'t isa. Magsasara ang chat pagkatapos ng serbisyo.'],
+        ['chat', 'Mag-message o tumawag sa app', 'Kapag may bagong message, may pop-up na may Reply button. Nakatago ang phone number ninyo sa isa\'t isa. Magsasara ang chat pagkatapos ng serbisyo.'],
         ['camera', 'Pag-check sa pagdating', 'Pagdating, kukuha ang provider ng check-in photo na makikita mo. Hilingin na makita ang kanilang Ticktap ID; puwedeng i-scan ng guard ang QR code nito.'],
         ['sos', 'Kaligtasan', 'Gamitin ang SOS button sa booking screen kung may hindi tama.']]],
       ['Pagtatapos', [
         ['check', 'Tapos na ang serbisyo', 'I-tap ng provider ang End service, o kusa itong matatapos sa naka-book na oras.'],
-        ['heart', 'Mag-rate at mag-review', 'I-rate ang serbisyo. Nakakatulong ang reviews sa ibang customer at sa reward credits ng provider.'],
+        ['heart', 'Mag-rate at mag-review', 'Pagkatapos ng serbisyo, may lalabas na pop-up na "Thank you for choosing Ticktap today!". I-tap ang stars at Write a review, o Later para mag-rate mula sa Bookings. Nakakatulong ang reviews sa ibang customer at sa reward credits ng provider.'],
         ['sparkle', 'Kumita ng points', 'Kumikita ka ng 1 point sa bawat ' + peso(P.per) + ' na binayad' + (ev ? ' (' + ev.mult + '× habang may ' + esc(ev.title || 'event') + ')' : '') + '. Tingnan sa Account › Ticktap Points.'],
         ['receipt', 'Pagkansela at refund', 'Libre ang pagkansela hanggang ' + POLICY.freeHours + ' oras bago ang booking; pagkatapos nito, may ' + POLICY.feePct + '% na fee. Ibinabalik ang refund sa paraang ginamit mo sa pagbayad.']]]
     ]
@@ -1987,10 +1987,10 @@ function guideData(role) {
         ['sparkle', 'Opsyonal: discount at loyalty', 'Magpatakbo ng sarili mong discount event o free-visit reward para sa mga suki (individual provider lang).']]],
       ['Tumanggap ng request', [
         ['light', 'Mag-green', 'Status tab: Green = stand-by (makakatanggap ka ng request), Yellow = wala ng 1–3 oras, Red = off ngayong araw.'],
-        ['bell', 'May dumating na request', 'May tunog at vibration, kasama ang lock-screen alert at SMS.'],
-        ['clock', 'Sumagot sa loob ng ' + rsp + ' minuto', 'Ialok ang oras ng pagdating mo, o tumanggi. Kapag dalawang sunod na request ang hindi nasagot, mababawasan ka ng 1 reward credit.']]],
+        ['bell', 'May dumating na request', 'Lalabas ang request bilang pop-up saan ka man sa app, na may tunog at vibration. Kapag naka-lock ang phone, darating muna ang lock-screen alert at SMS; buksan ang app at nandoon na ang pop-up.'],
+        ['clock', 'Sumagot sa pop-up sa loob ng ' + rsp + ' minuto', 'Sa pop-up mismo: piliin ang oras ng pagdating (10–60 min) at i-tap ang Accept, o Not available. Kapag Later, babalik ang pop-up pagkalipas ng 90 segundo. Kapag dalawang sunod na request ang hindi nasagot, mababawasan ka ng 1 reward credit.']]],
       ['Gawin ang trabaho', [
-        ['wallet', 'Hintayin ang bayad', 'Magbabayad ang customer sa app. Makikita mo ang "Payment received" at ang oras na dapat kang dumating.'],
+        ['wallet', 'Hintayin ang bayad', 'Magbabayad ang customer sa app. Makikita mo ang "Payment received" at ang oras na dapat kang dumating. Lalabas bilang pop-up ang mga message ng customer; i-tap ang Reply.'],
         ['send', 'I-tap ang Depart', 'I-tap ito pag-alis mo. Makikita ka ng customer sa mapa.'],
         ['shield', 'Sa gate', 'Job screen › Show my Ticktap ID to the guard. Puwedeng i-scan ng guard ang QR code.'],
         ['camera', 'I-tap ang Arrived', 'Kunan ang check-in photo sa pinto. Lalabas agad ang iyong Ticktap ID; i-tap ang Close para bumalik sa job. Kapag nahuli ka sa ipinangakong oras, mababawasan ka ng credit.'],
@@ -2012,14 +2012,14 @@ function guideData(role) {
         ['users', 'Staff', 'I-register ang bawat therapist. May sarili silang login at kailangan nilang pumasa sa ID at face check bago tumanggap ng trabaho.'],
         ['wallet', 'Detalye ng settlement', 'Piliin ang payout account at cycle sa Settlement.']]],
       ['A3 · Asikasuhin ang mga request', [
-        ['list', 'Spa requests', 'Kapag nag-book ang customer sa business, papasok ang request sa Bookings & services. I-assign ang pinakamalapit na staff na naka-stand-by, o tumanggi para makapag-book ang customer sa iba.'],
-        ['users', 'Direktang booking sa staff', 'Puwede ring direktang i-book ng customer ang isang staff; sasagot ang staff sa sarili niyang app.'],
+        ['list', 'Spa requests', 'Kapag nag-book ang customer sa business, may lalabas na pop-up sa console kasama ang listahan ng staff na naka-stand-by. I-tap ang Assign sa pinakamalapit, o Decline para makapag-book ang customer sa iba. Nasa Bookings & services din ito.'],
+        ['users', 'Direktang booking sa staff', 'Karaniwang pinipili ng customer ang isang staff sa page ng business. Lalabas ang request bilang pop-up sa app ng staff, at doon siya sasagot.'],
         ['alert', 'Bantayan ang progress', 'Makikita sa bawat job kung paid, departed, arrived o ended, kasama ang late alerts.']]],
       ['A4 · Settlement', [
         ['wallet', 'Statements at payouts', 'Ipinapakita ng Settlement ang bawat cycle. Ibinabawas ng Ticktap ang staff fee nito (10–20%, depende sa reward credits) at binabayaran ang business; ikaw ang magbabayad sa staff mo.']]],
       ['B · Para sa staff', [
         ['user', 'Mag-sign in', 'Gamitin ang login na ginawa ng business mo. I-on ang lock-screen alerts at i-print ang iyong Ticktap ID.'],
-        ['light', 'Mag-green at sumagot', 'Sagutin ang request sa loob ng ' + rsp + ' minuto at ibigay ang oras ng pagdating.'],
+        ['light', 'Mag-green at sumagot', 'Lalabas ang request bilang pop-up. Piliin ang oras ng pagdating at i-tap ang Accept sa loob ng ' + rsp + ' minuto.'],
         ['camera', 'Gawin ang trabaho', 'Depart › ipakita ang ID sa gate › Arrived na may check-in photo › End service.'],
         ['wallet', 'Bayad', 'Napupunta ang bayad sa trabaho sa business mo, at sila ang magbabayad sa iyo.']]]
     ]
@@ -2032,7 +2032,7 @@ function guideData(role) {
         ['shield', 'Approvals', 'Providers: compare the live face photo with the ID, check certificates, then approve, ask for more, or reject. Businesses: check permits.'],
         ['light', 'Live status', 'Who is on green, yellow or red right now.'],
         ['alert', 'Late alerts', 'Call the provider, tell the customer, reassign or cancel and refund.'],
-        ['list', 'Requests & jobs', 'Every booking with its log, payment and check-in photo.']]],
+        ['list', 'Requests & jobs', 'Every booking with its log, payment and check-in photo. Members answer requests, offers and messages from pop-ups, so a stuck booking usually means a phone was offline.']]],
       ['Members', [
         ['users', 'Customers, Providers, Businesses', 'Search a member, adjust reward credits, suspend or reactivate. Suspension makes the provider\'s Ticktap ID show "Not active" at once.'],
         ['x', 'Forced withdrawal', 'For serious violations (Terms, Section 18): the account is closed, open bookings are cancelled and refunded.']]],
@@ -4483,7 +4483,7 @@ function isLeader() {
   const t = Date.now(), alive = Object.entries(SYNC.presence || {}).filter(([, ts]) => t - ts < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 77;
+const BUILD = 78;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
