@@ -447,6 +447,12 @@ ol.steps{margin:0;padding:0}
 .catsw-b[aria-pressed="true"]{opacity:1;border-color:currentColor;transform:translateY(-1px)}
 .catsw-b.c1{background:#FDE7EC;color:#A3334F}.catsw-b.c2{background:#FFF1D6;color:#8A5A00}.catsw-b.c3{background:#E5F4EC;color:#2B6B48}.catsw-b.c4{background:#E8EEF8;color:#12355B}.catsw-b.c5{background:#F1E8FB;color:#5B3B8C}
 @media (max-width:360px){.catsw-b{width:34px;height:34px}.catsw{gap:4px}}
+
+/* list pagination */
+.pager{display:flex;justify-content:center;align-items:center;gap:6px;flex-wrap:wrap;padding:6px 0 10px}
+.pg{min-width:40px;height:40px;padding:0 10px;border-radius:12px;border:1px solid var(--line);background:var(--surface);color:var(--fg);font-weight:700;font-size:15px;cursor:pointer}
+.pg[aria-current="page"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.pg:disabled{opacity:.35;cursor:default}.pg-gap{color:var(--muted);padding:0 2px}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1175,7 +1181,11 @@ function activeCard(b) {
 
 function custList() {
   const c = S.cust, a = addr();
-  const items = listEntries(c.cat, c.filter, c.q);
+  const all = listEntries(c.cat, c.filter, c.q), PER = 25;
+  const pkey = [c.cat, c.filter, c.q].join('|'); if (c.pageKey !== pkey) { c.pageKey = pkey; c.page = 1; }
+  const pages = Math.max(1, Math.ceil(all.length / PER)), pg = Math.min(Math.max(1, c.page || 1), pages);
+  const items = all.slice((pg - 1) * PER, pg * PER);
+  const pager = pages > 1 ? `<nav class="pager" aria-label="Pages"><button class="pg" data-act="listPage" data-arg="${pg - 1}" ${pg === 1 ? 'disabled' : ''} aria-label="Previous page">‹</button>${Array.from({ length: pages }, (_, i) => i + 1).filter(n => pages <= 7 || n === 1 || n === pages || Math.abs(n - pg) <= 1).map((n, i, arr) => `${i && n - arr[i - 1] > 1 ? '<span class="pg-gap">…</span>' : ''}<button class="pg" data-act="listPage" data-arg="${n}" aria-current="${n === pg ? 'page' : 'false'}">${n}</button>`).join('')}<button class="pg" data-act="listPage" data-arg="${pg + 1}" ${pg === pages ? 'disabled' : ''} aria-label="Next page">›</button></nav>` : '';
   const f = (id, l) => `<button class="chip" data-act="setFilter" data-arg="${id}" aria-pressed="${c.filter === id}">${l}</button>`;
   const SHORT = { hair: 'Hair', nails: 'Nails', massage: 'Massage', skin: 'Skin', pet: 'Pets' };
   const switcher = c.cat ? `<div class="catsw" role="group" aria-label="Switch service">${CATS.map((k, i) => `<button class="catsw-b c${i + 1}" data-act="openCat" data-arg="${k.id}" aria-pressed="${c.cat === k.id}" aria-label="${k.name}" title="${k.name}">${ic(k.icon, 18)}</button>`).join('')}</div>` : '';
@@ -1186,8 +1196,9 @@ function custList() {
         <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
       ${!c.cat ? `<div class="chips">${CATS.map(k => `<button class="chip" data-act="openCat" data-arg="${k.id}">${k.name}</button>`).join('')}</div>` : ''}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
-      <span class="small muted">${items.length} results · sorted by availability, then distance</span>
+      <span class="small muted">${all.length} results${pages > 1 ? ` · showing ${(pg - 1) * PER + 1}–${Math.min(pg * PER, all.length)}` : ''} · sorted by availability, then distance</span>
       ${items.map(e => entryCard(e)).join('') || '<div class="empty">No one matches. Try another filter.</div>'}
+      ${pager}
     </div>`;
 }
 
@@ -4193,6 +4204,7 @@ const A = {
   // customer
   custTab: t => { S.cust.signup = null; S.cust.screen = t; if (t === 'list') { S.cust.cat = null; } if (t === 'alerts') { } },
   openCat: id => { S.cust.cat = id; S.cust.screen = 'list'; S.cust.filter = 'nearest'; },
+  listPage: n => { S.cust.page = Math.max(1, +n || 1); setTimeout(() => { const el = document.querySelector('[data-scroll="c-list"]'); if (el) el.scrollTop = 0; }, 30); },
   clearCat: () => { S.cust.cat = null; },
   setFilter: f => { S.cust.filter = f; },
   openProvider: id => { S.cust.zoom = null; S.cust.pid = id; S.cust.screenSrc = 'p'; S.cust.cart = []; S.cust.back = S.cust.screen; S.cust.screen = 'profile'; setTimeout(() => resetScroll('c-prof')); },
@@ -4778,7 +4790,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 87;
+const BUILD = 88;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
