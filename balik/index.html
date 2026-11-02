@@ -1193,13 +1193,12 @@ function custList() {
   const pager = pages > 1 ? `<nav class="pager" aria-label="Pages"><button class="pg" data-act="listPage" data-arg="${pg - 1}" ${pg === 1 ? 'disabled' : ''} aria-label="Previous page">‹</button>${Array.from({ length: pages }, (_, i) => i + 1).filter(n => pages <= 7 || n === 1 || n === pages || Math.abs(n - pg) <= 1).map((n, i, arr) => `${i && n - arr[i - 1] > 1 ? '<span class="pg-gap">…</span>' : ''}<button class="pg" data-act="listPage" data-arg="${n}" aria-current="${n === pg ? 'page' : 'false'}">${n}</button>`).join('')}<button class="pg" data-act="listPage" data-arg="${pg + 1}" ${pg === pages ? 'disabled' : ''} aria-label="Next page">›</button></nav>` : '';
   const f = (id, l) => `<button class="chip" data-act="setFilter" data-arg="${id}" aria-pressed="${c.filter === id}">${l}</button>`;
   const SHORT = { hair: 'Hair', nails: 'Nails', massage: 'Massage', skin: 'Skin', pet: 'Pets' };
-  const switcher = c.cat ? `<div class="catsw" role="group" aria-label="Switch service">${CATS.map((k, i) => `<button class="catsw-b c${i + 1}" data-act="openCat" data-arg="${k.id}" aria-pressed="${c.cat === k.id}" aria-label="${k.name}" title="${k.name}">${ic(k.icon, 18)}</button>`).join('')}</div>` : '';
-  return `${c.cat ? `<header class="appbar"><button class="iconbtn" data-act="clearCat" aria-label="Back">${ic('back', 22)}</button><h2 class="ellipsis" style="min-width:0">${SHORT[c.cat] || catName(c.cat)}</h2>${switcher}</header>` : bar('Explore', null)}
+  const switcher = true ? `<div class="catsw" role="group" aria-label="Switch service">${CATS.map((k, i) => `<button class="catsw-b c${i + 1}" data-act="openCat" data-arg="${k.id}" aria-pressed="${c.cat === k.id}" aria-label="${k.name}" title="${k.name}">${ic(k.icon, 18)}</button>`).join('')}</div>` : '';
+  return `${c.cat ? `<header class="appbar"><button class="iconbtn" data-act="clearCat" aria-label="Back">${ic('back', 22)}</button><h2 class="ellipsis" style="min-width:0">${SHORT[c.cat] || catName(c.cat)}</h2>${switcher}</header>` : `<header class="appbar"><h2 class="ellipsis" style="min-width:0">Explore</h2>${switcher}</header>`}
     <div class="scroll" data-scroll="c-list">
       <button class="row" data-act="addrSheet" style="border:0;background:var(--surface-2);border-radius:10px;padding:9px 12px;text-align:left">${ic('pin', 16)}<span class="small grow">Distance from <b>${esc(a.label)} · ${esc(a.short)}</b></span><span class="chg-pill">Change</span></button>
       ${c.cat ? '' : `<label class="row" style="height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
-      ${!c.cat ? `<div class="chips">${CATS.map(k => `<button class="chip" data-act="openCat" data-arg="${k.id}">${k.name}</button>`).join('')}</div>` : ''}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
       <span class="small muted">${all.length} results${pages > 1 ? ` · showing ${(pg - 1) * PER + 1}–${Math.min(pg * PER, all.length)}` : ''} · sorted by availability, then distance</span>
       ${items.map(e => entryCard(e)).join('') || '<div class="empty">No one matches. Try another filter.</div>'}
@@ -4795,7 +4794,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 89;
+const BUILD = 90;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
