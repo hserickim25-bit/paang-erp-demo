@@ -4269,7 +4269,8 @@ function seedHR() {
   if (!S.settings.company) S.settings.company = Object.assign({}, CO_DEF);
 }
 function mgInit() {
-  if (!Array.isArray(S.employees)) seedHR();
+  // a live room created before Management existed has no employees: seed the demo staff once the room has loaded
+  if (!Array.isArray(S.employees) || (!S.employees.length && (SYNC.ready || SYNC.mode !== 'live'))) seedHR();
   ['attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
   if (!S.settings.perm) S.settings.perm = Object.assign({}, PERM_DEF);
   if (!S.settings.company) S.settings.company = Object.assign({}, CO_DEF);
@@ -6161,7 +6162,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 101;
+const BUILD = 102;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
