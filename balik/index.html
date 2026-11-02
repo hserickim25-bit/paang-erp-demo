@@ -459,6 +459,14 @@ ol.steps{margin:0;padding:0}
 :root[data-theme="dark"] .chg-pill{color:#DCE7F7;background:linear-gradient(180deg,#2A3A55 0%,#1B2840 100%);border-color:#4D6690;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chg-pill{color:#DCE7F7;background:linear-gradient(180deg,#2A3A55 0%,#1B2840 100%);border-color:#4D6690;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}}
 .rb-card{padding:12px 16px}
+
+/* compact reviews */
+.rv-list{gap:0;padding:12px 16px}
+.rv{padding:8px 0;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.rv-list>.row+.rv{margin-top:6px}
+.rv-h{display:flex;align-items:center;gap:8px;min-width:0}.rv-h .stars{font-size:12px;flex-shrink:0}.rv-ago{margin-left:auto;flex-shrink:0}
+.rv-t{margin:0;line-height:1.4}.rv-tags{display:flex;flex-wrap:wrap;gap:4px}.rv-tags .pill{height:22px;font-size:11px}
+.rv-more{margin-top:6px;border:0;border-top:1px solid var(--line);background:none;padding:10px 0 2px;color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1214,8 +1222,11 @@ function ratingBlock(o) {
 }
 function reviewsBlock(o) {
   const all = o.reviews.filter(r => !r.hidden);
-  return `${all.slice(0, 3).map(r => `<div class="card tight"><div class="row between"><b class="small">${esc(r.by)}</b><span class="tiny muted">${esc(r.ago)}</span></div>${starsH(r.stars)}${r.tags && r.tags.length ? `<div class="row" style="flex-wrap:wrap;gap:6px">${r.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}${r.text ? `<p class="small">${esc(r.text)}</p>` : ''}
-    </div>`).join('')}`;
+  if (!all.length) return '';
+  const key = o.id || o.name, n = (S.cust.revMore && S.cust.revMore[key]) || 3, shown = all.slice(0, n);
+  return `<div class="card rv-list"><div class="row between"><b class="small">Reviews</b><span class="tiny muted">${Math.min(n, all.length)} of ${all.length}</span></div>
+    ${shown.map(r => `<div class="rv"><div class="rv-h"><b class="small ellipsis">${esc(r.by)}</b>${starsH(r.stars)}<span class="tiny muted rv-ago">${esc(r.ago)}</span></div>${r.tags && r.tags.length ? `<div class="rv-tags">${r.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}${r.text ? `<p class="small rv-t">${esc(r.text)}</p>` : ''}</div>`).join('')}
+    ${all.length > n ? `<button class="rv-more" data-act="revMore" data-arg="${esc(key)}">More reviews (${all.length - n}) ${ic('down', 16)}</button>` : ''}</div>`;
 }
 
 function custProfile() {
@@ -3381,6 +3392,19 @@ function addTestPros() {
     S.providers.forEach(p => { const t = DEMO_ABOUT.intros[p.id]; if (t && String(p.intro || '').length <= 50) p.intro = t;
       const ph = DEMO_ABOUT.photos[p.id]; if (ph && !(p.bgPhotos || []).length) p.bgPhotos = ph.map(x => 'smp:' + x); });
   }
+  // demo reviews (once per room): enough reviews per provider to try "More reviews"
+  if (!S.settings.demoReviews2026) {
+    S.settings.demoReviews2026 = true;
+    const who = ['Jasmine T.', 'Carlo M.', 'Bea R.', 'Mark D.', 'Joy C.', 'Paolo S.', 'Kim L.', 'Rica V.', 'Nina G.', 'Ellen P.', 'Tonette A.', 'Gino F.'];
+    const say = { massage: ['Strong, careful hands. I slept so well after.', 'Arrived on time and brought fresh linens.', 'Best massage I have had at home.', 'Very professional and calm.', 'My back pain is much better.'],
+      nails: ['Neat and long-lasting gel polish.', 'Clean tools, very careful with cuticles.', 'Lovely nail art, exactly what I asked.', 'Quick and tidy, no mess left.', 'My mom loved her pedicure.'],
+      hair: ['Great cut, listened to what I wanted.', 'Blow-dry lasted two days!', 'Kind with my kids, very patient.', 'Color came out even and shiny.', 'Cleaned up every strand after.'],
+      skin: ['Gentle and very hygienic.', 'Low pain waxing, smooth results.', 'My skin felt fresh for days.', 'Relaxing facial, lovely products.', 'On time and very professional.'],
+      pet: ['My dog came out fluffy and happy.', 'So patient with our nervous puppy.', 'Neat trim and clean nails.', 'Bath and blow-dry done perfectly.', 'Our cat stayed calm the whole time.'] };
+    const ago = ['3 days ago', '5 days ago', '1 week ago', '2 weeks ago', '3 weeks ago', '1 month ago', '1 month ago', '2 months ago'];
+    S.providers.forEach((p, pi) => { if (!Array.isArray(p.reviews)) p.reviews = []; const lines = say[p.cat] || say.massage;
+      for (let k = 0; p.reviews.length < 9 && k < 9; k++) p.reviews.push({ by: who[(pi * 3 + k) % who.length], stars: (pi + k) % 6 === 0 ? 4 : 5, text: lines[(pi + k) % lines.length], tags: [], photos: [], ago: ago[k % ago.length], demo: true }); });
+  }
   if (!S.settings.demoPromos2026) {
     S.settings.demoPromos2026 = true;
     const t0 = now();
@@ -4193,6 +4217,7 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  revMore: k => { S.cust.revMore = Object.assign({}, S.cust.revMore, { [k]: ((S.cust.revMore || {})[k] || 3) + 5 }); },
   bgToggle: id => { S.cust.bgOpen = S.cust.bgOpen === id ? null : id; },
   bgDel: k => { const p = prov(S.prov.id); if (p && Array.isArray(p.bgPhotos)) p.bgPhotos.splice(+k, 1); },
   bgZoom: k => { const p = prov(S.cust.pid); const u = p && (p.bgPhotos || [])[+k]; if (u) S.modal = { kind: 'photo', name: p.name + ' · photo ' + (+k + 1), src: phSrc(u) }; },
@@ -4795,7 +4820,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 91;
+const BUILD = 92;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
