@@ -636,6 +636,44 @@ td.num,th.num{text-align:right}
 .verified{display:inline-flex;align-items:center;gap:4px;color:var(--good);font-weight:600;font-size:12px}
 /* full-screen app mode on phones */
 .mission-img{display:block;width:100%;height:auto;aspect-ratio:1049/348;max-width:100%;border-radius:16px}
+.mission-btn{display:block;width:100%;padding:0;border:0;background:transparent;border-radius:16px;cursor:pointer;transition:transform .15s}.mission-btn:active{transform:scale(.985)}
+.ms-bg{padding:12px;z-index:90}
+.ms{width:min(980px,100%);max-height:94dvh;display:flex;flex-direction:column;background:#F8F9FA;color:#1b2430;border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.ms-top{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;background:#fff;border-bottom:1px solid #eef0f3}
+.ms-logo{height:30px;width:auto;border-radius:8px}.ms-loc{font-size:11px;color:#8a94a3;font-weight:600}
+.ms-x{width:36px;height:36px;border-radius:50%;border:0;background:#f1f3f6;color:#1b2430;display:grid;place-items:center;cursor:pointer}
+.ms-scroll{position:relative;overflow-y:auto;overscroll-behavior:contain}
+.ms-hero{position:relative;overflow:hidden;background:linear-gradient(135deg,#0F2537,#1D3B56 55%,#2A4D6C);color:#fff;padding:28px 18px}
+.ms-glow{position:absolute;width:300px;height:300px;border-radius:50%;filter:blur(60px);pointer-events:none}.ms-glow.a{top:-90px;right:-80px;background:rgba(244,180,26,.25)}.ms-glow.b{bottom:-110px;left:-90px;background:rgba(42,157,143,.3)}
+.ms-hero-in{position:relative;display:grid;gap:22px;grid-template-columns:1fr}
+@media (min-width:820px){.ms-hero-in{grid-template-columns:7fr 5fr;align-items:center}.ms-hero{padding:40px 36px}}
+.ms-hero-t{display:flex;flex-direction:column;gap:14px}
+.ms-chip{align-self:flex-start;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#FFD166;font-size:12px;font-weight:600}.ms-chip i{width:8px;height:8px;border-radius:50%;background:#F4B41A;box-shadow:0 0 0 4px rgba(244,180,26,.25)}
+.ms-hero h2{font-size:clamp(26px,5.4vw,40px);line-height:1.12;font-weight:800;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.ms-hero h2 em{font-style:italic;font-weight:700;background:linear-gradient(90deg,#FFD166,#FDBA74,#F4B41A);-webkit-background-clip:text;background-clip:text;color:transparent}
+.ms-hero p{color:#cbd5e1;font-size:14.5px;line-height:1.6;margin:0;max-width:56ch}
+.ms-pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;max-width:420px}.ms-pillars div{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 6px;border-radius:16px;background:rgba(15,37,55,.6);border:1px solid rgba(255,255,255,.1);color:#FFD166}.ms-pillars span{font-size:11.5px;color:#e2e8f0;font-weight:600;text-align:center}
+.ms-cta{display:flex;gap:10px;flex-wrap:wrap}.ms-gold{background:linear-gradient(90deg,#FFD166,#F4B41A);color:#0F2537;border:0;font-weight:700}.ms-ghost{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.25)}
+.ms-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ms-pic{position:relative;margin:0;border-radius:16px;overflow:hidden;height:150px;box-shadow:0 10px 24px rgba(0,0,0,.3)}.ms-pic:nth-child(2){transform:translateY(12px)}.ms-pic:nth-child(3){transform:translateY(-6px)}
+.ms-pic img{width:100%;height:100%;object-fit:cover}.ms-pic figcaption{position:absolute;inset:auto 0 0 0;padding:28px 10px 8px;background:linear-gradient(transparent,rgba(0,0,0,.78));display:flex;flex-direction:column}.ms-pic span{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#FFD166;font-weight:700}.ms-pic b{font-size:13px;color:#fff}
+.ms-sec{padding:28px 18px;background:#fff}@media (min-width:820px){.ms-sec{padding:36px}}
+.ms-eye{display:block;text-align:center;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#2A9D8F}
+.ms-sec h3{font-size:clamp(21px,4vw,28px);font-weight:800;color:#0F2537;margin:4px 0 6px;text-wrap:balance}
+#ms-services h3,.ms-lead{text-align:center}.ms-lead{color:#64748b;font-size:13.5px;margin:0 auto 18px;max-width:56ch}
+.ms-svcs{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+.ms-svc{display:flex;flex-direction:column;gap:5px;padding:12px;border-radius:16px;background:#F8F9FA;border:1px solid #eef0f3}
+.ms-svc b{color:#0F2537;font-size:15px}.ms-svc p{margin:0;font-size:12px;color:#64748b;line-height:1.5;flex:1}
+.ms-ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;margin-bottom:2px}.ms-ic.hair{background:#FDE7EC;color:#A3334F}.ms-ic.nails{background:#FFF1D6;color:#8A5A00}.ms-ic.massage{background:#E3F4EA;color:#1F7A4C}.ms-ic.skin{background:#E6EEF8;color:#1D3B56}.ms-ic.pet{background:#F0E8FA;color:#6B3FA0}
+.ms-svc-f{display:flex;justify-content:space-between;align-items:center;padding-top:10px;margin-top:6px;border-top:1px solid #e5e8ec}.ms-svc-f span{font-size:12px;font-weight:700;color:#0F2537}.ms-svc-f button{border:0;background:transparent;color:#2A9D8F;font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:2px;cursor:pointer}
+.ms-heart{background:#FDF6F4;border-block:1px solid #fde2dc}
+.ms-two{display:grid;gap:20px;grid-template-columns:1fr;align-items:center}@media (min-width:820px){.ms-two{grid-template-columns:1fr 1fr}}
+.ms-tag{display:inline-block;padding:4px 10px;border-radius:999px;background:rgba(224,122,95,.12);color:#C2593C;font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.ms-two p{color:#475569;font-size:13.5px;line-height:1.65;margin:0 0 10px}
+.ms-checks{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px}.ms-checks li{display:flex;gap:8px;align-items:flex-start;font-size:12.5px;color:#334155;font-weight:500}.ms-checks svg{color:#2A9D8F;flex-shrink:0;margin-top:1px}
+.ms-join{display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center;padding:20px;border-radius:22px;background:#fff;border:1px solid #fde2dc;box-shadow:0 12px 30px rgba(15,37,55,.08);color:#0F2537}.ms-join b{font-size:16px}.ms-join p{color:#64748b;font-size:12.5px;margin:0}
+.ms-quote{text-align:center}.ms-stars{color:#F4B41A;letter-spacing:4px;font-size:15px}.ms-quote blockquote{margin:8px auto;max-width:52ch;font-style:italic;font-size:16px;color:#334155;line-height:1.6}.ms-quote span{font-size:12px;color:#94a3b8;font-weight:600}
+.ms-foot{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:16px 18px;background:#0F2537;color:#94a3b8;font-size:12px}.ms-foot b{color:#fff}.ms-foot button{border:0;background:transparent;color:#cbd5e1;font-size:12px;cursor:pointer;padding:0}
 .appshell{min-height:100dvh;background:var(--bg);max-width:100vw;overflow-x:hidden}
 html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .appshell .screen{height:100dvh;border-radius:0}
@@ -1258,7 +1296,7 @@ function custHome() {
       <label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile">${ic(k.icon, 24)}</span>${k.name}</button>`).join('')}</div>
-      <img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348">
+      <button class="mission-btn" data-act="missionOpen" aria-label="Why Ticktap: open the story"><img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348"></button>
       <div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
       ${near.map(e => entryCard(e, true)).join('')}
     </div>`;
@@ -3459,8 +3497,49 @@ function admSettings() {
 
 
 /* ---------- 2307 modal ---------- */
+/* ---------- "Why Ticktap" story, opened from the home banner ---------- */
+function missionModal() {
+  const act = S.providers.filter(p => p.active !== false && !p.expelled);
+  const from = c => { const v = act.filter(p => p.cat === c).map(p => { try { return fromPrice(p); } catch (e) { return Infinity; } }).filter(x => isFinite(x) && x > 0); return v.length ? Math.min(...v) : 0; };
+  const nPros = act.length, nBiz = S.businesses.filter(b => !b.expelled).length;
+  const SV = [['hair', 'scissors', 'Hair cuts & styling', 'Cuts, color, blow-dry and styling for the whole family, at home.', 'hair'],
+    ['nails', 'sparkle', 'Nail care', 'Manicure, pedicure, gel and nail art without the salon queue.', 'nails'],
+    ['massage', 'hand', 'Massage & hilot', 'Swedish, shiatsu, hilot and aromatherapy by trained therapists.', 'massage'],
+    ['skin', 'drop', 'Waxing & facial', 'Gentle waxing, facials and skin care in your own space.', 'skin'],
+    ['pet', 'paw', 'Pet grooming', 'Bath, trim, nails and blow-dry for dogs and cats.', 'pet']];
+  const rv = (() => { for (const p of act) { const r = (p.reviews || []).find(x => x.stars === 5 && String(x.text || '').length > 24); if (r) return { r, p }; } return null; })();
+  const pic = (k, tag, t) => `<figure class="ms-pic"><img src="${SAMPLE_PH[k] || ''}" alt="${esc(t)}"><figcaption><span>${tag}</span><b>${t}</b></figcaption></figure>`;
+  return `<div class="modal-bg ms-bg" data-act="missionClose" data-ov="ms"><div class="ms" role="dialog" aria-modal="true" aria-label="Why Ticktap" data-stop="1">
+    <header class="ms-top"><img src="${LOGO_D}" alt="Ticktap" class="ms-logo"><span class="ms-loc">Metro Manila</span><span class="grow"></span><button class="btn primary sm" data-act="missionBook">Book now</button><button class="ms-x" data-act="missionClose" aria-label="Close">${ic('x', 20)}</button></header>
+    <div class="ms-scroll" data-scroll="ms">
+      <section class="ms-hero"><div class="ms-glow a"></div><div class="ms-glow b"></div>
+        <div class="ms-hero-in"><div class="ms-hero-t">
+          <span class="ms-chip"><i></i>Home beauty, wellness & pet care</span>
+          <h2>Care that comes to you,<br><em>skills that stay at home.</em></h2>
+          <p>Book ID-verified pros for hair, nails, massage, waxing and pet grooming at your condo, village or home. Tick for verified, tap for one tap.</p>
+          <div class="ms-pillars"><div>${ic('home', 20)}<span>At-home ease</span></div><div>${ic('shield', 20)}<span>Verified pros</span></div><div>${ic('heart', 20)}<span>Bayanihan spirit</span></div></div>
+          <div class="ms-cta"><button class="btn ms-gold" data-act="missionGo" data-arg="services">Explore services ${ic('chev', 16)}</button><button class="btn ms-ghost" data-act="missionGo" data-arg="mission">Our social impact</button></div></div>
+        <div class="ms-grid">${pic('facial1', 'Skin care', 'Glow facial')}${pic('pet1', 'Pet care', 'Home dog grooming')}${pic('nails1', 'Beauty', 'Gel nails & styling')}${pic('massage1', 'Wellness', 'Therapeutic massage')}</div></div></section>
+      <section class="ms-sec" id="ms-services"><span class="ms-eye">What we offer</span><h3>Home beauty, wellness & pet services</h3><p class="ms-lead">Booked and paid in the app, delivered by ${nPros} verified pros and ${nBiz} partner spas and studios near you.</p>
+        <div class="ms-svcs">${SV.map(([c, i, t, d]) => `<div class="ms-svc"><span class="ms-ic ${c}">${ic(i, 22)}</span><b>${t}</b><p>${d}</p><div class="ms-svc-f"><span>${from(c) ? 'From ' + peso(from(c)) : 'Coming soon'}</span><button data-act="missionCat" data-arg="${c}">Book ${ic('chev', 14)}</button></div></div>`).join('')}</div></section>
+      <section class="ms-sec ms-heart" id="ms-mission"><div class="ms-two"><div>
+          <span class="ms-tag">The heart of Ticktap</span>
+          <h3>Every booking helps a skilled neighbor earn again.</h3>
+          <p>Many experienced stylists, therapists and groomers left salon work to care for family. Ticktap lets them work from home on their own hours, and gives you safe, fair-priced care at your door.</p>
+          <ul class="ms-checks">
+            <li>${ic('check', 16)}Government ID, live selfie match and TIN checked before approval</li>
+            <li>${ic('check', 16)}Ticktap ID with QR for condo and village guards, check-in photo on arrival</li>
+            <li>${ic('check', 16)}Payment held in the app (GCash, Maya, card) until the service ends</li>
+            <li>${ic('check', 16)}Pros set their own prices and hours, and are paid within 72 hours</li></ul></div>
+        <div class="ms-join">${ic('hand', 28)}<b>Are you a skilled stylist, therapist or groomer?</b><p>Join Ticktap as an individual provider, or register your spa or salon and list your staff.</p>
+          <button class="btn primary block" data-act="missionJoin" data-arg="provider">Apply as a provider</button><button class="btn secondary block" data-act="missionJoin" data-arg="business">Register a business</button></div></div></section>
+      ${rv ? `<section class="ms-sec ms-quote"><div class="ms-stars">★★★★★</div><blockquote>“${esc(rv.r.text)}”</blockquote><span>— ${esc(rv.r.by || 'Ticktap customer')}, about ${esc(rv.p.name.split(' ')[0])} · ${esc(catName(rv.p.cat))}</span></section>` : ''}
+      <footer class="ms-foot"><span><b>Ticktap</b> © 2026</span><span class="grow"></span><button data-act="missionTerms">Terms & privacy</button><span>Payments held safely in the app</span></footer>
+    </div></div></div>`;
+}
 function modal() {
   const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
+  if (m.kind === 'mission') return missionModal();
   if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
     return `<div class="modal-bg"><div class="modal rate-pop" role="dialog" aria-label="Rate your service" style="width:min(420px,100%)">
       <div class="rate-top"><img src="${LOGO_D}" alt="Ticktap"><button class="rate-x" data-act="rateLater" aria-label="Close">${ic('x', 20)}</button></div>
@@ -5600,6 +5679,15 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  missionOpen: () => { S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
+  missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
+  missionBook: () => { S.modal = null; S.role = 'customer'; S.cust.screen = 'list'; S.cust.cat = null; },
+  missionCat: c => { S.modal = null; A.openCat(c); },
+  missionGo: k => { setTimeout(() => { const el = document.getElementById('ms-' + k), sc = document.querySelector('.ms-scroll'); if (el && sc) sc.scrollTo({ top: el.offsetTop - 4, behavior: 'smooth' }); }, 40); },
+  missionTerms: () => { S.modal = null; A.termsOpen(); },
+  missionJoin: k => { S.modal = null; const a = meAcct();
+    if (k === 'provider' && a && custOk(a)) { A.becomeProv(); return; }
+    S.session = null; S.customer.signedIn = false; S.role = 'customer'; A.authType(k === 'business' ? 'business' : 'provider'); },
   bcMode: m => { S.admin.bc.mode = m; S.admin.bcConfirm = false; },
   bcType: t => { S.admin.bc.type = t; S.admin.bcConfirm = false; },
   msgTab: t => { S.admin.msgTab = t; },
@@ -6269,7 +6357,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 108;
+const BUILD = 109;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
