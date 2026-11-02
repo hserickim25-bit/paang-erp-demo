@@ -499,6 +499,42 @@ ol.steps{margin:0;padding:0}
 
 .wht-tot{display:flex;flex-direction:column;align-items:flex-end;padding:6px 12px;border-radius:12px;background:var(--accent-soft)}.wht-tot b{font-size:18px}
 #printArea .qap{font:9.5pt/1.35 Arial,sans-serif;color:#000}
+.adm-me{display:flex;align-items:center;gap:4px;margin:4px 0 8px;padding:6px;border-radius:12px;background:var(--surface-2,var(--surface-3))}
+.adm-me-b{display:flex;align-items:center;gap:8px;flex:1;min-width:0;border:0;background:transparent;padding:0;text-align:left;color:inherit;cursor:pointer}
+.hd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.hd-card{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.hd-card .btn{margin-top:auto}
+table.pnl td{padding:6px 12px}table.pnl tr.ph td{background:var(--surface-2,var(--surface-3));font-weight:700;font-size:12px;letter-spacing:.04em;text-transform:uppercase}table.pnl tr.t td{font-weight:700;border-top:1.5px solid var(--line-2,var(--line))}table.pnl tr.n td{font-weight:800;font-size:15px;border-top:2px solid var(--fg)}
+.docov{position:fixed;inset:0;z-index:5000;background:rgba(10,20,40,.78);overflow:auto;display:flex;flex-direction:column;align-items:center;padding:0 max(16px,env(safe-area-inset-right,0px)) 32px max(16px,env(safe-area-inset-left,0px))}
+.docbar{position:sticky;top:0;z-index:2;width:calc(100% + 32px);margin:0 -16px 16px;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) 10px max(16px,env(safe-area-inset-left,0px));background:#0E2440;color:#fff;box-shadow:0 4px 18px rgba(0,0,0,.3)}.docbar .btn.ghost{color:#fff}
+.docbar b{color:#fff}
+.docov .paper{background:#fff;color:#111;width:min(900px,100%);padding:32px 36px;border-radius:6px;box-shadow:0 20px 60px rgba(0,0,0,.35)}
+.docov .paper.wide{width:min(1180px,100%);overflow-x:auto}.docov .paper.cards{width:auto;max-width:100%}
+.hrd{font:10pt/1.45 Arial,Helvetica,sans-serif;color:#111}
+.hrd-h{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2px solid #12355B;padding-bottom:8px;margin-bottom:12px}
+.hrd-co{display:flex;gap:10px;align-items:center}.hrd-co .col{display:flex;flex-direction:column}.hrd-co span,.hrd-t span{font-size:8.5pt;color:#444}.hrd-logo{height:30px;width:auto}
+.hrd-t{display:flex;flex-direction:column;text-align:right}.hrd-t b{font-size:12pt;color:#12355B;letter-spacing:.03em}
+.hrd h2{text-align:center;letter-spacing:.12em;font-size:14pt;margin:24px 0 18px}.hrd h4{margin:12px 0 4px;font-size:10pt;color:#12355B}
+.hrd table{width:100%;border-collapse:collapse}.hrd table.grid th,.hrd table.grid td{border:1px solid #9aa3ae;padding:4px 6px;text-align:left;vertical-align:top}.hrd table.grid th{background:#eef2f7;font-size:8.5pt}.hrd .num{text-align:right;white-space:nowrap}
+.hrd tr.t td{font-weight:700;background:#f6f8fb}.hrd tr.ph td{background:#eef2f7}.hrd tr.n td{font-weight:800;border-top:2px solid #111}
+.hrd table.kv th{text-align:left;font-weight:600;color:#444;width:34%;padding:2px 8px 2px 0;font-size:9pt;vertical-align:top}.hrd table.kv td{padding:2px 0;font-size:9.5pt}
+.hrd.letter p{margin:0 0 12px;text-align:justify;font-size:11pt;line-height:1.7}.hrd .r{text-align:right!important;font-size:9.5pt!important}
+.hrd .sig{display:flex;flex-direction:column;width:240px;margin:44px 0 18px}.hrd .sig span,.hrd .sig2 span{display:block;border-bottom:1px solid #111;height:34px;margin-bottom:4px}
+.hrd .sig2{display:flex;gap:28px;margin-top:28px}.hrd .sig2>div{flex:1;font-size:9pt}
+.hrd .tiny-p{font-size:8pt;color:#555;margin-top:10px}.hrd .tiny-t{font-size:7.5pt}
+.slip-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px}.slip-net{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding:10px 12px;background:#12355B;color:#fff;border-radius:6px}.slip-net b{font-size:15pt}
+.pbreak{height:28px}
+.eid{width:54mm;height:85.6mm;border-radius:3mm;overflow:hidden;background:#fff;color:#111;display:flex;flex-direction:column;align-items:center;font-family:Arial,sans-serif;border:1px solid #d5dae1;-webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:normal}
+.eid-top{width:100%;background:#12355B;color:#fff;display:flex;flex-direction:column;align-items:center;gap:1mm;padding:3mm 0 7mm}.eid-top img{height:6mm}.eid-top span{font-size:6pt;letter-spacing:.25em;color:#FFB800;font-weight:700}
+.eid-ph{width:24mm;height:28mm;margin-top:-5mm;border-radius:2mm;overflow:hidden;border:1mm solid #fff;background:#e8edf3;display:grid;place-items:center;font-size:16pt;font-weight:700;color:#12355B;box-shadow:0 1mm 2mm rgba(0,0,0,.15)}.eid-ph img{width:100%;height:100%;object-fit:cover;object-position:center 20%}
+.eid-n{font-size:10pt;margin-top:3mm;text-align:center;padding:0 2mm}.eid-p{font-size:7pt;color:#333;text-align:center;padding:0 2mm}.eid-d{font-size:6pt;color:#777}
+.eid-no{margin-top:auto;width:100%;background:#FFB800;color:#12355B;text-align:center;font-weight:700;font-size:8pt;letter-spacing:.08em;padding:2mm 0}
+.eid.back{justify-content:flex-start;padding:4mm 3mm;gap:2mm}.eid-qr-w{width:26mm;height:26mm}.eid-qr-w svg{width:100%;height:100%}.eid-b{width:100%}.eid-b table.kv th,.eid-b table.kv td{font-size:5.5pt;padding:0.4mm 0;width:auto}
+.eid-sig{width:100%;margin-top:auto;display:flex;flex-direction:column;align-items:center}.eid-sig span{width:80%;border-bottom:.3mm solid #111;height:6mm}.eid-sig small,.eid-f{font-size:4.8pt;color:#444;text-align:center}
+.docov .pa-head{display:flex;flex-direction:column;font-size:10pt;margin-bottom:10px;color:#111}.docov .pa-head span{font-size:8.5pt;color:#555}.docov .pa-cards{display:flex;gap:8mm;flex-wrap:wrap}.docov .pa-cut{border:1px dashed #888;line-height:0}
+#printArea .hrd,#printArea .eid{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+@media print{#printArea .pbreak{page-break-after:always;height:0}}
+@media (max-width:640px){.docov .paper{padding:18px 14px}.slip-2{grid-template-columns:1fr}}
 .qap-h{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px}.qap-h>div{display:flex;flex-direction:column}.qap-h>div:last-child{text-align:right}
 .qap h4{margin:10px 0 4px;font-size:10pt}.qap table{width:100%;border-collapse:collapse}.qap th,.qap td{border:1px solid #444;padding:3px 5px;text-align:left}.qap th{background:#eee}.qap .num{text-align:right}
 .qap-2{display:grid;grid-template-columns:1fr 1.4fr;gap:14px}.qap-note{font-size:8pt;margin-top:10px}
@@ -2138,7 +2174,14 @@ function guideFil(role) {
         ['receipt', 'Accounts payable', 'Payouts to providers and businesses, refunds, and withholding tax (0619-E monthly, 1601-EQ quarterly).'],
         ['sparkle', 'Events & promotions', 'Provider discounts and loyalty rewards (stop one if needed) and Ticktap bonus-points events (2×–5×, one at a time).']]],
       ['Rules & settings', [
-        ['gear', 'Change platform rules', 'Terms and consent records, platform fees, reward credits, customer points, request and booking times, late-alert routing, withholding tax. Changes apply at once in every app.']]]
+        ['gear', 'Change platform rules', 'Terms and consent records, platform fees, reward credits, customer points, request and booking times, late-alert routing, withholding tax. Changes apply at once in every app.']]],
+      ['Management (by admin level)', [
+        ['shield', 'Admin levels', 'Each staff member signs in with their own admin ID. Level 1 issues IDs and chooses, area by area, what Level 2 and Level 3 can open (Management › Admin access & levels). Level 2 sees everything except Level 1-only areas; Level 3 only areas open to all.'],
+        ['user', 'My work page', 'Clock in and out, see your attendance and payslips, ask HR for a Certificate of Employment, change your password.'],
+        ['users', 'Employees & attendance', 'Register staff with SSS, PhilHealth, Pag-IBIG and TIN numbers; record time in and out, late, undertime, leave, absences and approved overtime; record resignations with the final pay statement.'],
+        ['wallet', 'Payroll & BIR', 'Payroll is computed from attendance with SSS, PhilHealth, Pag-IBIG and withholding tax. Approve, mark paid, then print payslips, the 1601-C worksheet, contribution lists, 2316 and the alphalist (print or Excel).'],
+        ['doc', 'HR documents', 'Issue employee ID cards and Certificates of Employment with control numbers; requests from staff appear here.'],
+        ['chart', 'Expenses, revenue & ledger', 'Record company expenses (with VAT and EWT) and other income. Platform fees, payouts and refunds come in from Accounts receivable and payable, so the ledger shows profit and loss, total money out and a cash book.']]]
     ]
   };
   return { customer: C, provider: PR, business: B, admin: A }[role] || C;
@@ -2339,7 +2382,14 @@ function guideKo(role) {
         ['receipt', 'Accounts payable', '제공자·업소 지급, 환불, 원천세(매월 0619-E, 분기 1601-EQ).'],
         ['sparkle', 'Events & promotions', '제공자 할인·단골 리워드(필요 시 중단)와 Ticktap 보너스 포인트 이벤트(2~5배, 한 번에 하나).']]],
       ['규칙과 설정', [
-        ['gear', '플랫폼 규칙 변경', '약관과 동의 기록, 플랫폼 수수료, 리워드 크레딧, 고객 포인트, 요청·예약 시간, 지각 알림 경로, 원천세. 바꾸면 모든 앱에 즉시 적용됩니다.']]]
+        ['gear', '플랫폼 규칙 변경', '약관과 동의 기록, 플랫폼 수수료, 리워드 크레딧, 고객 포인트, 요청·예약 시간, 지각 알림 경로, 원천세. 바꾸면 모든 앱에 즉시 적용됩니다.']]],
+      ['경영관리 (관리자 등급별)', [
+        ['shield', '관리자 등급', '직원마다 자기 관리자 ID로 로그인합니다. 1급은 ID를 발급하고, 2급·3급이 열 수 있는 영역을 항목별로 정합니다(Management › Admin access & levels). 2급은 1급 전용을 뺀 전부, 3급은 전체 공개 영역만 봅니다.'],
+        ['user', 'My work page', '출퇴근 기록, 내 근태와 급여명세서 확인, 재직증명서 신청, 비밀번호 변경.'],
+        ['users', '직원·근태', 'SSS·PhilHealth·Pag-IBIG·TIN과 함께 직원을 등록하고, 출퇴근·지각·조퇴·휴가·결근·승인된 연장근무를 기록합니다. 퇴직은 최종 정산서와 함께 처리합니다.'],
+        ['wallet', '급여·BIR', '근태 기록으로 SSS·PhilHealth·Pag-IBIG·원천세를 계산합니다. 승인 → 지급 완료 후 급여명세서, 1601-C 작성표, 4대 보험 명세, 2316, 알파리스트를 인쇄하거나 엑셀로 받습니다.'],
+        ['doc', '인사 서류', '사원증과 재직증명서를 관리번호와 함께 발급합니다. 직원 신청이 여기 표시됩니다.'],
+        ['chart', '지출·수입·원장', '회사 경비(VAT·EWT 포함)와 기타 수입을 입력합니다. 플랫폼 수수료·지급·환불은 매출채권/매입채무에서 자동으로 들어와 손익, 총지출, 현금출납장이 계산됩니다.']]]
     ]
   };
   return { customer: C, provider: PR, business: B, admin: A }[role] || C;
@@ -2365,7 +2415,14 @@ function guideFilAdmin() {
         ['receipt', 'Accounts payable', 'Payout sa providers at businesses, refunds, at withholding tax (0619-E buwan-buwan, 1601-EQ kada quarter).'],
         ['sparkle', 'Events & promotions', 'Discount at loyalty rewards ng provider (puwedeng ihinto) at bonus-points event ng Ticktap (2×–5×, isa-isa lang).']]],
       ['Mga patakaran at settings', [
-        ['gear', 'Baguhin ang patakaran', 'Terms at consent records, platform fees, reward credits, customer points, oras ng request at booking, late-alert routing, withholding tax. Agad na naa-apply sa lahat ng app.']]]
+        ['gear', 'Baguhin ang patakaran', 'Terms at consent records, platform fees, reward credits, customer points, oras ng request at booking, late-alert routing, withholding tax. Agad na naa-apply sa lahat ng app.']]],
+      ['Management (ayon sa admin level)', [
+        ['shield', 'Admin levels', 'Bawat staff ay may sariling admin ID. Ang Level 1 ang nagbibigay ng ID at pumipili kung anong bahagi ang mabubuksan ng Level 2 at Level 3 (Management › Admin access & levels). Lahat maliban sa Level 1-only ang sa Level 2; ang Level 3 ay sa mga bukas sa lahat lang.'],
+        ['user', 'My work page', 'Mag-clock in at out, tingnan ang attendance at payslip, humingi ng Certificate of Employment, palitan ang password.'],
+        ['users', 'Employees at attendance', 'Irehistro ang staff kasama ang SSS, PhilHealth, Pag-IBIG at TIN; itala ang time in/out, late, undertime, leave, absent at aprubadong overtime; itala ang resignation kasama ang final pay.'],
+        ['wallet', 'Payroll at BIR', 'Kinukuwenta mula sa attendance ang SSS, PhilHealth, Pag-IBIG at withholding tax. I-approve, markahang paid, saka i-print ang payslip, 1601-C worksheet, contribution list, 2316 at alphalist (print o Excel).'],
+        ['doc', 'HR documents', 'Mag-issue ng employee ID at Certificate of Employment na may control number; dito lumalabas ang mga request ng staff.'],
+        ['chart', 'Expenses, revenue at ledger', 'Itala ang gastos ng kumpanya (may VAT at EWT) at ibang kita. Ang platform fees, payouts at refunds ay galing sa Accounts receivable at payable, kaya may profit and loss, kabuuang lumabas na pera at cash book.']]]
     ]
   };
 }
@@ -2715,23 +2772,28 @@ function bizServices(b) {
 
 /* =============== ADMIN CONSOLE =============== */
 function adminPane() {
-  const t = S.admin.tab;
+  if (!admUser()) return admGate();
+  if (!canArea(S.admin.tab)) S.admin.tab = firstArea();
+  const t = S.admin.tab, U = admUser();
   const openLate = S.bookings.filter(b => b.late && !b.late.resolved).length;
   const apps = S.applications.filter(a => a.status === 'pending').length;
   const pendAll = apps + (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info').length;
-  const nav = (id, l, icn, n, cls = 'bad', dup) => `<button data-act="adminTab" data-arg="${id}" ${t === id && !dup ? 'aria-current="page"' : ''} class="${dup ? 'dup' : ''}">${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill ${cls}" style="height:20px">${n}</span>` : ''}</button>`;
-  const GROUP = { members: ['customers', 'providers', 'businesses', 'broadcast'], money: ['ar', 'ap', 'finance', 'promos'], rules: ['settings'] };
+  const nav = (id, l, icn, n, cls = 'bad', dup) => !canArea(id) ? '' : `<button data-act="adminTab" data-arg="${id}" ${t === id && !dup ? 'aria-current="page"' : ''} class="${dup ? 'dup' : ''}">${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill ${cls}" style="height:20px">${n}</span>` : ''}</button>`;
+  const GROUP = { members: ['customers', 'providers', 'businesses', 'broadcast'], money: ['ar', 'ap', 'finance', 'promos'], rules: ['settings'], mgmt: ['me', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access'] };
   const openG = S.admin.groups || (S.admin.groups = isPhone() ? { members: false, money: false, rules: false } : { members: true, money: true, rules: true });
-  const grp = (id, label, inner) => { const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
+  const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, broadcast: admBroadcast, calls: admCalls, finance: admFinance, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
+    <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
     ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
-    ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}</aside><main class="main">${m}</main>${staffCallWin()}${toastsFor('admin', true)}</div>`;
+    ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
+    ${grp('mgmt', '4 · Management', `${nav('me', 'My work page', 'user')}${nav('employees', 'Employees', 'users')}${nav('attendance', 'Attendance', 'clock')}${nav('payroll', 'Payroll & BIR', 'wallet', (S.payrolls || []).filter(r => r.status === 'approved').length, 'accent')}${nav('hrdocs', 'HR documents', 'doc', (S.hrReq || []).filter(r => r.status === 'pending').length, 'accent')}${nav('expenses', 'Expenses', 'receipt')}${nav('revenue', 'Revenue', 'chart')}${nav('ledger', 'Ledger', 'list')}${nav('access', 'Admin access & levels', 'shield')}`)}</aside><main class="main">${mOut}</main>${staffCallWin()}${toastsFor('admin', true)}</div>`;
 }
 function admLive() {
   const groups = [['green', 'On stand-by'], ['yellow', 'Away'], ['red', 'Off today']];
@@ -3514,7 +3576,7 @@ function shell() {
     const pane = r === 'customer' ? custPane() : r === 'provider' ? provPane() : `<div class="webwrap">${r === 'business' ? bizPane() : adminPane()}</div>`;
     const fab = onSplash ? `<button class="fab" style="top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;background:rgba(255,255,255,.14);color:#fff" data-act="demo">${ic('gear', 16)} Demo<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`
       : `<button class="fab" data-act="demo" aria-label="Demo controls: switch app" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`;
-    return `<div class="appshell">${pane}</div>${fab}${demoSheet()}${modal()}`;
+    return `<div class="appshell">${pane}</div>${fab}${demoSheet()}${modal()}${S.role === 'admin' && admUser() ? admDocOv() : ''}`;
   }
   if (S.role === 'both') S.role = 'customer';
   const r = S.role;
@@ -3526,11 +3588,12 @@ function shell() {
   else if (r === 'provider') stage = `<div class="duo"><div class="duo-col">${provPicker()}<div class="device">${provPane()}</div></div></div>`;
   else if (r === 'business') stage = (S.businesses.length > 1 ? `<div class="aspick" style="margin-bottom:12px"><span class="duo-label">Testing as</span>${S.businesses.map(b => `<button data-act="bizAs" data-arg="${b.id}" aria-pressed="${S.biz.id === b.id}">${bizLogo(b, 22, 6, 12, false)} ${esc(b.name)}</button>`).join('')}</div>` : '') + bizPane();
   else stage = adminPane();
+  const docOv = S.role === 'admin' && admUser() ? admDocOv() : '';
   return `<header class="topbar"><div class="topbar-in">
       <button class="brand" data-act="goHome" aria-label="Ticktap · home"><span class="brand-logo">${brandPic(LOGO_T, LOGO_D, 'Ticktap')}</span><small>test build</small></button>
       <nav class="seg" aria-label="View">${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
       <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
-    </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}`;
+    </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}${docOv}`;
 }
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
 
@@ -3948,6 +4011,720 @@ function callScreen(role) {
   return `<div class="callscreen" data-ov="call-${k}"><div class="col" style="align-items:center;gap:12px;margin-top:12%">${pic}<b style="font-size:24px">${esc(who)}</b><span class="small" style="opacity:.8">${status}</span><span class="tiny" style="opacity:.55">${b.id} · in-app voice · your number stays private</span></div><div class="row" style="gap:44px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
 }
 
+/*MGMT-BEGIN*/
+/* =============== 4 · Management: admin levels, employees, attendance, PH payroll & BIR, HR documents, expenses, revenue, ledger =============== */
+const pad2 = n => String(n).padStart(2, '0');
+const hm = s => { const m = /^(\d{1,2}):(\d{2})/.exec(s || ''); return m ? +m[1] * 60 + +m[2] : null; };
+const r2 = v => Math.round(((+v || 0) + Number.EPSILON) * 100) / 100;
+const fmtYmd = d => d ? new Date(dayTs(d)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+const fmtLong = d => d ? new Date(dayTs(d)).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : '';
+const monLbl = ym => new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+const sumBy = (a, f) => a.reduce((t, x) => t + (typeof f === 'string' ? +x[f] || 0 : f(x)), 0);
+const mid = d => dayTs(d) + 12 * HOUR;
+
+/* ---------- admin levels and areas ---------- */
+const MG_AREAS = [
+  ['Monitor now', [['overview', 'Overview'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
+  ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['broadcast', 'Messages & notice board']]],
+  ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
+  ['3 · Rules & settings', [['settings', 'Rules & settings']]],
+  ['4 · Management', [['employees', 'Employees'], ['attendance', 'Attendance'], ['payroll', 'Payroll & BIR · 1601-C, 2316, alphalist'], ['hrdocs', 'HR documents · ID, COE'], ['expenses', 'Expenses'], ['revenue', 'Revenue'], ['ledger', 'Ledger · P&L and cash book'], ['access', 'Admin access & levels']]]
+];
+const PERM_DEF = { overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
+const PERM_TXT = { 1: 'Level 1 only', 2: 'Levels 1–2', 3: 'All levels' };
+function permOf(a) { if (a === 'finance') a = 'ap'; if (a === 'me' || a === 'guide') return 3; if (a === 'access') return 1; const p = (S.settings.perm || {})[a]; return [1, 2, 3].includes(+p) ? +p : (PERM_DEF[a] || 3); }
+const emps = () => S.employees || [];
+const emp = id => emps().find(e => e.id === id);
+function admUser() {
+  const s = S.admSess, u = s && emp(s.eid);
+  if (u && u.adminId && +u.level && u.status === 'active' && !u.adminOff) return u;
+  if (SYNC.mode !== 'live' && !S.admSignedOut) { const o = emps().find(e => +e.level === 1 && e.adminId && e.status === 'active' && !e.adminOff); if (o) { S.admSess = { eid: o.id, at: Date.now(), auto: true }; return o; } }
+  return null;
+}
+const admLevel = () => { const u = admUser(); return u ? +u.level || 0 : 0; };
+const canArea = a => { const l = admLevel(); return l > 0 && l <= permOf(a); };
+const ACT_AREA = [[/^emp[A-Z]/, 'employees'], [/^att[A-Z]/, 'attendance'], [/^pr[A-Z]/, 'payroll'], [/^doc[A-Z]/, 'hrdocs'], [/^exp[A-Z]/, 'expenses'], [/^rev[A-Z]/, 'revenue'], [/^led[A-Z]/, 'ledger'], [/^acc[A-Z]/, 'access']];
+function actAllowed(name) { if (S.role !== 'admin') return true; const m = ACT_AREA.find(([re]) => re.test(name)); return !m || canArea(m[1]); }
+function admLog(what) { if (!Array.isArray(S.admLog)) S.admLog = []; const u = admUser(); S.admLog.unshift({ id: 'lg' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), at: now(), by: u ? u.name + ' (' + u.adminId + ')' : 'system', what }); if (S.admLog.length > 300) S.admLog.length = 300; }
+
+/* ---------- company, holidays, pay settings ---------- */
+const CO_DEF = { name: 'Ticktap, Inc.', tin: '[Company TIN]', rdo: '[RDO code]', address: '[Registered business address]', sss: '[SSS employer no.]', phic: '[PhilHealth employer no.]', hdmf: '[Pag-IBIG employer no.]', sign: 'Patricia Gomez', signTitle: 'Finance & HR Manager', phone: '+63 2 8888 2254', email: '[HR email]' };
+const CO = () => Object.assign({}, CO_DEF, S.settings.company || {});
+const HOL_DEF = [['2026-01-01', "New Year's Day", 'regular'], ['2026-02-17', 'Chinese New Year', 'special'], ['2026-04-02', 'Maundy Thursday', 'regular'], ['2026-04-03', 'Good Friday', 'regular'], ['2026-04-04', 'Black Saturday', 'special'], ['2026-04-09', 'Araw ng Kagitingan', 'regular'], ['2026-05-01', 'Labor Day', 'regular'], ['2026-06-12', 'Independence Day', 'regular'], ['2026-08-21', 'Ninoy Aquino Day', 'special'], ['2026-08-31', 'National Heroes Day', 'regular'], ['2026-11-01', "All Saints' Day", 'special'], ['2026-11-30', 'Bonifacio Day', 'regular'], ['2026-12-08', 'Immaculate Conception', 'special'], ['2026-12-24', 'Christmas Eve', 'special'], ['2026-12-25', 'Christmas Day', 'regular'], ['2026-12-30', 'Rizal Day', 'regular'], ['2026-12-31', 'Last day of the year', 'special']].map(([d, n, t]) => ({ d, n, t }));
+const HOLS = () => Array.isArray(S.settings.holidays) ? S.settings.holidays : HOL_DEF;
+const holOf = d => HOLS().find(h => h.d === d) || null;
+const PAYSET = () => Object.assign({ freq: 'semi', grace: 5 }, S.settings.pay || {});
+const GOV = () => ((S.fin || {}).gov) || {};
+const GOVN = { sss: 'SSS contributions (R-3)', phic: 'PhilHealth premiums (RF-1)', hdmf: 'Pag-IBIG contributions (MCRF)', bir: 'BIR 1601-C · tax withheld on compensation' };
+
+/* ---------- Philippine statutory rates (2025–2026) ---------- */
+const PH = {
+  sss: c => { const msc = c < 5250 ? 5000 : c >= 34750 ? 35000 : 5500 + 500 * Math.floor((c - 5250) / 500); return { msc, ee: msc * .05, er: msc * .10, ec: msc < 15000 ? 10 : 30 }; },
+  phic: c => { const b = Math.min(100000, Math.max(10000, c)); return { base: b, ee: b * .025, er: b * .025 }; },
+  hdmf: c => { const b = Math.min(10000, c); return { ee: b * (c <= 1500 ? .01 : .02), er: b * .02 }; },
+  taxMonthly: x => x <= 20833 ? 0 : x <= 33332 ? (x - 20833) * .15 : x <= 66666 ? 1875 + (x - 33333) * .20 : x <= 166666 ? 8541.80 + (x - 66667) * .25 : x <= 666666 ? 33541.80 + (x - 166667) * .30 : 183541.80 + (x - 666667) * .35,
+  taxSemi: x => x <= 10417 ? 0 : x <= 16666 ? (x - 10417) * .15 : x <= 33332 ? 937.50 + (x - 16667) * .20 : x <= 83332 ? 4270.70 + (x - 33333) * .25 : x <= 333332 ? 16770.70 + (x - 83333) * .30 : 91770.70 + (x - 333333) * .35,
+  taxAnnual: x => x <= 250000 ? 0 : x <= 400000 ? (x - 250000) * .15 : x <= 800000 ? 22500 + (x - 400000) * .20 : x <= 2000000 ? 102500 + (x - 800000) * .25 : x <= 8000000 ? 402500 + (x - 2000000) * .30 : 2202500 + (x - 8000000) * .35,
+  EXEMPT13: 90000
+};
+
+/* ---------- employees, time, pay periods ---------- */
+const empActiveOn = (e, d) => e.hired <= d && (!e.sepDate || d <= e.sepDate);
+const shiftOf = e => ({ in: e.shiftIn || '09:00', out: e.shiftOut || '18:00' });
+const isWorkday = (e, d) => { const w = new Date(dayTs(d)).getDay(); return w !== 0 && (+e.days === 6 || w !== 6); };
+const rates = e => { const f = +e.days === 6 ? 313 : 261; const daily = e.payType === 'daily' ? +e.rate : +e.rate * 12 / f; const monthly = e.payType === 'daily' ? +e.rate * f / 12 : +e.rate; return { f, daily, hourly: daily / 8, monthly }; };
+function perRange(per) {
+  const [y, m, h] = per.split('-'); const last = new Date(+y, +m, 0).getDate();
+  return { per, y: +y, m: +m, h, ym: y + '-' + m, semi: h !== 'M', from: `${y}-${m}-${h === 'B' ? '16' : '01'}`, to: `${y}-${m}-${h === 'A' ? '15' : pad2(last)}`, label: (h === 'A' ? '1–15 ' : h === 'B' ? '16–' + last + ' ' : '') + monLbl(y + '-' + m) };
+}
+const perLbl = r => r.kind === '13th' ? '13th month · ' + r.per.slice(0, 4) : perRange(r.per).label;
+function daysIn(from, to) { const out = []; for (let t = dayTs(from); t <= dayTs(to); t += DAY) out.push(ymd(t + 3 * HOUR)); return out; }
+function curPer(t) { const d = ymd(t || now()); return PAYSET().freq === 'monthly' ? d.slice(0, 7) + '-M' : d.slice(0, 7) + (+d.slice(8) <= 15 ? '-A' : '-B'); }
+function perList() { const out = [], f = PAYSET().freq, cur = curPer(); for (let m = 0; m < 12; m++) { const ym = '2026-' + pad2(m + 1); if (f === 'monthly') out.push(ym + '-M'); else out.push(ym + '-A', ym + '-B'); } if (!out.includes(cur)) out.push(cur); return out.filter(p => p <= cur || p === nextPer(cur)); }
+function nextPer(p) { const r = perRange(p); if (r.h === 'A') return r.ym + '-B'; const d = new Date(r.y, r.m, 1); const ym = d.getFullYear() + '-' + pad2(d.getMonth() + 1); return ym + (r.h === 'M' ? '-M' : '-A'); }
+function attMap() { const m = {}; (S.attendance || []).forEach(r => { m[r.eid + '|' + r.date] = r; }); return m; }
+function attCalc(e, r) {
+  const sh = shiftOf(e), g = +PAYSET().grace || 0, i = hm(r.in), o = hm(r.out);
+  const L = i != null ? i - hm(sh.in) : 0, late = L > g ? L : 0;
+  const ut = o != null ? Math.max(0, hm(sh.out) - o) : 0;
+  const worked = i != null && o != null ? Math.max(0, (o - i) / 60 - 1) : 8;
+  return { late, ut, worked };
+}
+const runsAll = () => (S.payrolls || []).filter(r => r.status === 'approved' || r.status === 'paid');
+function ytdOf(eid, y, before) {
+  const o = { gross: 0, earned: 0, taxable: 0, tax: 0, contrib: 0, sss: 0, phic: 0, hdmf: 0, allow: 0, th13: 0, smw: 0, mwePrem: 0, prem: 0, otPay: 0, ndPay: 0, net: 0, basic: 0 };
+  runsAll().filter(r => r.per.startsWith(String(y)) && (!before || r.per < before)).forEach(r => r.lines.filter(l => l.eid === eid).forEach(l => {
+    if (r.kind === '13th') { o.th13 += l.amount; o.tax += l.tax || 0; o.taxable += l.taxable || 0; o.net += l.net || l.amount; return; }
+    o.gross += l.gross; o.earned += l.earned; o.taxable += l.taxable; o.tax += l.tax; o.contrib += l.sss + l.phic + l.hdmf; o.sss += l.sss; o.phic += l.phic; o.hdmf += l.hdmf; o.allow += l.allow; o.prem += l.prem; o.otPay += l.otPay; o.ndPay += l.ndPay; o.net += l.net;
+    if (l.mwe) { o.smw += l.earned; o.mwePrem += l.prem + l.otPay + l.ndPay; } else o.basic += l.earned;
+  }));
+  return o;
+}
+function payCalc(e, R, opt = {}) {
+  const rt = rates(e), M = opt.att || attMap(), today = ymd(now()), mo = e.payType !== 'daily';
+  const k = { expected: 0, present: 0, absent: 0, paidLeave: 0, unpaidLeave: 0, noRec: 0, projected: 0, late: 0, ut: 0, ot: 0, otRest: 0, otSpec: 0, otHol: 0, hRest: 0, hSpec: 0, hHol: 0, nd: 0, holPaid: 0, holWd: 0 };
+  let full = R.h !== 'F';
+  daysIn(R.from, R.to).forEach(d => {
+    if (!empActiveOn(e, d)) { full = false; return; }
+    const hol = holOf(d), wd = isWorkday(e, d), r = M[e.id + '|' + d], worked = r && (r.type === 'work' || r.type === 'half');
+    if (hol) {
+      if (wd) k.holWd++;
+      if (worked) { const c = attCalc(e, r), h = Math.min(8, c.worked); if (hol.t === 'regular') { k.hHol += h; k.otHol += +r.ot || 0; } else { k.hSpec += h; k.otSpec += +r.ot || 0; } k.nd += +r.nd || 0; }
+      else if (hol.t === 'regular' && wd) k.holPaid++;
+      return;
+    }
+    if (!wd) { if (worked) { const c = attCalc(e, r); k.hRest += Math.min(8, c.worked); k.otRest += +r.ot || 0; k.nd += +r.nd || 0; } return; }
+    k.expected++;
+    if (!r) { if (d > today || opt.assume) { k.present++; if (d > today) k.projected++; } else { k.noRec++; k.absent++; } return; }
+    if (r.type === 'work') { const c = attCalc(e, r); k.present++; k.late += c.late; k.ut += c.ut; k.ot += +r.ot || 0; k.nd += +r.nd || 0; }
+    else if (r.type === 'half') { k.present += .5; k.absent += .5; k.ot += +r.ot || 0; }
+    else if (r.type === 'leave') { if (r.paid) k.paidLeave++; else k.unpaidLeave++; }
+    else k.absent++;
+  });
+  const daily = rt.daily, hourly = rt.hourly;
+  const basic = mo ? (full ? (R.semi ? rt.monthly / 2 : rt.monthly) : daily * (k.expected + k.holWd)) : daily * (k.present + k.paidLeave + k.holPaid);
+  const absDed = mo ? (k.absent + k.unpaidLeave) * daily : 0;
+  const lateDed = (k.late + k.ut) / 60 * hourly;
+  const earned = Math.max(0, basic - absDed - lateDed);
+  const prem = k.hRest * hourly * 1.30 + k.hSpec * hourly * (mo ? .30 : 1.30) + k.hHol * hourly * (mo ? 1.00 : 2.00);
+  const otPay = k.ot * hourly * 1.25 + (k.otRest + k.otSpec) * hourly * 1.69 + k.otHol * hourly * 2.60;
+  const ndPay = k.nd * hourly * .10;
+  const gross = earned + prem + otPay + ndPay;
+  const div = R.semi ? 2 : 1, s = PH.sss(rt.monthly), p = PH.phic(rt.monthly), h = PH.hdmf(rt.monthly);
+  const live = gross > 0 ? 1 : 0;
+  const eeS = s.ee / div * live, eeP = p.ee / div * live, eeH = h.ee / div * live, contrib = eeS + eeP + eeH;
+  const taxable = e.mwe ? 0 : Math.max(0, gross - contrib);
+  let tax = e.mwe ? 0 : (R.semi ? PH.taxSemi(taxable) : PH.taxMonthly(taxable)), annual = false;
+  if (R.m === 12 && R.h !== 'A' && R.h !== 'F' && !e.mwe && !opt.noAnnual) {
+    const y = ytdOf(e.id, R.y, R.per); const ex13 = Math.max(0, y.th13 - PH.EXEMPT13);
+    tax = PH.taxAnnual(y.taxable + taxable + ex13) - y.tax; annual = true;
+  }
+  const allow = (+e.allow || 0) / div * live, loan = (+e.loan || 0) / div * live;
+  const net = gross + allow - contrib - tax - loan;
+  return { eid: e.id, name: e.name, no: e.no, pos: e.pos, tin: e.tin || '', mwe: !!e.mwe, payType: e.payType, rate: +e.rate, k, basic: r2(basic), absDed: r2(absDed), lateDed: r2(lateDed), earned: r2(earned), prem: r2(prem), otPay: r2(otPay), ndPay: r2(ndPay), gross: r2(gross), msc: s.msc, sss: r2(eeS), phic: r2(eeP), hdmf: r2(eeH), erSss: r2(s.er / div * live), ec: r2(s.ec / div * live), erPhic: r2(p.er / div * live), erHdmf: r2(h.er / div * live), taxable: r2(taxable), tax: r2(tax), annual, allow: r2(allow), loan: r2(loan), net: r2(net) };
+}
+const runOf = per => (S.payrolls || []).find(r => r.per === per && r.kind !== '13th');
+function runLines(per, opt) { const R = perRange(per), M = attMap(); return emps().filter(e => e.hired <= R.to && (!e.sepDate || e.sepDate >= R.from)).map(e => payCalc(e, R, Object.assign({ att: M }, opt || {}))); }
+const linesOfMonth = ym => runsAll().filter(r => r.kind !== '13th' && r.per.startsWith(ym)).flatMap(r => r.lines);
+function th13Of(e, y) { const yt = ytdOf(e.id, y); return { earned: yt.earned, due: r2(yt.earned / 12), paid: r2(yt.th13) }; }
+function finalPay(e) {
+  if (!e.sepDate) return null;
+  const y = +e.sepDate.slice(0, 4);
+  const last = runsAll().filter(r => r.kind !== '13th' && r.lines.some(l => l.eid === e.id)).map(r => perRange(r.per)).sort((a, b) => a.to < b.to ? 1 : -1)[0];
+  const from = last ? ymd(dayTs(last.to) + DAY + 3 * HOUR) : e.hired;
+  const unpaid = from <= e.sepDate ? payCalc(e, { per: 'F', y, m: +e.sepDate.slice(5, 7), h: 'F', semi: true, from, to: e.sepDate, label: 'Final period' }, { noAnnual: true }) : null;
+  const yt = ytdOf(e.id, y);
+  const earnedY = yt.earned + (unpaid ? unpaid.earned : 0);
+  const th13 = r2(Math.max(0, earnedY / 12 - yt.th13));
+  const yrs = (dayTs(e.sepDate) - dayTs(e.hired)) / (365 * DAY);
+  const used = (S.attendance || []).filter(r => r.eid === e.id && r.type === 'leave' && r.paid && r.date.startsWith(String(y))).length;
+  const silDays = yrs >= 1 ? Math.max(0, 5 - used) : 0, silPay = r2(silDays * rates(e).daily);
+  const taxDue = e.mwe ? 0 : PH.taxAnnual(yt.taxable + (unpaid ? unpaid.taxable : 0) + Math.max(0, yt.th13 + th13 - PH.EXEMPT13));
+  const taxAdj = r2(taxDue - yt.tax);
+  const ded = +e.finalDed || 0;
+  const salaryNet = unpaid ? r2(unpaid.gross + unpaid.allow - unpaid.sss - unpaid.phic - unpaid.hdmf - unpaid.loan) : 0;
+  const net = r2(salaryNet + th13 + silPay - taxAdj - ded);
+  return { from, to: e.sepDate, unpaid, th13, silDays, silPay, taxDue: r2(taxDue), taxWithheld: r2(yt.tax), taxAdj, ded, salaryNet, net, releaseBy: ymd(dayTs(e.sepDate) + 30 * DAY + 3 * HOUR), yrs };
+}
+
+/* ---------- money: revenue, expenses, ledger ---------- */
+const EX_CATS = ['Rent', 'Utilities (power, water)', 'Internet & telephone', 'Cloud & software', 'SMS & email gateway', 'Payment processing fees', 'Marketing & advertising', 'Professional fees', 'Transportation & travel', 'Office supplies', 'Repairs & maintenance', 'Meals & representation', 'Insurance', 'Taxes & licenses', 'Training & recruitment', 'Other'];
+const EWT_OPTS = [[0, 'None'], [1, '1% · goods (top withholding agent)'], [2, '2% · services (top withholding agent)'], [5, '5% · rent / professional (individual)'], [10, '10% · professional fees'], [15, '15% · professional fees (over ₱720k)']];
+const IN_SRC = ['Interest income', 'Advertising & sponsorship', 'Partner / listing fee', 'Other income'];
+const inRange = (d, from, to) => d >= from && d <= to;
+function moneyOf(from, to) {
+  const inT = t => t && inRange(ymd(t), from, to);
+  const done = S.bookings.filter(b => b.ledger && !b.refunded && inT(b.endedAt));
+  const fees = sumBy(done, b => b.ledger.fee), gmv = sumBy(done, 'gross');
+  const canc = S.bookings.filter(b => b.refund && +b.refund.fee > 0 && inT(b.refund.at || b.cancelledAt));
+  const cancel = sumBy(canc, b => +b.refund.fee);
+  const other = (S.incomes || []).filter(x => inRange(x.date, from, to)), otherT = sumBy(other, 'amount');
+  const points = sumBy(done.filter(b => b.cashPaid != null && b.cashPaid < b.gross), b => b.gross - b.cashPaid);
+  const runs = runsAll().filter(r => { const d = r.kind === '13th' ? r.per.slice(0, 4) + '-12-20' : perRange(r.per).to; return inRange(d, from, to); });
+  const reg = runs.filter(r => r.kind !== '13th').flatMap(r => r.lines), t13 = runs.filter(r => r.kind === '13th').flatMap(r => r.lines);
+  const salaries = sumBy(reg, 'gross'), allow = sumBy(reg, 'allow'), er = sumBy(reg, l => l.erSss + l.ec + l.erPhic + l.erHdmf), th13 = sumBy(t13, 'amount');
+  const exps = (S.expenses || []).filter(x => inRange(x.date, from, to)); const byCat = {}; exps.forEach(x => { byCat[x.cat] = (byCat[x.cat] || 0) + +x.amount; });
+  const opex = sumBy(exps, 'amount');
+  const revenue = fees + cancel + otherT, expense = salaries + allow + er + th13 + opex + points;
+  // cash out linked from Accounts payable
+  const payouts = sumBy(S.bookings.filter(b => b.ledger && b.ledger.paidAt && inT(b.ledger.paidAt)), b => b.ledger.net);
+  const refunds = sumBy(S.bookings.filter(b => b.refund && b.refund.sentAt && inT(b.refund.sentAt)), b => b.refund.amount);
+  const whtRem = sumBy(Object.entries((S.fin || {}).remit || {}).filter(([k, r]) => inT(r.at)), ([k]) => whtOfMonth(k));
+  return { from, to, done, fees, gmv, cancel, other, otherT, points, salaries, allow, er, th13, byCat, opex, exps, revenue, expense, net: revenue - expense, payouts, refunds, whtRem, apOut: payouts + refunds + whtRem, totalOut: opex + salaries + allow + er + th13 + payouts + refunds + whtRem };
+}
+const whtOfMonth = k => sumBy(S.bookings.filter(b => b.ledger && !b.refunded && b.endedAt && ymd(b.endedAt).startsWith(k)), b => b.ledger.wht) + sumBy((S.expenses || []).filter(x => x.date.startsWith(k)), 'ewt');
+function cashEntries() {
+  const E = [];
+  S.bookings.forEach(b => {
+    if (b.paidAt) E.push({ t: b.paidAt, ref: b.id, desc: 'Customer payment · ' + b.customer, acct: 'Customer collections', inn: b.cashPaid != null ? b.cashPaid : b.gross, out: 0 });
+    if (b.refund && b.refund.sentAt) E.push({ t: b.refund.sentAt, ref: b.id, desc: 'Refund · ' + b.customer, acct: 'Customer refunds (AP)', inn: 0, out: b.refund.amount });
+    if (b.ledger && b.ledger.paidAt) E.push({ t: b.ledger.paidAt, ref: b.ledger.paidRef || b.id, desc: 'Payout · ' + b.ledger.payeeName + ' · ' + b.id, acct: 'Provider & business payouts (AP)', inn: 0, out: b.ledger.net });
+  });
+  Object.entries((S.fin || {}).remit || {}).forEach(([k, r]) => { const a = whtOfMonth(k); if (a) E.push({ t: r.at, ref: r.ref || '0619-E ' + k, desc: 'BIR 0619-E · tax withheld from payees and suppliers · ' + monLbl(k), acct: 'Taxes remitted (AP)', inn: 0, out: a }); });
+  (S.expenses || []).forEach(x => { if (x.status === 'paid') E.push({ t: mid(x.paidOn || x.date), ref: x.ref || x.id, desc: x.cat + ' · ' + x.payee, acct: 'Operating expenses', inn: 0, out: r2(x.amount - (x.ewt || 0)) }); });
+  (S.incomes || []).forEach(x => E.push({ t: mid(x.date), ref: x.ref || x.id, desc: x.src + (x.desc ? ' · ' + x.desc : ''), acct: 'Other income', inn: +x.amount, out: 0 }));
+  (S.payrolls || []).forEach(r => { if (r.paidAt) E.push({ t: r.paidAt, ref: r.ref || r.id, desc: 'Net pay · ' + perLbl(r) + ' · ' + r.lines.length + ' employees', acct: 'Payroll', inn: 0, out: r2(sumBy(r.lines, 'net')) }); });
+  Object.entries(GOV()).forEach(([ym, g]) => { const L = linesOfMonth(ym); ['sss', 'phic', 'hdmf', 'bir'].forEach(k => { const r = g[k]; if (!r) return; const a = k === 'sss' ? sumBy(L, l => l.sss + l.erSss + l.ec) : k === 'phic' ? sumBy(L, l => l.phic + l.erPhic) : k === 'hdmf' ? sumBy(L, l => l.hdmf + l.erHdmf) : sumBy(L, 'tax'); if (a) E.push({ t: r.at, ref: r.ref || k.toUpperCase() + ' ' + ym, desc: GOVN[k] + ' · ' + monLbl(ym), acct: k === 'bir' ? 'Taxes remitted' : 'Government contributions', inn: 0, out: r2(a) }); }); });
+  return E.sort((a, b) => a.t - b.t);
+}
+
+/* ---------- seed data (fictional demo employees) ---------- */
+function seedHR() {
+  const mk = (id, o) => { const salt = 'seed-' + id; return Object.assign({ id, status: 'active', days: 5, shiftIn: '09:00', shiftOut: '18:00', payType: 'monthly', mwe: false, allow: 2000, loan: 0, type: 'Regular', gender: '', civil: 'Single', salt, pw: o.adminId ? hashPw(DEMO_PW, salt) : '', level: 0, photo: '' }, o); };
+  S.employees = [
+    mk('E001', { no: 'TT-2026-001', last: 'Reyes', first: 'Daniel', mid: 'Santos', name: 'Daniel S. Reyes', pos: 'Operations Director', dept: 'Management', hired: '2026-01-05', rate: 120000, allow: 3000, tin: '301-552-118-000', sss: '34-5678901-2', phic: '12-050123456-7', hdmf: '1212-3456-7890', birth: '1984-03-14', gender: 'male', civil: 'Married', phone: '+63 917 800 2101', email: 'daniel.reyes@example.com', address: 'Salcedo Village, Makati City', emer: 'Liza Reyes · +63 917 800 2199', adminId: 'admin1', level: 1, bank: 'BPI ****2101' }),
+    mk('E002', { no: 'TT-2026-002', last: 'Gomez', first: 'Patricia', mid: 'Lim', name: 'Patricia L. Gomez', pos: 'Finance & HR Manager', dept: 'Finance', hired: '2026-02-02', rate: 65000, tin: '412-337-905-000', sss: '33-9012345-6', phic: '12-050987654-3', hdmf: '1212-9876-5432', birth: '1988-09-02', gender: 'female', phone: '+63 917 800 2102', email: 'patricia.gomez@example.com', address: 'Kapitolyo, Pasig City', emer: 'Ana Gomez · +63 917 800 2198', adminId: 'admin2', level: 2, bank: 'BDO ****2102' }),
+    mk('E003', { no: 'TT-2026-003', last: 'Villanueva', first: 'Mark', mid: 'Cruz', name: 'Mark C. Villanueva', pos: 'Customer Support Associate', dept: 'Operations', hired: '2026-06-01', rate: 24000, shiftIn: '08:00', shiftOut: '17:00', tin: '508-114-226-000', sss: '35-1122334-4', phic: '12-051122334-5', hdmf: '1213-1122-3344', birth: '1997-11-20', gender: 'male', phone: '+63 917 800 2103', email: 'mark.villanueva@example.com', address: 'Sampaloc, Manila', emer: 'Rosa Villanueva · +63 917 800 2197', adminId: 'admin3', level: 3, bank: 'GCash 0917 800 2103' }),
+    mk('E004', { no: 'TT-2026-004', last: 'Lim', first: 'Joanna', mid: 'Tan', name: 'Joanna T. Lim', pos: 'Provider Verification Officer', dept: 'Operations', hired: '2026-07-15', rate: 22000, type: 'Probationary', tin: '519-660-731-000', sss: '35-2233445-5', phic: '12-052233445-6', hdmf: '1213-2233-4455', birth: '1999-05-08', gender: 'female', phone: '+63 917 800 2104', email: 'joanna.lim@example.com', address: 'Cubao, Quezon City', emer: 'Ben Lim · +63 917 800 2196', bank: 'GCash 0917 800 2104' }),
+    mk('E005', { no: 'TT-2026-005', last: 'Bautista', first: 'Ramon', mid: 'Dela Cruz', name: 'Ramon D. Bautista', pos: 'Field Coordinator', dept: 'Operations', hired: '2026-08-01', payType: 'daily', rate: 695, mwe: true, days: 6, allow: 0, type: 'Probationary', tin: '', sss: '35-3344556-6', phic: '12-053344556-7', hdmf: '1213-3344-5566', birth: '2000-01-30', gender: 'male', phone: '+63 917 800 2105', email: '', address: 'Tondo, Manila', emer: 'Maria Bautista · +63 917 800 2195', bank: 'GCash 0917 800 2105' }),
+    mk('E006', { no: 'TT-2026-006', last: 'Santos', first: 'Kristine', mid: 'Ramos', name: 'Kristine R. Santos', pos: 'Marketing Associate', dept: 'Marketing', hired: '2026-03-02', rate: 28000, tin: '477-201-883-000', sss: '34-4455667-7', phic: '12-054455667-8', hdmf: '1213-4455-6677', birth: '1996-07-17', gender: 'female', phone: '+63 917 800 2106', email: 'kristine.santos@example.com', address: 'Mandaluyong City', emer: 'Joy Santos · +63 917 800 2194', status: 'resigned', sepType: 'Resignation', sepDate: '2026-10-15', sepReason: 'Moving abroad', bank: 'BPI ****2106' })
+  ];
+  // attendance October 1 – November 2, 2026
+  const A = [], rnd = s => { let h = 2166136261; for (const c of s) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995); h ^= h >>> 15; return ((h >>> 0) % 10000) / 10000; };
+  const tt = m => pad2(Math.floor(m / 60)) + ':' + pad2(m % 60);
+  S.employees.forEach(e => daysIn('2026-10-01', '2026-11-02').forEach(d => {
+    if (!empActiveOn(e, d) || !isWorkday(e, d) || holOf(d)) return;
+    const x = rnd(e.id + d), sh = shiftOf(e), id = e.id + '_' + d;
+    if (e.id === 'E003' && d === '2026-10-14') return A.push({ id, eid: e.id, date: d, type: 'leave', leave: 'Sick leave', paid: true, note: 'Fever · medical certificate' });
+    if (e.id === 'E005' && d === '2026-10-20') return A.push({ id, eid: e.id, date: d, type: 'absent', note: 'No call, no show' });
+    if (e.id === 'E004' && d === '2026-10-23') return A.push({ id, eid: e.id, date: d, type: 'half', in: sh.in, out: '13:00', note: 'Half day · personal errand' });
+    if (d === '2026-11-02') return A.push({ id, eid: e.id, date: d, type: 'work', in: tt(hm(sh.in) - 6 + Math.round(x * 9)), out: '', ot: 0, note: '' });
+    const late = x > .86 ? 8 + Math.round(x * 20) : 0, early = x < .05 ? 45 : 0, ot = x > .45 && x < .58 ? (x < .5 ? 2 : 1) : 0;
+    A.push({ id, eid: e.id, date: d, type: 'work', in: tt(hm(sh.in) - 8 + Math.round(x * 6) + late), out: tt(hm(sh.out) - early + ot * 60 + Math.round(x * 4)), ot, nd: 0, note: early ? 'Left early (undertime)' : ot ? 'Approved overtime' : '' });
+  }));
+  S.attendance = A;
+  // approved runs January – October (earlier months imported as full attendance), paid on schedule
+  S.payrolls = []; const M = attMap();
+  for (let m = 1; m <= 10; m++) ['A', 'B'].forEach(h => {
+    const per = '2026-' + pad2(m) + '-' + h, R = perRange(per);
+    const lines = S.employees.filter(e => e.hired <= R.to && (!e.sepDate || e.sepDate >= R.from)).map(e => payCalc(e, R, { att: M, assume: m < 10 }));
+    if (!lines.length) return;
+    const paidAt = dayTs(h === 'A' ? R.ym + '-15' : R.to) + 15 * HOUR;
+    S.payrolls.push({ id: 'PR-' + per, per, kind: 'regular', status: 'paid', lines, at: paidAt - 2 * DAY, by: 'Patricia L. Gomez', approvedBy: 'Daniel S. Reyes', paidAt, ref: 'BPI-PAY-' + per.replace(/-/g, '') });
+  });
+  S.fin = S.fin || { remit: {}, filed: {}, issued: {}, ref: '' };
+  S.fin.gov = {}; for (let m = 1; m <= 9; m++) { const ym = '2026-' + pad2(m), at = dayTs(ym + '-10') + 32 * DAY; S.fin.gov[ym] = { sss: { at, ref: 'SSS-PRN-' + m }, phic: { at, ref: 'PHIC-' + m }, hdmf: { at, ref: 'HDMF-' + m }, bir: { at, ref: '1601C-' + m } }; }
+  // operating expenses September – November
+  const ex = []; let n = 0;
+  const X = (date, cat, payee, desc, amount, o = {}) => { const vat = o.vat ? r2(amount * 12 / 112) : 0, ewt = o.ewt ? r2((amount - vat) * o.ewt / 100) : 0; ex.push(Object.assign({ id: 'EX-' + (1001 + n++), date, cat, payee, tin: o.tin || '', desc, amount, vatIn: vat, ewtRate: o.ewt || 0, ewt, method: o.method || 'Bank transfer', ref: o.ref || '', status: o.status || 'paid', paidOn: date, by: 'Patricia L. Gomez' }, o.x || {})); };
+  ['2026-09', '2026-10', '2026-11'].forEach((ym, i) => {
+    const cur = ym === '2026-11';
+    X(ym + '-01', 'Rent', 'Makati Office Suites Corp.', 'Office rent · ' + monLbl(ym), 35000, { vat: true, ewt: 5, tin: '005-111-222-000', ref: 'SI-' + (4401 + i) });
+    X(ym + '-03', 'Cloud & software', 'Google Cloud (Firebase)', 'Realtime Database, Functions, Hosting', 2850 + i * 310, { method: 'Credit card', ref: 'GCP-' + ym });
+    X(ym + '-05', 'Internet & telephone', 'PLDT Inc.', 'Fiber 500 Mbps', 2699, { vat: true, ref: 'PLDT-' + ym });
+    if (!cur) X(ym + '-08', 'SMS & email gateway', 'Semaphore', 'SMS credits', 1500 + i * 500, { method: 'GCash', ref: 'SEM-' + (771 + i) });
+    if (!cur) X(ym + '-10', 'Marketing & advertising', 'Meta Platforms', 'Facebook & Instagram ads · providers recruitment', 15000 + i * 5000, { method: 'Credit card', ref: 'META-' + ym });
+    if (!cur) X(ym + '-12', 'Utilities (power, water)', 'Meralco', 'Electricity', 4800 + i * 260, { vat: true, ref: 'MER-' + ym });
+    if (!cur) X(ym + '-15', 'Professional fees', 'Cruz & Partners CPAs', 'Bookkeeping and tax compliance retainer', 12000, { vat: true, ewt: 10, tin: '008-765-432-000', ref: 'OR-' + (2101 + i) });
+    if (!cur) X(ym + '-20', 'Office supplies', 'National Book Store', 'Printer ink, ID card stock, lanyards', 1250 + i * 180, { method: 'Cash', ref: 'OR-NBS' + i });
+    if (ym === '2026-10') X(ym + '-27', 'Training & recruitment', 'JobStreet', 'Job post: Full-stack Firebase developer', 6900, { vat: true, method: 'Credit card', ref: 'JS-1027' });
+    if (cur) X(ym + '-02', 'Taxes & licenses', 'Makati City Hall', "Mayor's permit · quarterly installment", 4500, { status: 'unpaid', ref: '' });
+  });
+  S.expenses = ex.sort((a, b) => a.date < b.date ? 1 : -1);
+  S.incomes = [{ id: 'IN-1001', date: '2026-10-30', src: 'Interest income', desc: 'BPI savings interest (net of final tax)', amount: 41.37, ref: 'BPI-INT-10' }, { id: 'IN-1002', date: '2026-10-18', src: 'Advertising & sponsorship', desc: 'Partner spa feature on home screen · demo', amount: 5000, ref: 'OR-0001' }];
+  S.hrReq = [{ id: 'RQ-1001', eid: 'E003', kind: 'coe', purpose: 'Bank loan application', withPay: true, at: now() - 5 * HOUR, status: 'pending' }];
+  S.hrDocs = [{ id: 'COE-2026-0001', eid: 'E006', kind: 'coe', purpose: 'New employer requirement', withPay: false, at: dayTs('2026-10-16') + 10 * HOUR, by: 'Patricia L. Gomez' }];
+  S.admLog = [];
+  if (!S.settings.perm) S.settings.perm = Object.assign({}, PERM_DEF);
+  if (!S.settings.company) S.settings.company = Object.assign({}, CO_DEF);
+}
+function mgInit() {
+  if (!Array.isArray(S.employees)) seedHR();
+  ['attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'].forEach(k => { if (!Array.isArray(S[k])) S[k] = []; });
+  if (!S.settings.perm) S.settings.perm = Object.assign({}, PERM_DEF);
+  if (!S.settings.company) S.settings.company = Object.assign({}, CO_DEF);
+  if (!S.settings.pay) S.settings.pay = { freq: 'semi', grace: 5 };
+  if (!Array.isArray(S.settings.holidays)) S.settings.holidays = HOL_DEF.map(h => Object.assign({}, h));
+  if (S.fin && !S.fin.gov) S.fin.gov = {};
+  if (S.settings.openCash == null) S.settings.openCash = 5000000;
+  const A0 = S.admin;
+  if (!A0.empF) A0.empF = null; if (!A0.ex) A0.ex = { date: ymd(now()), cat: 'Rent', payee: '', tin: '', desc: '', amount: '', vat: false, ewt: 0, method: 'Bank transfer', ref: '', status: 'paid' };
+  if (!A0.rv) A0.rv = { date: ymd(now()), src: IN_SRC[0], desc: '', amount: '', ref: '' };
+  if (!A0.acc) A0.acc = {};
+  if (!A0.me) A0.me = { purpose: '', withPay: false, old: '', pw1: '', pw2: '' };
+  if (!A0.al) A0.al = { id: '', pw: '' };
+  if (!A0.doc0) A0.doc0 = { eid: '', purpose: 'Bank requirement', withPay: true, year: '2026' };
+  if (!A0.hol) A0.hol = { d: '', n: '', t: 'regular' };
+}
+
+/* ---------- admin sign-in gate ---------- */
+function admGate() {
+  const f = S.admin.al || {};
+  return `<div class="web" data-pane="admin" style="display:grid;place-items:center;padding:24px"><div class="panel" style="width:min(420px,100%)"><div class="panel-b" style="gap:12px">
+    <div class="row" style="gap:10px"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b style="font-size:18px">Ticktap Operations</b><span class="small muted">Admin console · staff sign-in</span></div></div>
+    <label class="field">Admin ID<input id="al-id" class="input" autocomplete="username" data-bind="admin.al.id" value="${esc(f.id || '')}" placeholder="e.g. admin1"></label>
+    <label class="field">Password<input id="al-pw" class="input" type="password" autocomplete="current-password" data-bind="admin.al.pw" data-enter="admLogin" value="${esc(f.pw || '')}"></label>
+    ${S.admin.alErr ? `<span class="small" style="color:var(--bad)">${esc(S.admin.alErr)}</span>` : ''}
+    <button class="btn primary block" data-act="admLogin">Sign in</button>
+    <span class="tiny muted">Admin IDs are issued by a Level 1 administrator in Management › Admin access & levels. What you can open depends on your level.</span>
+    <div class="card tight" style="background:var(--surface-2,var(--surface-3));border-color:transparent;gap:4px"><b class="small">Demo IDs · password ${DEMO_PW}</b><span class="tiny mono">admin1 · Level 1 &nbsp; admin2 · Level 2 &nbsp; admin3 · Level 3</span></div>
+  </div></div></div>`;
+}
+
+/* ---------- pages ---------- */
+const mgH = (t, p) => `<div class="page-h"><div><h1>${t}</h1><p>${p}</p></div></div>`;
+const mgKpi = (l, v, cls = '') => `<div class="kpi ${cls}"><span class="l">${l}</span><span class="v">${v}</span></div>`;
+const docBtn = (k, a, l, cls = 'secondary') => `<button class="btn ${cls} xs" data-act="mgDoc" data-arg="${esc(k + '|' + a)}">${l}</button>`;
+const empPhoto = (e, n = 36) => e.photo ? `<img src="${e.photo}" alt="" style="width:${n}px;height:${n}px;border-radius:50%;object-fit:cover;flex-shrink:0">` : avatar(e.name, 30 + (parseInt(e.id.slice(1)) || 1) * 47, n);
+const lvlPill = e => +e.level && e.adminId && !e.adminOff ? `<span class="pill ${+e.level === 1 ? 'bad' : +e.level === 2 ? 'accent' : 'outline'}" style="height:20px">Level ${e.level} · ${esc(e.adminId)}</span>` : '<span class="tiny muted">No console access</span>';
+
+function admMe() {
+  const u = admUser(); if (!u) return '';
+  const today = ymd(now()), r = (S.attendance || []).find(x => x.eid === u.id && x.date === today), f = S.admin.me;
+  const ym = today.slice(0, 7), mine = (S.attendance || []).filter(x => x.eid === u.id && x.date.startsWith(ym)).sort((a, b) => a.date < b.date ? 1 : -1);
+  const runs = runsAll().filter(x => x.lines.some(l => l.eid === u.id)).sort((a, b) => a.per < b.per ? 1 : -1).slice(0, 8);
+  const reqs = (S.hrReq || []).filter(x => x.eid === u.id).slice(0, 5);
+  const sh = shiftOf(u);
+  return `${mgH('My work page', 'Clock in and out, see your attendance and payslips, and ask HR for documents.')}
+  <div class="split"><div class="wide panel"><div class="panel-b" style="gap:14px"><div class="row" style="gap:14px">${empPhoto(u, 64)}<div class="col grow"><b style="font-size:18px">${esc(u.name)}</b><span class="small muted">${esc(u.pos)} · ${esc(u.dept)} · ${esc(u.no)}</span><span>${lvlPill(u)}</span></div></div>
+    <div class="kpis">${mgKpi('Today · shift ' + sh.in + '–' + sh.out, r && r.in ? 'In ' + r.in + (r.out ? ' · Out ' + r.out : '') : 'Not clocked in', r && r.in ? 'accent' : '')}${mgKpi('Late this month', sumBy(mine.filter(x => x.type === 'work'), x => attCalc(u, x).late) + ' min')}${mgKpi('Overtime this month', sumBy(mine, x => +x.ot || 0) + ' h')}</div>
+    <div class="row" style="gap:8px"><button class="btn primary" data-act="meClock" data-arg="in" ${r && r.in ? 'disabled' : ''}>${ic('clock', 16)} Clock in</button><button class="btn secondary" data-act="meClock" data-arg="out" ${r && r.in && !r.out ? '' : 'disabled'}>${ic('logout', 16)} Clock out</button></div>
+    <span class="tiny muted">Clock-out before ${sh.out} is recorded as undertime (early leave). Overtime counts only when approved by HR in Attendance.</span></div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Ask HR for a document</h3></div><div class="panel-b" style="gap:10px">
+    <label class="field">Certificate of Employment · purpose<input id="me-pur" class="input" data-bind="admin.me.purpose" value="${esc(f.purpose)}" placeholder="e.g. Visa application"></label>
+    <label class="check"><input type="checkbox" id="me-wp" data-bind="admin.me.withPay" ${f.withPay ? 'checked' : ''}>Show my salary on the certificate</label>
+    <button class="btn secondary block" data-act="meReq" ${String(f.purpose || '').trim() ? '' : 'disabled'}>Send request</button>
+    ${reqs.map(q => `<div class="row between small"><span>COE · ${esc(q.purpose)}</span><span class="pill ${q.status === 'issued' ? 'good' : q.status === 'declined' ? 'outline' : 'accent'}">${q.status}</span></div>`).join('')}
+    <span class="tiny muted">HR issues a Certificate of Employment within 3 days of a request (DOLE Labor Advisory 06-2020).</span>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn ghost xs" data-act="meDoc" data-arg="idcard|${u.id}">My employee ID</button><button class="btn ghost xs" data-act="meDoc" data-arg="2316|${u.id}|2026">My BIR 2316 (2026 to date)</button></div></div></div></div>
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>My attendance · ${monLbl(ym)}</h3></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Status</th><th>In</th><th>Out</th><th class="num">Late</th><th class="num">Undertime</th><th class="num">OT</th></tr></thead><tbody>
+    ${mine.map(x => { const c = x.type === 'work' ? attCalc(u, x) : { late: 0, ut: 0 }; return `<tr><td class="mono small">${fmtYmd(x.date)}</td><td class="small">${attTxt(x)}</td><td class="mono">${x.in || '—'}</td><td class="mono">${x.out || '—'}</td><td class="num">${c.late ? c.late + 'm' : '—'}</td><td class="num">${x.out && c.ut ? c.ut + 'm' : '—'}</td><td class="num">${+x.ot ? x.ot + 'h' : '—'}</td></tr>`; }).join('') || '<tr><td colspan="7" class="small muted">No records yet.</td></tr>'}
+  </tbody></table></div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>My payslips</h3></div><div class="list">${runs.map(x => { const l = x.lines.find(y => y.eid === u.id); return `<button class="li" data-act="meDoc" data-arg="payslip|${x.id}|${u.id}">${ic('receipt', 18)}<div class="col grow"><b class="small">${perLbl(x)}</b><span class="tiny muted">${x.status === 'paid' ? 'Paid ' + fmtD(x.paidAt) : 'Approved'}</span></div><b class="num small">${peso(l.net != null ? l.net : l.amount, 2)}</b></button>`; }).join('') || '<div class="empty small">No payslips yet.</div>'}</div>
+    <div class="panel-b" style="gap:8px"><span class="eyebrow">Change my password</span><input id="me-o" class="input" type="password" data-bind="admin.me.old" value="${esc(f.old)}" placeholder="Current password"><input id="me-1" class="input" type="password" data-bind="admin.me.pw1" value="${esc(f.pw1)}" placeholder="New password (8+ characters)"><input id="me-2" class="input" type="password" data-bind="admin.me.pw2" value="${esc(f.pw2)}" placeholder="Repeat new password"><button class="btn secondary sm" data-act="mePw">Change password</button></div></div></div>`;
+}
+const attTxt = x => x.type === 'work' ? 'Present' : x.type === 'half' ? 'Half day' : x.type === 'leave' ? (x.leave || 'Leave') + (x.paid ? ' · paid' : ' · unpaid') : x.type === 'absent' ? '<span style="color:var(--bad)">Absent</span>' : x.type;
+
+function admEmployees() {
+  const fl = S.admin.empFilter || 'active', q = String(S.admin.empQ || '').toLowerCase();
+  const L = emps().filter(e => (fl === 'all' || (fl === 'active' ? e.status === 'active' : e.status !== 'active')) && (!q || (e.name + ' ' + e.pos + ' ' + e.dept + ' ' + e.no).toLowerCase().includes(q)));
+  const act = emps().filter(e => e.status === 'active');
+  return `${mgH('Employees', 'Ticktap\'s own staff: register, update, separate, and keep the government numbers payroll and BIR need. Provider members are managed in Members, not here.')}
+  <div class="kpis">${mgKpi('Active employees', act.length, 'accent')}${mgKpi('Monthly basic payroll', peso(sumBy(act, e => rates(e).monthly)))}${mgKpi('Separated in 2026', emps().filter(e => e.sepDate && e.sepDate.startsWith('2026')).length)}${mgKpi('With console access', act.filter(e => +e.level && e.adminId && !e.adminOff).length)}</div>
+  ${S.admin.empF ? empEditor() : ''}
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><div class="row" style="gap:6px;flex-wrap:wrap">${[['active', 'Active'], ['sep', 'Separated'], ['all', 'All']].map(([k, l]) => `<button class="chip" data-act="empFilter" data-arg="${k}" aria-pressed="${fl === k}">${l}</button>`).join('')}<input id="emp-q" class="input" data-bind="admin.empQ" value="${esc(S.admin.empQ || '')}" placeholder="Search name, position, no." style="height:36px;width:220px"></div><button class="btn primary sm" data-act="empNew">${ic('plus', 15)} Add employee</button></div>
+  <div class="tablewrap"><table><thead><tr><th>Employee</th><th>Position</th><th>Pay</th><th>Hired</th><th>Status</th><th>Console</th><th></th></tr></thead><tbody>
+  ${L.map(e => `<tr><td><div class="row" style="gap:10px">${empPhoto(e)}<div class="col"><b class="small">${esc(e.name)}</b><span class="tiny muted mono">${esc(e.no)}</span></div></div></td><td class="small">${esc(e.pos)}<br><span class="tiny muted">${esc(e.dept)} · ${esc(e.type || 'Regular')}</span></td><td class="small num">${e.payType === 'daily' ? peso(e.rate) + '/day' : peso(e.rate) + '/mo'}${e.mwe ? '<br><span class="tiny muted">Minimum wage earner</span>' : ''}</td><td class="mono small">${fmtYmd(e.hired)}</td><td>${e.status === 'active' ? '<span class="pill good">Active</span>' : `<span class="pill outline">${esc(e.sepType || 'Separated')} · ${fmtYmd(e.sepDate)}</span>`}</td><td>${lvlPill(e)}</td><td><div class="row" style="gap:6px;justify-content:flex-end"><button class="btn ghost xs" data-act="empEdit" data-arg="${e.id}">Edit</button>${e.status !== 'active' ? docBtn('finalpay', e.id, 'Final pay') : ''}</div></td></tr>`).join('') || '<tr><td colspan="7" class="small muted">Nobody here.</td></tr>'}
+  </tbody></table></div></div>`;
+}
+function empEditor() {
+  const f = S.admin.empF, isNew = !f.id, cur = !isNew && emp(f.id), sel = (k, opts) => `<select id="ef-${k}" class="select" data-bind="admin.empF.${k}">${opts.map(o => { const [v, l] = Array.isArray(o) ? o : [o, o]; return `<option value="${esc(v)}" ${String(f[k]) === String(v) ? 'selected' : ''}>${esc(l)}</option>`; }).join('')}</select>`;
+  const inp = (k, l, x = '') => `<label class="field">${l}<input id="ef-${k}" class="input" data-bind="admin.empF.${k}" value="${esc(f[k] == null ? '' : f[k])}" ${x}></label>`;
+  const fp = cur && cur.sepDate ? finalPay(cur) : null;
+  return `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><h3>${isNew ? 'New employee' : 'Edit · ' + esc(f.name || '')}</h3><button class="btn ghost xs" data-act="empCancel">Close</button></div><div class="panel-b" style="gap:14px">
+    <div class="row" style="gap:14px;align-items:center">${f.photo ? `<img src="${f.photo}" alt="" style="width:72px;height:72px;border-radius:12px;object-fit:cover">` : `<span class="avatar" style="width:72px;height:72px">${ic('user', 28)}</span>`}<label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${f.photo ? 'Change photo' : 'Add photo (for the ID card)'}<input type="file" accept="image/*" class="sr" data-file="admin.empF.photo" data-compress="1" id="ef-photo"></label></div>
+    <span class="eyebrow">Personal</span><div class="formgrid">${inp('last', 'Last name')}${inp('first', 'First name')}${inp('mid', 'Middle name')}<label class="field">Birth date<input id="ef-birth" class="input" type="date" data-bind="admin.empF.birth" value="${esc(f.birth || '')}"></label><label class="field">Gender${sel('gender', [['', '—'], ['female', 'Female'], ['male', 'Male']])}</label><label class="field">Civil status${sel('civil', ['Single', 'Married', 'Widowed', 'Separated'])}</label>${inp('phone', 'Mobile', 'inputmode="tel"')}${inp('email', 'Email', 'inputmode="email"')}${inp('address', 'Home address')}${inp('emer', 'Emergency contact (name · mobile)')}</div>
+    <span class="eyebrow">Employment</span><div class="formgrid">${inp('pos', 'Position')}<label class="field">Department${sel('dept', ['Management', 'Operations', 'Finance', 'Marketing', 'Customer support', 'Technology'])}</label><label class="field">Employment type${sel('type', ['Regular', 'Probationary', 'Contractual', 'Project-based', 'Part-time'])}</label><label class="field">Date hired<input id="ef-hired" class="input" type="date" data-bind="admin.empF.hired" value="${esc(f.hired || '')}"></label><label class="field">Work week${sel('days', [['5', 'Mon–Fri (261 days/yr)'], ['6', 'Mon–Sat (313 days/yr)']])}</label><label class="field">Shift<div class="row" style="gap:6px"><input id="ef-si" class="input" type="time" data-bind="admin.empF.shiftIn" value="${esc(f.shiftIn || '09:00')}"><input id="ef-so" class="input" type="time" data-bind="admin.empF.shiftOut" value="${esc(f.shiftOut || '18:00')}"></div></label></div>
+    <span class="eyebrow">Pay</span><div class="formgrid"><label class="field">Pay basis${sel('payType', [['monthly', 'Monthly salary'], ['daily', 'Daily rate']])}</label>${inp('rate', f.payType === 'daily' ? 'Daily rate (₱)' : 'Monthly salary (₱)', 'inputmode="decimal"')}${inp('allow', 'De minimis allowance / month (₱, non-taxable)', 'inputmode="decimal"')}${inp('loan', 'Loan / other deduction / month (₱)', 'inputmode="decimal"')}${inp('bank', 'Payroll account (bank or GCash)')}<label class="check" style="align-self:end"><input type="checkbox" id="ef-mwe" data-bind="admin.empF.mwe" ${f.mwe ? 'checked' : ''}>Minimum wage earner (tax-exempt)</label></div>
+    <span class="eyebrow">Government numbers</span><div class="formgrid">${inp('tin', 'TIN', 'placeholder="000-000-000-000"')}${inp('sss', 'SSS no.', 'placeholder="00-0000000-0"')}${inp('phic', 'PhilHealth no.', 'placeholder="00-000000000-0"')}${inp('hdmf', 'Pag-IBIG MID no.', 'placeholder="0000-0000-0000"')}</div>
+    ${S.admin.empErr ? `<span class="small" style="color:var(--bad)">${esc(S.admin.empErr)}</span>` : ''}
+    <div class="row" style="gap:8px"><button class="btn primary" data-act="empSave">${isNew ? 'Register employee' : 'Save changes'}</button><button class="btn ghost" data-act="empCancel">Cancel</button>${!isNew ? `<span class="tiny muted grow" style="text-align:right">Console access: ${cur && +cur.level && cur.adminId ? 'Level ' + cur.level + ' · ' + esc(cur.adminId) : 'none'} · set in Admin access & levels (Level 1)</span>` : ''}</div>
+    ${!isNew ? `<div class="card tight" style="gap:10px;background:var(--surface-2,var(--surface-3));border-color:transparent"><b class="small">Separation (resignation, termination, end of contract, retirement)</b>
+      ${cur.status === 'active' ? `<div class="formgrid"><label class="field">Type${sel('sepType', ['Resignation', 'Termination (just cause)', 'Termination (authorized cause)', 'End of contract', 'Retirement'])}</label><label class="field">Last working day<input id="ef-sd" class="input" type="date" data-bind="admin.empF.sepDate" value="${esc(f.sepDate || '')}"></label>${inp('sepReason', 'Reason / notes')}${inp('finalDed', 'Deductions from final pay (₱)', 'inputmode="decimal"')}</div><button class="btn secondary sm" data-act="empSep" ${f.sepDate ? '' : 'disabled'}>Record separation</button><span class="tiny muted">Console access stops on separation. Final pay is due within 30 days and a COE within 3 days of request (DOLE LA 06-2020). Give BIR 2316 on the last day.</span>` :
+      `<span class="small">${esc(cur.sepType)} · last day ${fmtYmd(cur.sepDate)}${cur.sepReason ? ' · ' + esc(cur.sepReason) : ''}</span>${fp ? `<span class="small">Final pay <b>${peso(fp.net, 2)}</b> · release by ${fmtYmd(fp.releaseBy)}</span>` : ''}<div class="row" style="gap:6px;flex-wrap:wrap">${docBtn('finalpay', cur.id, 'Final pay statement', 'primary')}${docBtn('2316', cur.id + '|' + cur.sepDate.slice(0, 4), 'BIR 2316')}<button class="btn secondary xs" data-act="docIssue" data-arg="coe|${cur.id}|Employment verification|0">Issue COE</button><button class="btn ghost xs" data-act="empReinstate" data-arg="${cur.id}">Undo separation</button></div>`}</div>` : ''}
+  </div></div>`;
+}
+
+function admAttendance() {
+  const d = S.admin.attDate || ymd(now()), ym = S.admin.attMonth || d.slice(0, 7), ed = S.admin.attEd, M = attMap(), hol = holOf(d);
+  const list = emps().filter(e => empActiveOn(e, d));
+  const row = e => { const r = M[e.id + '|' + d], c = r && r.type === 'work' ? attCalc(e, r) : null, sh = shiftOf(e), wd = isWorkday(e, d);
+    if (ed && ed.eid === e.id) return `<tr><td colspan="9"><div class="formgrid" style="align-items:end"><b class="small">${esc(e.name)}</b>
+      <label class="field">Status<select id="ae-t" class="select" data-bind="admin.attEd.type" data-rerender="1">${[['work', 'Present'], ['half', 'Half day'], ['leave', 'Leave'], ['absent', 'Absent']].map(([v, l]) => `<option value="${v}" ${ed.type === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      ${ed.type === 'leave' ? `<label class="field">Leave type<select id="ae-l" class="select" data-bind="admin.attEd.leave">${['Vacation leave', 'Sick leave', 'Service incentive leave', 'Emergency leave', 'Maternity leave (RA 11210)', 'Paternity leave (RA 8187)', 'Solo parent leave (RA 11861)'].map(v => `<option ${ed.leave === v ? 'selected' : ''}>${v}</option>`).join('')}</select></label><label class="check"><input type="checkbox" id="ae-p" data-bind="admin.attEd.paid" ${ed.paid ? 'checked' : ''}>Paid leave</label>` : ed.type !== 'absent' ? `<label class="field">Time in<input id="ae-i" class="input" type="time" data-bind="admin.attEd.in" value="${esc(ed.in || '')}"></label><label class="field">Time out<input id="ae-o" class="input" type="time" data-bind="admin.attEd.out" value="${esc(ed.out || '')}"></label><label class="field">Approved OT (h)<input id="ae-ot" class="input num" inputmode="decimal" data-bind="admin.attEd.ot" value="${esc(ed.ot || '')}"></label><label class="field">Night diff. (h, 10pm–6am)<input id="ae-nd" class="input num" inputmode="decimal" data-bind="admin.attEd.nd" value="${esc(ed.nd || '')}"></label>` : ''}
+      <label class="field">Note<input id="ae-n" class="input" data-bind="admin.attEd.note" value="${esc(ed.note || '')}"></label>
+      <div class="row" style="gap:6px"><button class="btn primary sm" data-act="attSave">Save</button><button class="btn ghost sm" data-act="attCancel">Cancel</button>${r ? `<button class="btn ghost sm" style="color:var(--bad)" data-act="attDel">Delete</button>` : ''}</div></div></td></tr>`;
+    return `<tr><td><div class="row" style="gap:8px">${empPhoto(e, 30)}<b class="small">${esc(e.name)}</b></div></td><td class="mono small">${sh.in}–${sh.out}</td><td class="small">${r ? attTxt(r) : hol ? esc(hol.n) : wd ? '<span class="muted">No record</span>' : '<span class="muted">Rest day</span>'}</td><td class="mono">${r && r.in || '—'}</td><td class="mono">${r && r.out || '—'}</td><td class="num">${c && c.late ? `<span style="color:var(--warn)">${c.late}m</span>` : '—'}</td><td class="num">${c && r.out && c.ut ? `<span style="color:var(--warn)">${c.ut}m</span>` : '—'}</td><td class="num">${r && +r.ot ? r.ot + 'h' : '—'}</td><td><button class="btn ghost xs" data-act="attEdit" data-arg="${e.id}">${r ? 'Edit' : 'Record'}</button></td></tr>`; };
+  const ms = emps().filter(e => e.hired <= ym + '-31' && (!e.sepDate || e.sepDate >= ym + '-01')).map(e => attSum(e, ym, M));
+  return `${mgH('Attendance', 'Daily time records: time in and out, late, undertime (early leave), absences, leave and approved overtime. Payroll uses these records directly.')}
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><div class="row" style="gap:8px;flex-wrap:wrap"><input id="att-d" class="input" type="date" data-bind="admin.attDate" data-rerender="1" value="${d}" style="height:36px;width:170px"><b>${new Date(dayTs(d)).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</b>${hol ? `<span class="pill ${hol.t === 'regular' ? 'bad' : 'accent'}">${esc(hol.n)} · ${hol.t} holiday</span>` : ''}</div><button class="btn secondary sm" data-act="attFill">Mark the rest present (shift times)</button></div>
+  <div class="tablewrap"><table><thead><tr><th>Employee</th><th>Shift</th><th>Status</th><th>In</th><th>Out</th><th class="num">Late</th><th class="num">Undertime</th><th class="num">OT</th><th></th></tr></thead><tbody>${list.map(row).join('') || '<tr><td colspan="9" class="small muted">No employees on this date.</td></tr>'}</tbody></table></div>
+  <div class="panel-b"><span class="tiny muted">Late counts after a ${PAYSET().grace}-minute grace period. Overtime is paid only when entered here (125% regular day, 169% rest or special day, 260% regular holiday). Missing records on past workdays are treated as absent in payroll.</span></div></div>
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><h3>Monthly summary</h3><div class="row" style="gap:8px"><input id="att-m" class="input" type="month" data-bind="admin.attMonth" data-rerender="1" value="${ym}" style="height:36px;width:170px">${docBtn('attsum', ym, 'Print / Excel')}</div></div>
+  <div class="tablewrap"><table><thead><tr><th>Employee</th><th class="num">Workdays</th><th class="num">Present</th><th class="num">Absent</th><th class="num">Paid leave</th><th class="num">Unpaid leave</th><th class="num">Late (min)</th><th class="num">Undertime (min)</th><th class="num">OT (h)</th><th class="num">No record</th></tr></thead><tbody>
+  ${ms.map(s => `<tr><td class="small"><b>${esc(s.name)}</b></td><td class="num">${s.expected}</td><td class="num">${s.present}</td><td class="num">${s.absent - s.noRec || '—'}</td><td class="num">${s.paidLeave || '—'}</td><td class="num">${s.unpaidLeave || '—'}</td><td class="num">${s.late || '—'}</td><td class="num">${s.ut || '—'}</td><td class="num">${s.ot || '—'}</td><td class="num">${s.noRec ? `<span style="color:var(--bad)">${s.noRec}</span>` : '—'}</td></tr>`).join('')}
+  </tbody></table></div></div>`;
+}
+function attSum(e, ym, M) { const last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), to = ymd(Math.min(dayTs(ym + '-' + pad2(last)), dayTs(ymd(now())))) ; const c = payCalc(e, { per: 'S', y: +ym.slice(0, 4), m: +ym.slice(5, 7), h: 'F', semi: false, from: ym + '-01', to: to < ym + '-01' ? ym + '-01' : to }, { att: M || attMap(), noAnnual: true }); return Object.assign({ name: e.name, eid: e.id }, c.k, { ot: c.k.ot + c.k.otRest + c.k.otSpec + c.k.otHol }); }
+
+function admPayroll() {
+  const per = S.admin.prPer || curPer(), R = perRange(per), run = runOf(per), lines = run ? run.lines : runLines(per), ym = R.ym, y = R.y;
+  const T = k => sumBy(lines, k), noRec = sumBy(lines, l => l.k ? l.k.noRec : 0), proj = sumBy(lines, l => l.k ? l.k.projected : 0);
+  const g = GOV()[ym] || {}, ml = run ? linesOfMonth(ym) : linesOfMonth(ym).concat(run ? [] : lines.filter(() => false));
+  const dueM = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 10); const due = dueM.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const govRow = (k, amt, note) => `<tr><td class="small"><b>${GOVN[k]}</b><br><span class="tiny muted">${note}</span></td><td class="num">${peso(amt, 2)}</td><td>${g[k] ? `<span class="pill good">Remitted ${fmtD(g[k].at)}</span>${g[k].ref ? `<br><span class="tiny muted mono">${esc(g[k].ref)}</span>` : ''}` : `<button class="btn secondary xs" data-act="prRemit" data-arg="${ym}|${k}" ${amt ? '' : 'disabled'}>Mark remitted</button>`}</td></tr>`;
+  const P = PAYSET();
+  return `${mgH('Payroll & BIR', 'Pay computed from attendance under Philippine rules: SSS, PhilHealth and Pag-IBIG shares, withholding tax on compensation (TRAIN tables), 13th month pay, and the BIR 1601-C, 2316 and alphalist data.')}
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><div class="row" style="gap:8px;flex-wrap:wrap"><select id="pr-per" class="select" data-bind="admin.prPer" data-rerender="1" style="height:36px;width:auto">${perList().slice().reverse().map(p => `<option value="${p}" ${p === per ? 'selected' : ''}>${perRange(p).label}${runOf(p) ? ' · ' + runOf(p).status : ''}</option>`).join('')}</select>
+    <span class="pill ${!run ? 'accent' : run.status === 'paid' ? 'good' : 'warn'}">${!run ? 'Draft · live from attendance' : run.status === 'paid' ? 'Paid ' + fmtD(run.paidAt) : 'Approved · waiting for payment'}</span></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${!run ? `<button class="btn primary sm" data-act="prApprove" ${lines.length ? '' : 'disabled'}>${ic('check', 15)} Approve payroll</button>` : run.status === 'approved' ? `<input id="pr-ref" class="input" data-bind="admin.prRef" value="${esc(S.admin.prRef || '')}" placeholder="Bank / GCash batch ref." style="height:34px;width:180px"><button class="btn primary sm" data-act="prPaid">Mark paid</button><button class="btn ghost sm" data-act="prReopen">Reopen</button>` : ''}
+    ${docBtn('register', per, 'Payroll register')}${docBtn('payslips', per, 'All payslips')}</div></div>
+    ${noRec ? `<div class="panel-b"><span class="small" style="color:var(--bad)">${noRec} past workday(s) have no time record and are counted as absent. Fix them in Attendance before approving.</span></div>` : ''}${proj && !run ? `<div class="panel-b"><span class="tiny muted">${proj} future workday(s) in this period are projected as present.</span></div>` : ''}
+    <div class="kpis" style="padding:0 16px 12px">${mgKpi('Gross pay', peso(T('gross'), 2), 'accent')}${mgKpi('Net pay to employees', peso(T('net'), 2))}${mgKpi('Employee shares (SSS · PHIC · HDMF)', peso(T(l => l.sss + l.phic + l.hdmf), 2))}${mgKpi('Withholding tax', peso(T('tax'), 2))}${mgKpi('Employer shares', peso(T(l => l.erSss + l.ec + l.erPhic + l.erHdmf), 2))}${mgKpi('Total employer cost', peso(T(l => l.gross + l.allow + l.erSss + l.ec + l.erPhic + l.erHdmf), 2))}</div>
+  <div class="tablewrap"><table class="pr-t"><thead><tr><th>Employee</th><th class="num">Basic</th><th class="num">Absent / late</th><th class="num">OT · holiday · ND</th><th class="num">Gross</th><th class="num">SSS</th><th class="num">PhilHealth</th><th class="num">Pag-IBIG</th><th class="num">Tax</th><th class="num">Allow. / loan</th><th class="num">Net pay</th><th></th></tr></thead><tbody>
+  ${lines.map(l => `<tr><td><b class="small">${esc(l.name)}</b><br><span class="tiny muted">${l.payType === 'daily' ? peso(l.rate) + '/day' : peso(l.rate) + '/mo'}${l.mwe ? ' · MWE' : ''}${l.k ? ' · ' + l.k.present + '/' + l.k.expected + ' days' : ''}</span></td><td class="num">${m2(l.basic)}</td><td class="num">${l.absDed + l.lateDed ? '−' + m2(l.absDed + l.lateDed) : '—'}</td><td class="num">${l.prem + l.otPay + l.ndPay ? m2(l.prem + l.otPay + l.ndPay) : '—'}</td><td class="num"><b>${m2(l.gross)}</b></td><td class="num">${m2(l.sss)}</td><td class="num">${m2(l.phic)}</td><td class="num">${m2(l.hdmf)}</td><td class="num">${m2(l.tax)}${l.annual ? '<br><span class="tiny muted">annualized</span>' : ''}</td><td class="num">${l.allow ? '+' + m2(l.allow) : ''}${l.loan ? ' −' + m2(l.loan) : ''}${!l.allow && !l.loan ? '—' : ''}</td><td class="num"><b>${m2(l.net)}</b></td><td>${run ? docBtn('payslip', run.id + '|' + l.eid, 'Payslip', 'ghost') : ''}</td></tr>`).join('') || '<tr><td colspan="12" class="small muted">No employees in this period.</td></tr>'}
+  </tbody></table></div></div>
+  <div class="split"><div class="wide panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><div class="col"><h3>Remittances · ${monLbl(ym)}</h3><span class="small muted">From approved payrolls of the month. BIR 1601-C is due by ${due} (eFPS filers: 11th–15th by industry group); SSS, PhilHealth and Pag-IBIG follow each agency's schedule for the next month.</span></div><div class="row" style="gap:6px">${docBtn('1601c', ym, 'BIR 1601-C worksheet', 'primary')}${docBtn('contrib', ym, 'SSS · PhilHealth · Pag-IBIG list')}</div></div>
+    <div class="tablewrap"><table><thead><tr><th>Remittance</th><th class="num">Amount</th><th>Status</th></tr></thead><tbody>
+    ${govRow('sss', sumBy(ml, l => l.sss + l.erSss + l.ec), 'Employee 5% + employer 10% of MSC + EC')}${govRow('phic', sumBy(ml, l => l.phic + l.erPhic), '5% of basic (₱10k–₱100k), shared 50/50')}${govRow('hdmf', sumBy(ml, l => l.hdmf + l.erHdmf), '2% + 2% of up to ₱10,000')}${govRow('bir', sumBy(ml, 'tax'), 'Tax withheld on compensation')}
+    </tbody></table></div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Year ${y}</h3></div><div class="panel-b" style="gap:8px">
+    <div class="row between small"><span>13th month pay (due Dec 24)</span>${docBtn('th13', y, 'Compute')}</div>
+    <div class="row between small"><span>Alphalist of employees (1604-C, Jan 31)</span>${docBtn('alpha', y, 'Open')}</div>
+    <div class="row between small"><span>BIR 2316 per employee (Jan 31)</span><select id="pr-2316" class="select" data-bind="admin.pr2316" style="height:32px;width:150px">${emps().map(e => `<option value="${e.id}" ${S.admin.pr2316 === e.id ? 'selected' : ''}>${esc(e.name)}</option>`).join('')}</select>${docBtn('2316', (S.admin.pr2316 || 'E001') + '|' + y, 'Open')}</div>
+    ${runsAll().some(r => r.kind === '13th' && r.per.startsWith(String(y))) ? '<span class="pill good">13th month recorded</span>' : `<button class="btn secondary sm" data-act="prTh13" data-arg="${y}">Record 13th month payment</button>`}
+    <span class="tiny muted">13th month = basic salary earned in the year ÷ 12 (PD 851). Up to ₱90,000 of 13th month and other benefits is tax-exempt. December's last payroll annualizes each employee's tax.</span></div>
+    <div class="panel-h"><h3>Payroll settings</h3></div><div class="panel-b" style="gap:8px">
+    <label class="field">Pay frequency<select id="ps-f" class="select" data-bind="settings.pay.freq" data-rerender="1"><option value="semi" ${P.freq === 'semi' ? 'selected' : ''}>Semi-monthly (15th and end of month)</option><option value="monthly" ${P.freq === 'monthly' ? 'selected' : ''}>Monthly</option></select></label>
+    <label class="field">Late grace period (minutes)<input id="ps-g" class="input num" inputmode="numeric" data-bind="settings.pay.grace" data-type="num" value="${P.grace}"></label>
+    <details><summary class="small" style="cursor:pointer"><b>Holidays ${y}</b> · ${HOLS().length}</summary><div class="col" style="gap:4px;margin-top:6px">${HOLS().slice().sort((a, b) => a.d < b.d ? -1 : 1).map((h, i) => `<div class="row between tiny"><span class="mono">${h.d}</span><span class="grow" style="padding:0 8px">${esc(h.n)}</span><span class="pill ${h.t === 'regular' ? 'bad' : 'outline'}" style="height:18px">${h.t}</span><button class="btn ghost xs" data-act="prHolDel" data-arg="${h.d}">×</button></div>`).join('')}
+      <div class="row" style="gap:4px"><input id="ph-d" class="input" type="date" data-bind="admin.hol.d" value="${esc(S.admin.hol.d)}" style="height:32px"><input id="ph-n" class="input" data-bind="admin.hol.n" value="${esc(S.admin.hol.n)}" placeholder="Name" style="height:32px"><select id="ph-t" class="select" data-bind="admin.hol.t" style="height:32px;width:96px"><option value="regular">Regular</option><option value="special" ${S.admin.hol.t === 'special' ? 'selected' : ''}>Special</option></select><button class="btn secondary xs" data-act="prHolAdd">Add</button></div>
+      <span class="tiny muted">Follow the Presidential proclamation for the year; add Eid'l Fitr and Eid'l Adha when declared.</span></div></details>
+    <span class="tiny muted">Rates used: SSS 15% (MSC ₱5,000–₱35,000), PhilHealth 5% (₱10,000–₱100,000), Pag-IBIG 2% each (up to ₱10,000), BIR withholding tables effective 2023. Confirm against new circulars before each filing.</span></div></div></div>`;
+}
+
+function admHrDocs() {
+  const f = S.admin.doc0, e = emp(f.eid) || emps()[0]; if (e && !f.eid) f.eid = e.id;
+  const reqs = (S.hrReq || []).filter(r => r.status === 'pending'), log = (S.hrDocs || []).slice(0, 15);
+  const lastRun = e && runsAll().filter(r => r.kind !== '13th' && r.lines.some(l => l.eid === e.id)).sort((a, b) => a.per < b.per ? 1 : -1)[0];
+  return `${mgH('HR documents', 'Employee ID cards, Certificates of Employment, payslips, BIR 2316 and final pay statements, ready to print. Each issued certificate gets a control number.')}
+  ${reqs.length ? `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><h3>Requests from employees · ${reqs.length}</h3><span class="small muted">Issue within 3 days</span></div><div class="tablewrap"><table><thead><tr><th>Requested</th><th>Employee</th><th>Document</th><th>Purpose</th><th></th></tr></thead><tbody>${reqs.map(r => { const x = emp(r.eid) || {}; return `<tr><td class="mono small">${fmtD(r.at)} ${fmtT(r.at)}</td><td class="small"><b>${esc(x.name)}</b></td><td class="small">Certificate of Employment${r.withPay ? ' (with salary)' : ''}</td><td class="small">${esc(r.purpose)}</td><td><div class="row" style="gap:6px;justify-content:flex-end"><button class="btn primary xs" data-act="docIssue" data-arg="coe|${r.eid}|${esc(String(r.purpose).replace(/\|/g, '/'))}|${r.withPay ? 1 : 0}|${r.id}">Issue</button><button class="btn ghost xs" data-act="docDecline" data-arg="${r.id}">Decline</button></div></td></tr>`; }).join('')}</tbody></table></div></div>` : ''}
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>Prepare a document</h3></div><div class="panel-b" style="gap:12px">
+    <div class="formgrid"><label class="field">Employee<select id="hd-e" class="select" data-bind="admin.doc0.eid" data-rerender="1">${emps().map(x => `<option value="${x.id}" ${x.id === f.eid ? 'selected' : ''}>${esc(x.name)}${x.status !== 'active' ? ' (separated)' : ''}</option>`).join('')}</select></label>
+    <label class="field">COE purpose<input id="hd-p" class="input" data-bind="admin.doc0.purpose" value="${esc(f.purpose)}"></label><label class="check" style="align-self:end"><input type="checkbox" id="hd-w" data-bind="admin.doc0.withPay" ${f.withPay ? 'checked' : ''}>Include salary on COE</label></div>
+    ${e ? `<div class="hd-grid">
+      <div class="hd-card">${ic('shield', 22)}<b>Employee ID card</b><span class="tiny muted">${e.idNo ? 'Issued ' + fmtYmd(e.idIssued) + ' · valid to ' + fmtYmd(e.idValid) : 'Not issued yet'}</span><button class="btn ${e.idNo ? 'secondary' : 'primary'} xs" data-act="docIssue" data-arg="idcard|${e.id}" ${e.status === 'active' ? '' : 'disabled'}>${e.idNo ? 'Reissue & print' : 'Issue & print'}</button>${e.idNo ? docBtn('idcard', e.id, 'View', 'ghost') : ''}</div>
+      <div class="hd-card">${ic('doc', 22)}<b>Certificate of Employment</b><span class="tiny muted">${esc(f.purpose || 'Purpose')}${f.withPay ? ' · with salary' : ''}</span><button class="btn primary xs" data-act="docIssue" data-arg="coe|${e.id}|${esc(String(f.purpose || 'Whatever legal purpose it may serve').replace(/\|/g, '/'))}|${f.withPay ? 1 : 0}">Issue & print</button></div>
+      <div class="hd-card">${ic('receipt', 22)}<b>Latest payslip</b><span class="tiny muted">${lastRun ? perLbl(lastRun) : 'No approved payroll yet'}</span>${lastRun ? docBtn('payslip', lastRun.id + '|' + e.id, 'Open', 'primary') : ''}</div>
+      <div class="hd-card">${ic('wallet', 22)}<b>BIR Form 2316</b><span class="tiny muted">Certificate of compensation and tax withheld · ${f.year}</span>${docBtn('2316', e.id + '|' + f.year, 'Open', 'primary')}</div>
+      ${e.sepDate ? `<div class="hd-card">${ic('logout', 22)}<b>Final pay statement</b><span class="tiny muted">Last day ${fmtYmd(e.sepDate)}</span>${docBtn('finalpay', e.id, 'Open', 'primary')}</div>` : ''}
+    </div>` : '<div class="empty">Add an employee first.</div>'}
+  </div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Issued documents</h3></div><div class="list">${log.map(d => { const x = emp(d.eid) || {}; return `<button class="li" data-act="mgDoc" data-arg="${d.kind === 'coe' ? 'coe|' + d.eid + '|' + esc(String(d.purpose || '').replace(/\|/g, '/')) + '|' + (d.withPay ? 1 : 0) + '|' + d.id : 'idcard|' + d.eid}">${ic(d.kind === 'coe' ? 'doc' : 'shield', 18)}<div class="col grow"><b class="small">${esc(d.id)}</b><span class="tiny muted">${esc(x.name || '')} · ${fmtD(d.at)}${d.purpose ? ' · ' + esc(d.purpose) : ''}</span></div></button>`; }).join('') || '<div class="empty small">Nothing issued yet.</div>'}</div></div></div>`;
+}
+
+function admExpenses() {
+  const ym = S.admin.exMonth || ymd(now()).slice(0, 7), last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), mo = moneyOf(ym + '-01', ym + '-' + pad2(last)), f = S.admin.ex;
+  const L = mo.exps.slice().sort((a, b) => a.date < b.date ? 1 : -1), unpaid = (S.expenses || []).filter(x => x.status !== 'paid');
+  const amt = +f.amount || 0, vat = f.vat ? r2(amt * 12 / 112) : 0, ewt = r2((amt - vat) * (+f.ewt || 0) / 100);
+  return `${mgH('Expenses', 'Company operating costs. Totals combine these with payroll and the money paid out through Accounts payable, so you see everything leaving the company.')}
+  <div class="kpis">${mgKpi('Operating expenses · ' + monLbl(ym), peso(mo.opex, 2), 'accent')}${mgKpi('Payroll & employer shares', peso(mo.salaries + mo.allow + mo.er + mo.th13, 2))}${mgKpi('Paid out via Accounts payable', peso(mo.apOut, 2))}${mgKpi('Total money out', peso(mo.totalOut, 2))}${mgKpi('Unpaid bills', unpaid.length + ' · ' + peso(sumBy(unpaid, 'amount')))}</div>
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>Add an expense</h3></div><div class="panel-b" style="gap:10px"><div class="formgrid">
+    <label class="field">Date<input id="ex-d" class="input" type="date" data-bind="admin.ex.date" value="${esc(f.date)}"></label>
+    <label class="field">Category<select id="ex-c" class="select" data-bind="admin.ex.cat">${EX_CATS.map(c => `<option ${f.cat === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+    <label class="field">Paid to (supplier)<input id="ex-p" class="input" data-bind="admin.ex.payee" value="${esc(f.payee)}"></label>
+    <label class="field">Supplier TIN<input id="ex-t" class="input" data-bind="admin.ex.tin" value="${esc(f.tin)}" placeholder="optional"></label>
+    <label class="field">Description<input id="ex-ds" class="input" data-bind="admin.ex.desc" value="${esc(f.desc)}"></label>
+    <label class="field">Amount (₱, as invoiced)<input id="ex-a" class="input num" inputmode="decimal" data-bind="admin.ex.amount" value="${esc(f.amount)}"></label>
+    <label class="field">Expanded withholding (EWT)<select id="ex-w" class="select" data-bind="admin.ex.ewt" data-type="num" data-rerender="1">${EWT_OPTS.map(([v, l]) => `<option value="${v}" ${+f.ewt === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label class="field">Paid by<select id="ex-m" class="select" data-bind="admin.ex.method">${['Bank transfer', 'GCash', 'Maya', 'Credit card', 'Cash', 'Check'].map(c => `<option ${f.method === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+    <label class="field">OR / invoice no.<input id="ex-r" class="input" data-bind="admin.ex.ref" value="${esc(f.ref)}"></label>
+    <label class="field">Status<select id="ex-s" class="select" data-bind="admin.ex.status"><option value="paid">Paid</option><option value="unpaid" ${f.status === 'unpaid' ? 'selected' : ''}>Unpaid (bill)</option></select></label></div>
+    <div class="row" style="gap:16px;flex-wrap:wrap;align-items:center"><label class="check"><input type="checkbox" id="ex-v" data-bind="admin.ex.vat" ${f.vat ? 'checked' : ''}>VAT invoice (12% input VAT included)</label><span class="small muted">${amt ? `Input VAT ${peso(vat, 2)} · EWT ${peso(ewt, 2)} · pay supplier ${peso(amt - ewt, 2)}` : ''}</span></div>
+    <button class="btn primary" data-act="expSave" ${amt > 0 && String(f.payee).trim() ? '' : 'disabled'}>${ic('plus', 15)} Save expense</button>
+    <span class="tiny muted">EWT you withhold is remitted with BIR 0619-E (monthly) and 1601-EQ (quarterly). Give the supplier BIR Form 2307.</span></div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Where the money went · ${monLbl(ym)}</h3></div><div class="list">
+    ${[['Operating expenses', mo.opex], ['Salaries & wages (gross)', mo.salaries], ['Allowances (de minimis)', mo.allow], ['Employer SSS · PhilHealth · Pag-IBIG', mo.er], ['13th month pay', mo.th13], ['Provider & business payouts (AP)', mo.payouts], ['Customer refunds (AP)', mo.refunds], ['Tax remitted to BIR (AP, 0619-E)', mo.whtRem]].map(([l, v]) => `<div class="li"><span class="grow small">${l}</span><b class="num small">${peso(v, 2)}</b></div>`).join('')}
+    <div class="li" style="background:var(--accent-soft)"><b class="grow">Total money out</b><b class="num">${peso(mo.totalOut, 2)}</b></div></div>
+    <div class="panel-b"><span class="tiny muted">Payouts and refunds are customers' money passing through Ticktap; they are cash out but not company costs. The company's own costs are in the Ledger's profit and loss.</span></div></div></div>
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><h3>Expenses · ${monLbl(ym)}</h3><div class="row" style="gap:8px"><input id="ex-mo" class="input" type="month" data-bind="admin.exMonth" data-rerender="1" value="${ym}" style="height:36px;width:170px">${docBtn('expenses', ym, 'Print / Excel')}</div></div>
+  <div class="tablewrap"><table><thead><tr><th>Date</th><th>Category</th><th>Supplier</th><th>Description</th><th class="num">Amount</th><th class="num">Input VAT</th><th class="num">EWT</th><th>Status</th><th></th></tr></thead><tbody>
+  ${L.map(x => `<tr><td class="mono small">${fmtYmd(x.date)}</td><td class="small">${esc(x.cat)}</td><td class="small"><b>${esc(x.payee)}</b>${x.tin ? `<br><span class="tiny muted mono">${esc(x.tin)}</span>` : ''}</td><td class="small">${esc(x.desc)}${x.ref ? `<br><span class="tiny muted">${esc(x.ref)}</span>` : ''}</td><td class="num"><b>${m2(x.amount)}</b></td><td class="num">${x.vatIn ? m2(x.vatIn) : '—'}</td><td class="num">${x.ewt ? m2(x.ewt) + '<br><span class="tiny muted">' + x.ewtRate + '%</span>' : '—'}</td><td>${x.status === 'paid' ? `<span class="pill good">Paid · ${esc(x.method)}</span>` : `<button class="btn secondary xs" data-act="expPaid" data-arg="${x.id}">Mark paid</button>`}</td><td><button class="btn ghost xs" style="color:var(--bad)" data-act="expDel" data-arg="${x.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="9" class="small muted">No expenses this month.</td></tr>'}
+  </tbody>${L.length ? `<tfoot><tr><td colspan="4"><b>Total</b></td><td class="num"><b>${m2(mo.opex)}</b></td><td class="num">${m2(sumBy(L, 'vatIn'))}</td><td class="num">${m2(sumBy(L, 'ewt'))}</td><td colspan="2"></td></tr></tfoot>` : ''}</table></div>
+  <div class="panel-b"><div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(mo.byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<span class="pill outline">${esc(c)} · ${peso(v)}</span>`).join('')}</div></div></div>`;
+}
+
+function admRevenue() {
+  const ym = S.admin.rvMonth || ymd(now()).slice(0, 7), last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), mo = moneyOf(ym + '-01', ym + '-' + pad2(last)), f = S.admin.rv, y = ym.slice(0, 4);
+  const months = Array.from({ length: 12 }, (_, i) => y + '-' + pad2(i + 1)).filter(m => m <= ymd(now()).slice(0, 7));
+  const trend = months.map(m => { const l = new Date(+m.slice(0, 4), +m.slice(5, 7), 0).getDate(), x = moneyOf(m + '-01', m + '-' + pad2(l)); return { m, fees: x.fees, cancel: x.cancel, other: x.otherT, total: x.revenue, gmv: x.gmv, jobs: x.done.length }; });
+  const byCat = {}; mo.done.forEach(b => { const c = catName(b.pid ? (prov(b.pid) || {}).cat : (biz(b.bizId) || {}).cat) || 'Other'; byCat[c] = byCat[c] || { n: 0, gmv: 0, fee: 0 }; byCat[c].n++; byCat[c].gmv += b.gross; byCat[c].fee += b.ledger.fee; });
+  return `${mgH('Revenue', 'Ticktap\'s income: platform fees taken from completed bookings (from Accounts receivable and payable), cancellation fees kept, and other income you record here.')}
+  <div class="kpis">${mgKpi('Platform fees · ' + monLbl(ym), peso(mo.fees, 2), 'accent')}${mgKpi('Cancellation fees kept', peso(mo.cancel, 2))}${mgKpi('Other income', peso(mo.otherT, 2))}${mgKpi('Total revenue', peso(mo.revenue, 2))}${mgKpi('Bookings value (GMV)', peso(mo.gmv) + ' · ' + mo.done.length + ' jobs')}</div>
+  <div class="split"><div class="wide panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><h3>Platform fees by service · ${monLbl(ym)}</h3><input id="rv-mo" class="input" type="month" data-bind="admin.rvMonth" data-rerender="1" value="${ym}" style="height:36px;width:170px"></div>
+    <div class="tablewrap"><table><thead><tr><th>Service</th><th class="num">Jobs</th><th class="num">Bookings value</th><th class="num">Platform fees</th><th class="num">Take rate</th></tr></thead><tbody>${Object.entries(byCat).map(([c, o]) => `<tr><td>${esc(c)}</td><td class="num">${o.n}</td><td class="num">${peso(o.gmv, 2)}</td><td class="num"><b>${peso(o.fee, 2)}</b></td><td class="num">${(o.fee / o.gmv * 100).toFixed(1)}%</td></tr>`).join('') || '<tr><td colspan="5" class="small muted">No completed bookings this month.</td></tr>'}</tbody></table></div>
+    <div class="panel-h"><h3>Other income · ${monLbl(ym)}</h3></div><div class="tablewrap"><table><thead><tr><th>Date</th><th>Source</th><th>Details</th><th class="num">Amount</th><th></th></tr></thead><tbody>${mo.other.map(x => `<tr><td class="mono small">${fmtYmd(x.date)}</td><td class="small">${esc(x.src)}</td><td class="small">${esc(x.desc)}${x.ref ? ' · ' + esc(x.ref) : ''}</td><td class="num"><b>${m2(x.amount)}</b></td><td><button class="btn ghost xs" style="color:var(--bad)" data-act="revDel" data-arg="${x.id}">Delete</button></td></tr>`).join('') || '<tr><td colspan="5" class="small muted">None recorded.</td></tr>'}</tbody></table></div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Record other income</h3></div><div class="panel-b" style="gap:10px">
+    <label class="field">Date<input id="rv-d" class="input" type="date" data-bind="admin.rv.date" value="${esc(f.date)}"></label>
+    <label class="field">Source<select id="rv-s" class="select" data-bind="admin.rv.src">${IN_SRC.map(c => `<option ${f.src === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+    <label class="field">Details<input id="rv-ds" class="input" data-bind="admin.rv.desc" value="${esc(f.desc)}"></label>
+    <label class="field">Amount (₱)<input id="rv-a" class="input num" inputmode="decimal" data-bind="admin.rv.amount" value="${esc(f.amount)}"></label>
+    <label class="field">OR / reference<input id="rv-r" class="input" data-bind="admin.rv.ref" value="${esc(f.ref)}"></label>
+    <button class="btn primary" data-act="revSave" ${+f.amount > 0 ? '' : 'disabled'}>Save income</button>
+    <span class="tiny muted">Platform fees are counted when a service ends. Refunded bookings earn no fee.</span></div></div></div>
+  <div class="panel"><div class="panel-h"><h3>Revenue by month · ${y}</h3></div><div class="tablewrap"><table><thead><tr><th>Month</th><th class="num">Jobs</th><th class="num">Bookings value</th><th class="num">Platform fees</th><th class="num">Cancellation fees</th><th class="num">Other income</th><th class="num">Total revenue</th></tr></thead><tbody>
+  ${trend.slice().reverse().map(t => `<tr><td>${monLbl(t.m)}</td><td class="num">${t.jobs}</td><td class="num">${peso(t.gmv)}</td><td class="num">${m2(t.fees)}</td><td class="num">${m2(t.cancel)}</td><td class="num">${m2(t.other)}</td><td class="num"><b>${m2(t.total)}</b></td></tr>`).join('')}
+  </tbody><tfoot><tr><td><b>Year to date</b></td><td class="num">${sumBy(trend, 'jobs')}</td><td class="num">${peso(sumBy(trend, 'gmv'))}</td><td class="num">${m2(sumBy(trend, 'fees'))}</td><td class="num">${m2(sumBy(trend, 'cancel'))}</td><td class="num">${m2(sumBy(trend, 'other'))}</td><td class="num"><b>${m2(sumBy(trend, 'total'))}</b></td></tr></tfoot></table></div></div>`;
+}
+
+function ledPeriod() { const mode = S.admin.lgMode || 'month', ym = S.admin.lgMonth || ymd(now()).slice(0, 7), y = S.admin.lgYear || ymd(now()).slice(0, 4); if (mode === 'year') return { mode, key: y, from: y + '-01-01', to: y + '-12-31', label: 'Year ' + y }; const l = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(); return { mode, key: ym, from: ym + '-01', to: ym + '-' + pad2(l), label: monLbl(ym) }; }
+function pnlRows(mo) {
+  const R = [['h', 'Revenue'], ['', 'Platform fees (completed bookings)', mo.fees], ['', 'Cancellation fees kept', mo.cancel], ['', 'Other income', mo.otherT], ['t', 'Total revenue', mo.revenue], ['h', 'Expenses'], ['', 'Salaries & wages', mo.salaries], ['', 'Allowances (de minimis)', mo.allow], ['', 'Employer SSS · EC · PhilHealth · Pag-IBIG', mo.er], ['', '13th month pay', mo.th13], ['', 'Customer points redeemed (funded by Ticktap)', mo.points]];
+  Object.entries(mo.byCat).sort((a, b) => b[1] - a[1]).forEach(([c, v]) => R.push(['', c, v]));
+  R.push(['t', 'Total expenses', mo.expense], ['n', 'Net income before income tax', mo.net]);
+  return R;
+}
+function admLedger() {
+  const P = ledPeriod(), mo = moneyOf(P.from, P.to), E = cashEntries(), open = +S.settings.openCash || 0;
+  const before = E.filter(x => ymd(x.t) < P.from), inP = E.filter(x => inRange(ymd(x.t), P.from, P.to));
+  const fA = S.admin.lgAcct || 'all', accts = [...new Set(E.map(x => x.acct))];
+  let bal = open + sumBy(before, x => x.inn - x.out); const openBal = bal;
+  const rows = inP.map(x => { bal += x.inn - x.out; return Object.assign({ bal }, x); });
+  const shown = rows.filter(x => fA === 'all' || x.acct === fA);
+  const cin = sumBy(inP, 'inn'), cout = sumBy(inP, 'out');
+  return `${mgH('Ledger', 'Profit and loss from revenue, payroll and expenses, plus a cash book of every peso in and out — including customer payments, payouts and refunds from Accounts receivable and payable.')}
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><div class="row" style="gap:6px;flex-wrap:wrap">${[['month', 'Month'], ['year', 'Year']].map(([k, l]) => `<button class="chip" data-act="ledMode" data-arg="${k}" aria-pressed="${P.mode === k}">${l}</button>`).join('')}${P.mode === 'month' ? `<input id="lg-m" class="input" type="month" data-bind="admin.lgMonth" data-rerender="1" value="${P.key}" style="height:36px;width:170px">` : `<input id="lg-y" class="input num" inputmode="numeric" data-bind="admin.lgYear" data-rerender="1" value="${P.key}" style="height:36px;width:90px">`}</div><div class="row" style="gap:6px">${docBtn('pnl', P.mode + ':' + P.key, 'Print / Excel', 'primary')}</div></div>
+  <div class="kpis" style="padding:0 16px 12px">${mgKpi('Revenue', peso(mo.revenue, 2), 'accent')}${mgKpi('Company expenses', peso(mo.expense, 2))}${mgKpi('Net income', `<span style="color:var(--${mo.net >= 0 ? 'good' : 'bad'})">${peso(mo.net, 2)}</span>`)}${mgKpi('Cash in', peso(cin, 2))}${mgKpi('Cash out', peso(cout, 2))}${mgKpi('Cash balance at end', peso(bal, 2))}</div></div>
+  <div class="split"><div class="narrow panel"><div class="panel-h"><h3>Profit & loss · ${P.label}</h3></div><div class="tablewrap"><table class="pnl">${pnlRows(mo).map(([k, l, v]) => k === 'h' ? `<tr class="ph"><td colspan="2">${l}</td></tr>` : `<tr class="${k}"><td>${esc(l)}</td><td class="num">${k === 'n' ? `<span style="color:var(--${v >= 0 ? 'good' : 'bad'})">${m2(v)}</span>` : m2(v)}</td></tr>`).join('')}</table></div>
+    <div class="panel-b"><span class="tiny muted">Accrual view: fees when a service ends, payroll by pay period, expenses by invoice date. Income tax (RCIT 20–25%, MCIT) is computed at filing.</span></div></div>
+  <div class="wide panel"><div class="panel-h"><h3>Total money out · ${P.label}</h3></div><div class="list">
+    ${[['Company costs', mo.opex + mo.salaries + mo.allow + mo.er + mo.th13, 'Operating expenses ' + peso(mo.opex) + ' · payroll & shares ' + peso(mo.salaries + mo.allow + mo.er + mo.th13)], ['Accounts payable disbursements', mo.apOut, 'Payouts ' + peso(mo.payouts) + ' · refunds ' + peso(mo.refunds) + ' · BIR 0619-E ' + peso(mo.whtRem)]].map(([l, v, s]) => `<div class="li"><div class="col grow"><b class="small">${l}</b><span class="tiny muted">${s}</span></div><b class="num">${peso(v, 2)}</b></div>`).join('')}
+    <div class="li" style="background:var(--accent-soft)"><b class="grow">Total</b><b class="num">${peso(mo.totalOut, 2)}</b></div></div>
+    <div class="panel-b" style="gap:6px"><label class="field" style="max-width:260px">Opening cash balance on Jan 1 (₱, paid-in capital)<input id="lg-ob" class="input num" inputmode="decimal" data-bind="settings.openCash" data-type="num" value="${open}"></label></div></div></div>
+  <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><h3>Cash book · ${P.label}</h3><select id="lg-a" class="select" data-bind="admin.lgAcct" data-rerender="1" style="height:36px;width:auto"><option value="all">All accounts</option>${accts.map(a => `<option ${fA === a ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select></div>
+  <div class="tablewrap"><table><thead><tr><th>Date</th><th>Reference</th><th>Description</th><th>Account</th><th class="num">In</th><th class="num">Out</th><th class="num">Balance</th></tr></thead><tbody>
+  <tr><td colspan="6" class="small muted">Opening balance</td><td class="num">${m2(openBal)}</td></tr>
+  ${shown.slice(-300).map(x => `<tr><td class="mono small">${fmtD(x.t)}</td><td class="mono tiny">${esc(x.ref)}</td><td class="small">${esc(x.desc)}</td><td class="tiny muted">${esc(x.acct)}</td><td class="num">${x.inn ? m2(x.inn) : ''}</td><td class="num">${x.out ? m2(x.out) : ''}</td><td class="num">${m2(x.bal)}</td></tr>`).join('') || '<tr><td colspan="7" class="small muted">No cash movements in this period.</td></tr>'}
+  </tbody><tfoot><tr><td colspan="4"><b>Totals</b></td><td class="num"><b>${m2(cin)}</b></td><td class="num"><b>${m2(cout)}</b></td><td class="num"><b>${m2(bal)}</b></td></tr></tfoot></table></div></div>`;
+}
+
+function admAccess() {
+  const list = emps().filter(e => e.status === 'active'), A0 = S.admin.acc, me = admUser();
+  const pw = S.admin.accPwShow;
+  return `${mgH('Admin access & levels', 'Issue console IDs to employees and decide what each level can open. Level 1 manages this page; Level 2 gets everything except Level 1-only areas; Level 3 gets only the areas left open to all levels.')}
+  ${pw ? `<div class="panel" style="border-color:var(--good)"><div class="panel-b row between" style="gap:10px;flex-wrap:wrap"><span><b>Temporary password for ${esc((emp(pw.eid) || {}).name)}</b> · <span class="mono" style="font-size:18px">${esc(pw.pw)}</span></span><span class="tiny muted">Shown once. Give it in person; they change it on My work page.</span><button class="btn ghost xs" data-act="accPwHide">Hide</button></div></div>` : ''}
+  <div class="panel"><div class="panel-h"><h3>Console IDs</h3></div><div class="tablewrap"><table><thead><tr><th>Employee</th><th>Admin ID</th><th>Level</th><th>Last sign-in</th><th></th></tr></thead><tbody>
+  ${list.map(e => { const d = A0[e.id] || (A0[e.id] = { id: e.adminId || '', level: String(+e.level || 0) }); return `<tr><td><div class="row" style="gap:8px">${empPhoto(e, 30)}<div class="col"><b class="small">${esc(e.name)}</b><span class="tiny muted">${esc(e.pos)}</span></div></div></td>
+    <td><input id="ac-i-${e.id}" class="input" data-bind="admin.acc.${e.id}.id" value="${esc(d.id)}" placeholder="e.g. jlim" style="height:34px;width:140px"></td>
+    <td><select id="ac-l-${e.id}" class="select" data-bind="admin.acc.${e.id}.level" style="height:34px;width:130px">${[['0', 'No access'], ['1', 'Level 1'], ['2', 'Level 2'], ['3', 'Level 3']].map(([v, l]) => `<option value="${v}" ${String(d.level) === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
+    <td class="small muted">${e.lastLogin ? fmtD(e.lastLogin) + ' ' + fmtT(e.lastLogin) : '—'}</td>
+    <td><div class="row" style="gap:6px;justify-content:flex-end"><button class="btn primary xs" data-act="accSave" data-arg="${e.id}">Save</button>${e.adminId ? `<button class="btn ghost xs" data-act="accPw" data-arg="${e.id}">Reset password</button>` : ''}${me && me.id === e.id ? '<span class="pill outline" style="height:20px">You</span>' : ''}</div></td></tr>`; }).join('')}
+  </tbody></table></div>${S.admin.accErr ? `<div class="panel-b"><span class="small" style="color:var(--bad)">${esc(S.admin.accErr)}</span></div>` : ''}</div>
+  <div class="panel"><div class="panel-h"><div class="col"><h3>What each level can open</h3><span class="small muted">Changes apply at once on every admin screen. Admin access & levels always stays Level 1 only; My work page and How to use are open to everyone.</span></div></div>
+  <div class="tablewrap"><table><thead><tr><th>Area</th><th>Open to</th><th class="num">L1</th><th class="num">L2</th><th class="num">L3</th></tr></thead><tbody>
+  ${MG_AREAS.map(([g, areas]) => `<tr class="ph"><td colspan="5"><b class="small">${g}</b></td></tr>` + areas.map(([a, l]) => { const p = permOf(a), lock = a === 'access'; return `<tr><td class="small">${esc(l)}</td><td><div class="row" style="gap:4px">${[1, 2, 3].map(n => `<button class="chip" style="height:28px" data-act="accPerm" data-arg="${a}|${n}" aria-pressed="${p === n}" ${lock && n !== 1 ? 'disabled' : ''}>${PERM_TXT[n]}</button>`).join('')}</div></td>${[1, 2, 3].map(n => `<td class="num">${n <= p ? `<span style="color:var(--good)">${ic('check', 14)}</span>` : '<span class="muted">—</span>'}</td>`).join('')}</tr>`; }).join('')).join('')}
+  </tbody></table></div></div>
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>Employer details (printed on documents)</h3></div><div class="panel-b"><div class="formgrid">
+    ${[['name', 'Registered name'], ['tin', 'TIN'], ['rdo', 'RDO code'], ['address', 'Business address'], ['sss', 'SSS employer no.'], ['phic', 'PhilHealth employer no.'], ['hdmf', 'Pag-IBIG employer no.'], ['sign', 'Authorized signatory'], ['signTitle', 'Signatory title'], ['phone', 'HR phone'], ['email', 'HR email']].map(([k, l]) => `<label class="field">${l}<input id="co-${k}" class="input" data-bind="settings.company.${k}" value="${esc(CO()[k])}"></label>`).join('')}</div></div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Access log</h3></div><div class="list">${(S.admLog || []).slice(0, 14).map(l => `<div class="li"><div class="col grow"><span class="small">${esc(l.what)}</span><span class="tiny muted">${esc(l.by)} · ${fmtD(l.at)} ${fmtT(l.at)}</span></div></div>`).join('') || '<div class="empty small">No changes yet.</div>'}</div></div></div>`;
+}
+const admNoAccess = t => `${mgH('No access', 'Your level cannot open this area. Ask a Level 1 administrator if you need it for your work.')}<div class="panel"><div class="panel-b"><span class="small">Signed in as <b>${esc((admUser() || {}).name || '')}</b> · Level ${admLevel()}. This area is set to: ${PERM_TXT[permOf(t)]}.</span></div></div>`;
+
+/* ---------- printable documents ---------- */
+function docHead(title, sub) { const c = CO(); return `<div class="hrd-h"><div class="hrd-co"><img src="${LOGO_T}" alt="" class="hrd-logo"><div class="col"><b>${esc(c.name)}</b><span>${esc(c.address)}</span><span>TIN ${esc(c.tin)} · RDO ${esc(c.rdo)}</span></div></div><div class="hrd-t"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</div></div>`; }
+const kv = rows => `<table class="kv">${rows.map(([k, v]) => `<tr><th>${k}</th><td>${v}</td></tr>`).join('')}</table>`;
+function docData(kind, a) {
+  const P = String(a).split('|');
+  if (kind === 'idcard') { const e = emp(P[0]); if (!e) return null; const c = CO(), qr = qrSvg(`TICKTAP EMPLOYEE\n${e.idNo || e.no}\n${e.name}\n${e.pos}\nValid to ${e.idValid || ''}`, 'eid-qr');
+    const front = `<div class="eid"><div class="eid-top"><img src="${LOGO_D}" alt=""><span>EMPLOYEE ID</span></div><div class="eid-ph">${e.photo ? `<img src="${e.photo}" alt="">` : `<span>${esc((e.first || e.name)[0])}${esc((e.last || '')[0] || '')}</span>`}</div><b class="eid-n">${esc((e.first || '') + ' ' + (e.last || '')).trim() || esc(e.name)}</b><span class="eid-p">${esc(e.pos)}</span><span class="eid-d">${esc(e.dept)}</span><div class="eid-no">${esc(e.idNo || e.no)}</div></div>`;
+    const back = `<div class="eid back"><div class="eid-qr-w">${qr}</div><div class="eid-b">${kv([['Employee no.', esc(e.no)], ['Valid until', fmtYmd(e.idValid)], ['TIN', esc(e.tin || '—')], ['SSS', esc(e.sss || '—')], ['In case of emergency', esc(e.emer || '—')]])}</div><div class="eid-sig"><span></span><small>${esc(c.sign)} · ${esc(c.signTitle)}</small></div><small class="eid-f">This card is the property of ${esc(c.name)}. If found, please return to ${esc(c.address)} · ${esc(c.phone)}.</small></div>`;
+    return { title: 'Employee ID · ' + e.name, html: `<div class="pa-head"><b>Employee ID card · ${esc(e.name)} · ${esc(e.idNo || e.no)}</b><span>Print at 100% (actual size, 54 × 85.6 mm). Cut on the dashed lines, glue back to front, laminate.</span></div><div class="pa-cards"><div class="pa-cut">${front}</div><div class="pa-cut">${back}</div></div>`, card: true }; }
+  if (kind === 'coe') { const e = emp(P[0]); if (!e) return null; const c = CO(), purpose = P[1] || 'whatever legal purpose it may serve', withPay = P[2] === '1', no = P[3] || 'DRAFT', he = e.gender === 'male' ? ['Mr.', 'his', 'he'] : e.gender === 'female' ? ['Ms.', 'her', 'she'] : ['', 'their', 'they'];
+    const issued = (S.hrDocs || []).find(d => d.id === no); const dt = issued ? ymd(issued.at) : ymd(now());
+    return { title: 'Certificate of Employment · ' + e.name, html: `<div class="hrd letter">${docHead('', '')}<p class="r">Control no. ${esc(no)}<br>${fmtLong(dt)}</p><h2>CERTIFICATE OF EMPLOYMENT</h2><p>This is to certify that <b>${he[0]} ${esc(e.name.toUpperCase())}</b> ${e.status === 'active' ? 'has been employed' : 'was employed'} by <b>${esc(c.name)}</b> as <b>${esc(e.pos)}</b> (${esc(e.type || 'Regular')}) in the ${esc(e.dept)} department from <b>${fmtLong(e.hired)}</b> ${e.status === 'active' ? 'up to the present' : 'to <b>' + fmtLong(e.sepDate) + '</b>'}.</p>${withPay ? `<p>${he[1][0].toUpperCase() + he[1].slice(1)} current ${e.payType === 'daily' ? 'daily rate is <b>' + peso(e.rate, 2) + '</b>' : 'monthly basic salary is <b>' + peso(e.rate, 2) + '</b>'}${+e.allow ? ', with a monthly allowance of ' + peso(e.allow, 2) : ''}, exclusive of 13th month pay and other benefits required by law.</p>` : ''}<p>This certification is issued upon the request of ${he[0]} ${esc(e.last || e.name)} for <b>${esc(purpose)}</b>.</p><p>Issued this ${fmtLong(dt)} at ${esc(c.address)}.</p><div class="sig"><span></span><b>${esc(c.sign)}</b><small>${esc(c.signTitle)}</small></div><p class="tiny-p">Verification: ${esc(c.phone)} · ${esc(c.email)}. Not valid without the authorized signature and company seal.</p></div>` }; }
+  if (kind === 'payslip' || kind === 'payslips') {
+    const run = kind === 'payslip' ? (S.payrolls || []).find(r => r.id === P[0]) : runOf(P[0]); const lines = run ? run.lines.filter(l => kind === 'payslips' || l.eid === P[1]) : (kind === 'payslips' ? runLines(P[0]) : []); if (!lines.length) return null;
+    const lbl = run ? perLbl(run) : perRange(P[0]).label, c = CO();
+    const one = l => { const e = emp(l.eid) || {}, y = ytdOf(l.eid, (run ? run.per : P[0]).slice(0, 4), null);
+      if (run && run.kind === '13th') return `<div class="hrd slip">${docHead('PAYSLIP', '13th month pay · ' + run.per.slice(0, 4))}${kv([['Employee', esc(l.name) + ' · ' + esc(l.no || '')], ['13th month pay', peso(l.amount, 2)], ['Tax withheld', peso(l.tax || 0, 2)], ['Net pay', '<b>' + peso(l.net, 2) + '</b>']])}</div>`;
+      const ear = [['Basic pay', l.basic], ['Absences & unpaid leave', -l.absDed], ['Late & undertime', -l.lateDed], ['Holiday & rest-day pay', l.prem], ['Overtime', l.otPay], ['Night differential', l.ndPay], ['Gross pay', l.gross, 1], ['De minimis allowance', l.allow]].filter(x => x[1] || x[2]);
+      const ded = [['SSS (employee share)', l.sss], ['PhilHealth (employee share)', l.phic], ['Pag-IBIG (employee share)', l.hdmf], ['Withholding tax' + (l.annual ? ' (annualized)' : ''), l.tax], ['Loan / other deductions', l.loan]].filter(x => x[1]);
+      return `<div class="hrd slip">${docHead('PAYSLIP', esc(lbl) + (run && run.paidAt ? ' · paid ' + fmtD(run.paidAt) : ''))}<div class="slip-who">${kv([['Employee', '<b>' + esc(l.name) + '</b> · ' + esc(l.no || '')], ['Position', esc(l.pos || '')], ['TIN', esc(e.tin || '—')], ['Rate', l.payType === 'daily' ? peso(l.rate, 2) + ' per day' : peso(l.rate, 2) + ' per month'], ['Days', l.k ? `${l.k.present} of ${l.k.expected} workdays · late ${l.k.late}m · undertime ${l.k.ut}m · OT ${l.k.ot + l.k.otRest + l.k.otSpec + l.k.otHol}h` : '—']])}</div>
+        <div class="slip-2"><table><thead><tr><th>Earnings</th><th class="num">₱</th></tr></thead><tbody>${ear.map(([k, v, b]) => `<tr${b ? ' class="t"' : ''}><td>${k}</td><td class="num">${m2(v)}</td></tr>`).join('')}</tbody></table><table><thead><tr><th>Deductions</th><th class="num">₱</th></tr></thead><tbody>${ded.map(([k, v]) => `<tr><td>${k}</td><td class="num">${m2(v)}</td></tr>`).join('')}<tr class="t"><td>Total deductions</td><td class="num">${m2(l.sss + l.phic + l.hdmf + l.tax + l.loan)}</td></tr></tbody></table></div>
+        <div class="slip-net"><span>NET PAY</span><b>${peso(l.net, 2)}</b></div><p class="tiny-p">Year to date: gross ${peso(y.gross, 2)} · tax withheld ${peso(y.tax, 2)} · SSS ${peso(y.sss, 2)} · PhilHealth ${peso(y.phic, 2)} · Pag-IBIG ${peso(y.hdmf, 2)}. Employer shares this period: SSS ${peso(l.erSss + l.ec, 2)} · PhilHealth ${peso(l.erPhic, 2)} · Pag-IBIG ${peso(l.erHdmf, 2)}.</p></div>`; };
+    return { title: 'Payslip · ' + lbl, html: lines.map(one).join('<div class="pbreak"></div>') }; }
+  if (kind === 'register') { const run = runOf(P[0]), lines = run ? run.lines : runLines(P[0]), R = perRange(P[0]); const H = ['No.', 'Employee', 'Basic', 'Absent/late', 'OT/hol/ND', 'Gross', 'SSS', 'PhilHealth', 'Pag-IBIG', 'Tax', 'Allowance', 'Loan', 'Net pay', 'ER SSS+EC', 'ER PHIC', 'ER HDMF'];
+    const rows = lines.map(l => [l.no, l.name, l.basic, -(l.absDed + l.lateDed), l.prem + l.otPay + l.ndPay, l.gross, l.sss, l.phic, l.hdmf, l.tax, l.allow, l.loan, l.net, l.erSss + l.ec, l.erPhic, l.erHdmf]);
+    const tot = ['', 'TOTAL'].concat(H.slice(2).map((_, i) => sumBy(rows, r => +r[i + 2])));
+    return { title: 'Payroll register · ' + R.label, wide: true, html: `<div class="hrd">${docHead('PAYROLL REGISTER', esc(R.label) + (run ? ' · ' + run.status : ' · DRAFT'))}<table class="grid"><thead><tr>${H.map((h, i) => `<th class="${i > 1 ? 'num' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.concat([tot]).map((r, j) => `<tr${j === rows.length ? ' class="t"' : ''}>${r.map((v, i) => `<td class="${i > 1 ? 'num' : ''}">${i > 1 ? m2(v) : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table><div class="sig2"><div><span></span>Prepared by</div><div><span></span>Approved by${run && run.approvedBy ? ': ' + esc(run.approvedBy) : ''}</div><div><span></span>Received / paid</div></div></div>`, sheets: [{ name: 'Register', rows: [H].concat(rows.map(r => r.map(v => typeof v === 'number' ? r2(v) : v)), [tot.map(v => typeof v === 'number' ? r2(v) : v)]) }] }; }
+  if (kind === '1601c') { const ym = P[0], L = linesOfMonth(ym), c = CO(), g = GOV()[ym] || {};
+    const total = sumBy(L, l => l.gross + l.allow), smw = sumBy(L.filter(l => l.mwe), 'earned'), mweP = sumBy(L.filter(l => l.mwe), l => l.prem + l.otPay + l.ndPay), b13 = 0, demin = sumBy(L, 'allow'), contrib = sumBy(L.filter(l => !l.mwe), l => l.sss + l.phic + l.hdmf), mweContrib = sumBy(L.filter(l => l.mwe), l => l.sss + l.phic + l.hdmf);
+    const nonTax = smw + mweP + b13 + demin + contrib + mweContrib, taxable = total - nonTax, tax = sumBy(L, 'tax');
+    const R = [['Total amount of compensation', total], ['Statutory minimum wage (MWEs)', smw], ['Holiday pay, overtime pay, night shift differential and hazard pay (MWEs only)', mweP], ['13th month pay and other benefits', b13], ['De minimis benefits', demin], ['SSS, GSIS, PhilHealth, Pag-IBIG mandatory contributions and union dues (employee share)', contrib + mweContrib], ['Other non-taxable compensation', 0], ['Total non-taxable compensation', nonTax], ['Total taxable compensation', taxable], ['Less: taxable compensation not subject to withholding tax', 0], ['Net taxable compensation', taxable], ['Total taxes withheld', tax], ['Add/(less): adjustment of taxes withheld from previous month(s)', 0], ['Taxes withheld for remittance', tax], ['Less: tax remitted in return previously filed (if amended)', 0], ['Tax still due', tax]];
+    const due = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 10).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    return { title: '1601-C worksheet · ' + monLbl(ym), html: `<div class="hrd">${docHead('BIR FORM 1601-C · WORKSHEET', 'Monthly remittance return of income taxes withheld on compensation · ' + monLbl(ym))}${kv([['Withholding agent', esc(c.name)], ['TIN · RDO', esc(c.tin) + ' · ' + esc(c.rdo)], ['Category', 'Private'], ['Employees in the month', new Set(L.map(l => l.eid)).size], ['Due date', due + ' (manual / eBIRForms) · eFPS: 11th–15th by group'], ['Status', g.bir ? 'Remitted ' + fmtD(g.bir.at) + (g.bir.ref ? ' · ' + esc(g.bir.ref) : '') : 'Not yet remitted']])}<h4>Part II · Computation of tax</h4><table class="grid">${R.map(([k, v], i) => `<tr${[7, 8, 13, 15].includes(i) ? ' class="t"' : ''}><td>${i + 1}. ${k}</td><td class="num">${m2(v)}</td></tr>`).join('')}</table><p class="tiny-p">Prepared from approved Ticktap payrolls on ${new Date().toLocaleString('en-US')}. Enter these figures in eBIRForms or eFPS and pay through an authorized agent bank or ePayment channel. Line names follow BIR Form 1601-C (January 2018 ENCS).</p></div>`, sheets: [{ name: '1601-C ' + ym, rows: [['BIR Form 1601-C worksheet · ' + monLbl(ym)], ['Withholding agent', c.name, 'TIN', c.tin], []].concat(R.map(([k, v], i) => [(i + 1) + '. ' + k, r2(v)])) }] }; }
+  if (kind === 'contrib') { const ym = P[0], L = linesOfMonth(ym), by = {}; L.forEach(l => { const o = by[l.eid] || (by[l.eid] = { l, sss: 0, erSss: 0, ec: 0, phic: 0, erPhic: 0, hdmf: 0, erHdmf: 0 }); ['sss', 'erSss', 'ec', 'phic', 'erPhic', 'hdmf', 'erHdmf'].forEach(k => { o[k] += l[k]; }); });
+    const c = CO(), rows = Object.values(by).map(o => { const e = emp(o.l.eid) || {}; return [o.l.name, e.sss || '', o.l.msc, o.sss, o.erSss, o.ec, o.sss + o.erSss + o.ec, e.phic || '', o.phic, o.erPhic, o.phic + o.erPhic, e.hdmf || '', o.hdmf, o.erHdmf, o.hdmf + o.erHdmf]; });
+    const H = ['Employee', 'SSS no.', 'MSC', 'SSS EE', 'SSS ER', 'EC', 'SSS total', 'PhilHealth no.', 'PHIC EE', 'PHIC ER', 'PHIC total', 'Pag-IBIG MID', 'HDMF EE', 'HDMF ER', 'HDMF total'];
+    const tot = ['TOTAL', '', ''].concat([3, 4, 5, 6].map(i => sumBy(rows, r => r[i])), [''], [8, 9, 10].map(i => sumBy(rows, r => r[i])), [''], [12, 13, 14].map(i => sumBy(rows, r => r[i])));
+    return { title: 'Contributions · ' + monLbl(ym), wide: true, html: `<div class="hrd">${docHead('GOVERNMENT CONTRIBUTIONS', monLbl(ym) + ' · SSS R-3 · PhilHealth RF-1 · Pag-IBIG MCRF')}${kv([['Employer', esc(c.name)], ['SSS · PhilHealth · Pag-IBIG employer nos.', esc(c.sss) + ' · ' + esc(c.phic) + ' · ' + esc(c.hdmf)]])}<table class="grid"><thead><tr>${H.map((h, i) => `<th class="${[0, 1, 7, 11].includes(i) ? '' : 'num'}">${h}</th>`).join('')}</tr></thead><tbody>${rows.concat([tot]).map((r, j) => `<tr${j === rows.length ? ' class="t"' : ''}>${r.map((v, i) => `<td class="${[0, 1, 7, 11].includes(i) ? '' : 'num'}">${typeof v === 'number' ? (i === 2 ? peso(v) : m2(v)) : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="tiny-p">Upload to My.SSS (R-3 / Contribution Collection List), PhilHealth EPRS (RF-1) and Virtual Pag-IBIG (MCRF). Pay by each agency's due date for the following month.</p></div>`, sheets: [{ name: 'Contributions ' + ym, rows: [H].concat(rows.map(r => r.map(v => typeof v === 'number' ? r2(v) : v)), [tot.map(v => typeof v === 'number' ? r2(v) : v)]) }] }; }
+  if (kind === 'th13') { const y = +P[0], rows = emps().filter(e => e.hired <= y + '-12-31' && (!e.sepDate || e.sepDate >= y + '-01-01')).map(e => { const t = th13Of(e, y); return [e.name, e.status === 'active' ? 'Active' : 'Separated ' + e.sepDate, t.earned, t.due, t.paid, Math.max(0, t.due - t.paid)]; });
+    const H = ['Employee', 'Status', 'Basic salary earned (approved payrolls)', '13th month (÷12)', 'Already paid', 'Balance'];
+    return { title: '13th month pay · ' + y, html: `<div class="hrd">${docHead('13TH MONTH PAY', 'Calendar year ' + y + ' · Presidential Decree No. 851')}<table class="grid"><thead><tr>${H.map((h, i) => `<th class="${i > 1 ? 'num' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((v, i) => `<td class="${i > 1 ? 'num' : ''}">${i > 1 ? m2(v) : esc(v)}</td>`).join('')}</tr>`).join('')}<tr class="t"><td colspan="2">TOTAL</td>${[2, 3, 4, 5].map(i => `<td class="num">${m2(sumBy(rows, r => r[i]))}</td>`).join('')}</tr></tbody></table><p class="tiny-p">Pay on or before December 24. Separated employees receive the pro-rated amount with their final pay. Up to ₱90,000 of 13th month and other benefits is exempt from income tax.</p></div>`, sheets: [{ name: '13th month ' + y, rows: [H].concat(rows.map(r => r.map(v => typeof v === 'number' ? r2(v) : v))) }] }; }
+  if (kind === '2316') { const e = emp(P[0]), y = +(P[1] || 2026); if (!e) return null; const t = ytdOf(e.id, y), c = CO(), fp = e.sepDate && e.sepDate.startsWith(String(y)) ? finalPay(e) : null;
+    const ex13 = Math.min(PH.EXEMPT13, t.th13), tax13 = Math.max(0, t.th13 - PH.EXEMPT13);
+    const nonTax = t.smw + t.mwePrem + ex13 + t.allow + t.contrib, taxableBasic = t.basic, taxOther = e.mwe ? 0 : t.prem + t.otPay + t.ndPay;
+    const gross = t.gross + t.allow + t.th13, taxableTot = taxableBasic + taxOther + tax13 - (e.mwe ? 0 : t.contrib);
+    const due = e.mwe ? 0 : PH.taxAnnual(Math.max(0, taxableTot));
+    const R1 = [['Gross compensation income from present employer', gross], ['Less: total non-taxable / exempt compensation', nonTax], ['Taxable compensation income from present employer', Math.max(0, taxableTot)], ['Add: taxable compensation from previous employer', 0], ['Gross taxable compensation income', Math.max(0, taxableTot)], [(e.sepDate && e.sepDate.startsWith(String(y))) || ymd(now()) > y + '-12-31' ? 'Tax due' : 'Tax due · on year-to-date pay (final figure after December annualization)', due], ['Taxes withheld · present employer', t.tax], ['Taxes withheld · previous employer', 0], ['Total taxes withheld as adjusted', t.tax]];
+    const R2 = [['Basic salary / statutory minimum wage (MWE)', t.smw], ['Holiday pay, overtime, night differential, hazard pay (MWE)', t.mwePrem], ['13th month pay and other benefits (up to ₱90,000)', ex13], ['De minimis benefits', t.allow], ['SSS, GSIS, PhilHealth, Pag-IBIG contributions and union dues (employee share)', t.contrib], ['Total non-taxable / exempt compensation', nonTax]];
+    const R3 = [['Basic salary (net of absences, late and undertime)', taxableBasic], ['Holiday pay, overtime and night differential', taxOther], ['Taxable 13th month pay and other benefits', tax13], ['Less: employee share of mandatory contributions', e.mwe ? 0 : -t.contrib], ['Total taxable compensation', Math.max(0, taxableTot)]];
+    const tb = R => `<table class="grid">${R.map(([k, v], i) => `<tr${i === R.length - 1 ? ' class="t"' : ''}><td>${k}</td><td class="num">${m2(v)}</td></tr>`).join('')}</table>`;
+    return { title: 'BIR 2316 · ' + e.name + ' · ' + y, html: `<div class="hrd">${docHead('BIR FORM 2316 · DATA SHEET', 'Certificate of compensation payment / tax withheld · ' + y + (fp ? ' · separated ' + fmtYmd(e.sepDate) : ''))}<div class="slip-2"><div><h4>Part I · Employee</h4>${kv([['Name', '<b>' + esc((e.last || '') + ', ' + (e.first || '') + ' ' + (e.mid || '')) + '</b>'], ['TIN', esc(e.tin || '— (apply for TIN with BIR Form 1902)')], ['Address', esc(e.address || '')], ['Birth date', fmtYmd(e.birth)], ['Period covered', fmtYmd(e.hired > y + '-01-01' ? e.hired : y + '-01-01') + ' – ' + fmtYmd(e.sepDate && e.sepDate < y + '-12-31' ? e.sepDate : y + '-12-31')], ['Minimum wage earner', e.mwe ? 'Yes' : 'No']])}</div><div><h4>Part II · Present employer</h4>${kv([['Name', esc(c.name)], ['TIN', esc(c.tin)], ['Address', esc(c.address)], ['Type', 'Main employer']])}</div></div>
+      <h4>Part IV-A · Summary</h4>${tb(R1)}<div class="slip-2"><div><h4>Part IV-B · Non-taxable / exempt compensation</h4>${tb(R2)}</div><div><h4>Taxable compensation</h4>${tb(R3)}</div></div>
+      ${!e.sepDate || !e.sepDate.startsWith(String(y)) ? `<p class="tiny-p">Year-to-date figures from approved payrolls; December's payroll annualizes the tax. Give the signed 2316 to the employee by January 31 of the next year (or on the last day of work when separated) and file the alphalist with BIR Form 1604-C.</p>` : `<p class="tiny-p">Separated employee: the final-pay tax adjustment of ${peso(fp.taxAdj, 2)} is shown on the final pay statement. Give this 2316 on the last day of work.</p>`}
+      <div class="sig2"><div><span></span>${esc(c.sign)} · ${esc(c.signTitle)}<br><small>Present employer / authorized agent</small></div><div><span></span>${esc(e.name)}<br><small>Employee</small></div></div></div>` }; }
+  if (kind === 'alpha') { const y = +P[0], L = emps().filter(e => runsAll().some(r => r.per.startsWith(String(y)) && r.lines.some(l => l.eid === e.id)));
+    const H = ['Seq', 'TIN', 'Last name', 'First name', 'Middle name', 'From', 'To', 'Gross compensation', '13th month & benefits (exempt)', 'De minimis', 'SSS/PHIC/HDMF (EE)', 'MWE basic & premiums', 'Total non-taxable', 'Taxable basic & other', 'Taxable 13th month', 'Total taxable', 'Tax due', 'Tax withheld', 'Year-end adjustment', 'Tax withheld as adjusted', 'MWE'];
+    const rows = L.map((e, i) => { const t = ytdOf(e.id, y), ex13 = Math.min(PH.EXEMPT13, t.th13), tx13 = Math.max(0, t.th13 - PH.EXEMPT13), nonTax = t.smw + t.mwePrem + ex13 + t.allow + t.contrib, taxable = e.mwe ? 0 : Math.max(0, t.basic + t.prem + t.otPay + t.ndPay - t.contrib), due = e.mwe ? 0 : PH.taxAnnual(taxable + tx13); return [i + 1, e.tin || '', e.last || '', e.first || '', e.mid || '', e.hired > y + '-01-01' ? e.hired : y + '-01-01', e.sepDate && e.sepDate < y + '-12-31' ? e.sepDate : y + '-12-31', t.gross + t.allow + t.th13, ex13, t.allow, t.contrib, t.smw + t.mwePrem, nonTax, taxable, tx13, taxable + tx13, due, t.tax, due - t.tax, due, e.mwe ? 'Y' : 'N']; });
+    return { title: 'Alphalist of employees · ' + y, wide: true, html: `<div class="hrd">${docHead('ALPHALIST OF EMPLOYEES', 'BIR Form 1604-C · Schedule 1 · calendar year ' + y)}<table class="grid tiny-t"><thead><tr>${H.map((h, i) => `<th class="${i > 6 && i < 20 ? 'num' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((v, i) => `<td class="${i > 6 && i < 20 ? 'num' : ''}">${i > 6 && i < 20 ? m2(v) : esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table><p class="tiny-p">Year to date from approved payrolls. File BIR Form 1604-C with the alphalist (DAT file from the BIR Alphalist Data Entry module) on or before January 31 of the following year. Confirm with your tax adviser before filing.</p></div>`, sheets: [{ name: 'Alphalist ' + y, rows: [H].concat(rows.map(r => r.map(v => typeof v === 'number' ? r2(v) : v))) }] }; }
+  if (kind === 'finalpay') { const e = emp(P[0]), fp = e && finalPay(e); if (!fp) return null; const c = CO(), u = fp.unpaid;
+    const R = [[u ? 'Unpaid salary ' + fmtYmd(fp.from) + ' – ' + fmtYmd(fp.to) + ` (${u.k.present} of ${u.k.expected} workdays)` : 'Salary · fully paid in the last payroll (to ' + fmtYmd(e.sepDate) + ')', u ? u.gross : 0], ['De minimis allowance', u ? u.allow : 0], ['Less: SSS, PhilHealth, Pag-IBIG (employee share)', u ? -(u.sss + u.phic + u.hdmf) : 0], ['Less: loan / other regular deductions', u ? -u.loan : 0], ['Pro-rated 13th month pay', fp.th13], [`Unused service incentive leave · ${fp.silDays} day(s)${fp.yrs < 1 ? ' (under 1 year of service)' : ''}`, fp.silPay], [fp.taxAdj > 0 ? 'Less: additional tax on annualized compensation' : 'Add: tax refund on annualized compensation', -fp.taxAdj], ['Less: other deductions (accountabilities)', -fp.ded]];
+    return { title: 'Final pay · ' + e.name, html: `<div class="hrd">${docHead('FINAL PAY STATEMENT', esc(e.sepType) + ' · last day ' + fmtLong(e.sepDate))}${kv([['Employee', '<b>' + esc(e.name) + '</b> · ' + esc(e.no)], ['Position', esc(e.pos)], ['Service', fmtLong(e.hired) + ' – ' + fmtLong(e.sepDate) + ' (' + fp.yrs.toFixed(1) + ' years)'], ['Release on or before', '<b>' + fmtLong(fp.releaseBy) + '</b> (within 30 days, DOLE Labor Advisory 06-2020)']])}<table class="grid">${R.map(([k, v]) => `<tr><td>${k}</td><td class="num">${m2(v || 0)}</td></tr>`).join('')}<tr class="t"><td>NET FINAL PAY</td><td class="num">${m2(fp.net)}</td></tr></table><p class="tiny-p">Tax: annual tax due ${peso(fp.taxDue, 2)} less ${peso(fp.taxWithheld, 2)} withheld this year. Up to 10 days of monetized unused leave and up to ₱90,000 of 13th month pay are tax-exempt. Release with BIR Form 2316 and a Certificate of Employment against a signed quitclaim and clearance.</p><div class="sig2"><div><span></span>${esc(c.sign)}<br><small>${esc(c.signTitle)}</small></div><div><span></span>${esc(e.name)}<br><small>Received by employee · date</small></div></div></div>` }; }
+  if (kind === 'attsum') { const ym = P[0], M = attMap(), L = emps().filter(e => e.hired <= ym + '-31' && (!e.sepDate || e.sepDate >= ym + '-01')).map(e => attSum(e, ym, M));
+    const H = ['Employee', 'Workdays', 'Present', 'Absent', 'Paid leave', 'Unpaid leave', 'Late (min)', 'Undertime (min)', 'OT (h)', 'No record'], rows = L.map(s => [s.name, s.expected, s.present, s.absent, s.paidLeave, s.unpaidLeave, s.late, s.ut, s.ot, s.noRec]);
+    return { title: 'Attendance · ' + monLbl(ym), html: `<div class="hrd">${docHead('ATTENDANCE SUMMARY', monLbl(ym))}<table class="grid"><thead><tr>${H.map((h, i) => `<th class="${i ? 'num' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((v, i) => `<td class="${i ? 'num' : ''}">${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`, sheets: [{ name: 'Summary ' + ym, rows: [H].concat(rows) }, { name: 'Daily records', rows: [['Date', 'Employee', 'Status', 'In', 'Out', 'Late (min)', 'Undertime (min)', 'OT (h)', 'ND (h)', 'Note']].concat((S.attendance || []).filter(r => r.date.startsWith(ym)).sort((a, b) => a.date < b.date ? -1 : 1).map(r => { const e = emp(r.eid) || {}, c = r.type === 'work' ? attCalc(e, r) : { late: 0, ut: 0 }; return [r.date, e.name, r.type === 'leave' ? (r.leave || 'Leave') + (r.paid ? ' (paid)' : ' (unpaid)') : r.type, r.in || '', r.out || '', c.late, r.out ? c.ut : 0, +r.ot || 0, +r.nd || 0, r.note || '']; })) }] }; }
+  if (kind === 'expenses') { const ym = P[0], L = (S.expenses || []).filter(x => x.date.startsWith(ym)).sort((a, b) => a.date < b.date ? -1 : 1), H = ['Date', 'Category', 'Supplier', 'TIN', 'Description', 'OR / invoice', 'Amount', 'Input VAT', 'EWT %', 'EWT', 'Paid to supplier', 'Method', 'Status'];
+    const rows = L.map(x => [x.date, x.cat, x.payee, x.tin || '', x.desc, x.ref || '', x.amount, x.vatIn || 0, x.ewtRate || 0, x.ewt || 0, r2(x.amount - (x.ewt || 0)), x.method, x.status]);
+    return { title: 'Expenses · ' + monLbl(ym), wide: true, html: `<div class="hrd">${docHead('EXPENSE REPORT', monLbl(ym))}<table class="grid"><thead><tr>${H.map((h, i) => `<th class="${i > 5 && i < 11 ? 'num' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r => `<tr>${r.map((v, i) => `<td class="${i > 5 && i < 11 ? 'num' : ''}">${i > 5 && i < 11 && i !== 8 ? m2(v) : esc(v)}</td>`).join('')}</tr>`).join('')}<tr class="t"><td colspan="6">TOTAL</td><td class="num">${m2(sumBy(L, 'amount'))}</td><td class="num">${m2(sumBy(L, 'vatIn'))}</td><td></td><td class="num">${m2(sumBy(L, 'ewt'))}</td><td class="num">${m2(sumBy(L, x => x.amount - (x.ewt || 0)))}</td><td colspan="2"></td></tr></tbody></table></div>`, sheets: [{ name: 'Expenses ' + ym, rows: [H].concat(rows) }] }; }
+  if (kind === 'pnl') { const [mode, key] = P[0].split(':'); S.admin.lgMode = mode; if (mode === 'year') S.admin.lgYear = key; else S.admin.lgMonth = key; const Pd = ledPeriod(), mo = moneyOf(Pd.from, Pd.to), R = pnlRows(mo);
+    const E = cashEntries().filter(x => inRange(ymd(x.t), Pd.from, Pd.to));
+    return { title: 'Profit & loss · ' + Pd.label, html: `<div class="hrd">${docHead('STATEMENT OF PROFIT AND LOSS', Pd.label + ' · ' + fmtLong(Pd.from) + ' – ' + fmtLong(Pd.to) + ' · management accounts')}<table class="grid pnl">${R.map(([k, l, v]) => k === 'h' ? `<tr class="ph"><td colspan="2"><b>${l}</b></td></tr>` : `<tr class="${k}"><td>${esc(l)}</td><td class="num">${m2(v)}</td></tr>`).join('')}</table><h4>Money out</h4><table class="grid"><tr><td>Company costs (expenses, payroll, employer shares)</td><td class="num">${m2(mo.opex + mo.salaries + mo.allow + mo.er + mo.th13)}</td></tr><tr><td>Accounts payable · payouts to providers and businesses</td><td class="num">${m2(mo.payouts)}</td></tr><tr><td>Accounts payable · customer refunds</td><td class="num">${m2(mo.refunds)}</td></tr><tr><td>Accounts payable · BIR 0619-E remitted</td><td class="num">${m2(mo.whtRem)}</td></tr><tr class="t"><td>Total money out</td><td class="num">${m2(mo.totalOut)}</td></tr></table><p class="tiny-p">Prepared from Ticktap records on ${new Date().toLocaleString('en-US')}. Unaudited management accounts.</p></div>`,
+      sheets: [{ name: 'P&L', rows: [['Statement of profit and loss · ' + Pd.label], []].concat(R.map(([k, l, v]) => [k === 'h' ? l.toUpperCase() : (k ? '' : '   ') + l, v == null ? '' : r2(v)])) }, { name: 'Cash book', rows: [['Date', 'Reference', 'Description', 'Account', 'In', 'Out']].concat(E.map(x => [ymd(x.t), x.ref, x.desc, x.acct, r2(x.inn), r2(x.out)])) }, { name: 'Expenses', rows: [['Date', 'Category', 'Supplier', 'Description', 'Amount', 'EWT']].concat(mo.exps.map(x => [x.date, x.cat, x.payee, x.desc, x.amount, x.ewt || 0])) }, { name: 'Revenue', rows: [['Job', 'Ended', 'Bookings value', 'Platform fee']].concat(mo.done.map(b => [b.id, ymd(b.endedAt), b.gross, r2(b.ledger.fee)])) }] }; }
+  return null;
+}
+function admDocOv() {
+  const d = S.admin.doc; if (!d) return '';
+  const x = docData(d.k, d.a); if (!x) { S.admin.doc = null; return ''; }
+  return `<div class="docov" data-ov="doc"><div class="docbar"><b class="ellipsis">${esc(x.title)}</b><div class="row" style="gap:6px"><button class="btn primary sm" data-act="mgDocPrint">${ic('doc', 15)} Print / PDF</button>${x.sheets ? `<button class="btn secondary sm" data-act="mgDocXls">Excel</button>` : ''}<button class="btn ghost sm" data-act="mgDocClose">${ic('x', 15)} Close</button></div></div><div class="paper ${x.card ? 'cards' : ''} ${x.wide ? 'wide' : ''}">${x.html}</div></div>`;
+}
+function mgPrint() {
+  const d = S.admin.doc, x = d && docData(d.k, d.a); if (!x) return;
+  if (window.BALIK_PREVIEW) { toast('admin', 'Printing works on the live site', 'Open Ticktap in your browser to print or save as PDF.'); return; }
+  let el = document.getElementById('printArea'); if (!el) { el = document.createElement('div'); el.id = 'printArea'; document.body.appendChild(el); }
+  el.innerHTML = x.html; document.body.classList.add('printing'); if (x.wide) document.body.classList.add('print-wide');
+  const done = () => { document.body.classList.remove('printing', 'print-wide'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done); setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(done, 60000); }, 300);
+}
+async function mgExcel() {
+  const d = S.admin.doc, x = d && docData(d.k, d.a); if (!x || !x.sheets) return;
+  if (window.BALIK_PREVIEW) { toast('admin', 'Downloads work on the live site', 'Open Ticktap in your browser to download.'); return; }
+  const name = 'Ticktap_' + x.title.replace(/[^A-Za-z0-9]+/g, '_').replace(/_+$/, '');
+  const save = (blob, fn) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); };
+  try {
+    if (!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    const wb = XLSX.utils.book_new(); x.sheets.forEach(s => { const ws = XLSX.utils.aoa_to_sheet(s.rows); ws['!cols'] = (s.rows[0] || []).map((_, i) => ({ wch: Math.min(40, Math.max(8, ...s.rows.map(r => String(r[i] == null ? '' : r[i]).length + 2))) })); XLSX.utils.book_append_sheet(wb, ws, s.name.slice(0, 31)); });
+    save(new Blob([XLSX.write(wb, { bookType: 'xlsx', type: 'array' })], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name + '.xlsx');
+  } catch (e) { const csv = x.sheets[0].rows.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\n'); save(new Blob([csv], { type: 'text/csv' }), name + '.csv'); toast('admin', 'Saved as CSV', 'Excel library could not load; a CSV was saved instead.'); }
+}
+
+/* ---------- actions ---------- */
+const empBlank = () => ({ id: '', last: '', first: '', mid: '', birth: '', gender: '', civil: 'Single', phone: '', email: '', address: '', emer: '', pos: '', dept: 'Operations', type: 'Probationary', hired: ymd(now()), days: '5', shiftIn: '09:00', shiftOut: '18:00', payType: 'monthly', rate: '', allow: '', loan: '', bank: '', mwe: false, tin: '', sss: '', phic: '', hdmf: '', photo: '', sepType: 'Resignation', sepDate: '', sepReason: '', finalDed: '' });
+const MG_ACTIONS = {
+  admLogin: () => { const f = S.admin.al || {}, id = String(f.id || '').trim().toLowerCase(); const e = emps().find(x => (x.adminId || '').toLowerCase() === id);
+    if (!e || !+e.level || e.adminOff || e.pw !== hashPw(f.pw || '', e.salt)) { S.admin.alErr = 'Admin ID or password is incorrect.'; return; }
+    if (e.status !== 'active') { S.admin.alErr = 'This employee is separated. Console access has ended.'; return; }
+    S.admSess = { eid: e.id, at: Date.now() }; S.admSignedOut = false; e.lastLogin = now(); S.admin.al = { id: '', pw: '' }; S.admin.alErr = ''; admLog('Signed in'); if (!canArea(S.admin.tab)) S.admin.tab = firstArea(); toast('admin', 'Welcome, ' + e.first, 'Level ' + e.level + ' · ' + e.pos); },
+  admLogout: () => { admLog('Signed out'); S.admSess = null; S.admSignedOut = true; S.admin.doc = null; },
+  admGo: t => { S.admin.tab = t; },
+  meClock: w => { const u = admUser(); if (!u) return; const d = ymd(now()), t = new Date(now()), tm = pad2(t.getHours()) + ':' + pad2(t.getMinutes()); let r = (S.attendance || []).find(x => x.eid === u.id && x.date === d);
+    if (w === 'in') { if (!r) { r = { id: u.id + '_' + d, eid: u.id, date: d, type: 'work', in: tm, out: '', ot: 0, nd: 0, note: 'Clocked in on the console' }; S.attendance.push(r); } else if (!r.in) r.in = tm; toast('admin', 'Clocked in ' + tm, attCalc(u, r).late ? 'Late ' + attCalc(u, r).late + ' min' : 'On time'); }
+    else if (r) { r.out = tm; const c = attCalc(u, r); toast('admin', 'Clocked out ' + tm, c.ut ? 'Undertime ' + c.ut + ' min (early leave)' : 'Have a good evening'); } },
+  meReq: () => { const u = admUser(), f = S.admin.me; if (!u || !String(f.purpose || '').trim()) return; S.hrReq.unshift({ id: 'RQ-' + Date.now().toString(36).toUpperCase(), eid: u.id, kind: 'coe', purpose: String(f.purpose).trim(), withPay: !!f.withPay, at: now(), status: 'pending' }); f.purpose = ''; f.withPay = false; pushAlert('admin', 'COE request · ' + u.name, 'Issue it in Management › HR documents.', null, 'info'); toast('admin', 'Request sent to HR', 'You will get the certificate within 3 days.'); },
+  meDoc: arg => { const u = admUser(), P = arg.split('|'); if (!u) return; const own = P[0] === 'payslip' ? P[2] === u.id : P[1] === u.id; if (!own) return; S.admin.doc = P[0] === 'payslip' ? { k: 'payslip', a: P[1] + '|' + P[2] } : { k: P[0], a: P.slice(1).join('|') }; },
+  mePw: () => { const u = admUser(), f = S.admin.me; if (!u) return; if (u.pw !== hashPw(f.old || '', u.salt)) { toast('admin', 'Current password is wrong', ''); return; } if (String(f.pw1 || '').length < 8 || f.pw1 !== f.pw2) { toast('admin', 'Check the new password', 'Use 8 or more characters and type it twice the same.'); return; } u.salt = newSalt(); u.pw = hashPw(f.pw1, u.salt); f.old = f.pw1 = f.pw2 = ''; admLog('Changed own password'); toast('admin', 'Password changed', ''); },
+  mgDoc: arg => { const i = arg.indexOf('|'); S.admin.doc = { k: arg.slice(0, i), a: arg.slice(i + 1) }; },
+  mgDocClose: () => { S.admin.doc = null; },
+  mgDocPrint: () => mgPrint(),
+  mgDocXls: () => { mgExcel(); },
+  empFilter: k => { S.admin.empFilter = k; },
+  empNew: () => { S.admin.empF = empBlank(); S.admin.empErr = ''; },
+  empEdit: id => { const e = emp(id); if (!e) return; S.admin.empF = Object.assign(empBlank(), JSON.parse(JSON.stringify(e)), { days: String(e.days || 5) }); delete S.admin.empF.pw; delete S.admin.empF.salt; S.admin.empErr = ''; },
+  empCancel: () => { S.admin.empF = null; S.admin.empErr = ''; },
+  empSave: () => { const f = S.admin.empF; if (!f) return; const req = [['last', 'last name'], ['first', 'first name'], ['pos', 'position'], ['hired', 'date hired'], ['rate', 'pay rate']].filter(([k]) => !String(f[k] || '').trim());
+    if (req.length) { S.admin.empErr = 'Please fill in: ' + req.map(r => r[1]).join(', ') + '.'; return; }
+    if (!(+f.rate > 0)) { S.admin.empErr = 'Pay rate must be a number above zero.'; return; }
+    if (f.tin && !/^\d{3}-?\d{3}-?\d{3}(-?\d{3,5})?$/.test(f.tin.trim())) { S.admin.empErr = 'TIN should look like 123-456-789-000.'; return; }
+    const clean = { last: f.last.trim(), first: f.first.trim(), mid: String(f.mid || '').trim(), name: f.first.trim() + ' ' + (f.mid ? f.mid.trim()[0] + '. ' : '') + f.last.trim(), birth: f.birth, gender: f.gender, civil: f.civil, phone: f.phone, email: f.email, address: f.address, emer: f.emer, pos: f.pos.trim(), dept: f.dept, type: f.type, hired: f.hired, days: +f.days || 5, shiftIn: f.shiftIn || '09:00', shiftOut: f.shiftOut || '18:00', payType: f.payType, rate: +f.rate, allow: +f.allow || 0, loan: +f.loan || 0, bank: f.bank, mwe: !!f.mwe, tin: f.tin, sss: f.sss, phic: f.phic, hdmf: f.hdmf, photo: f.photo || '' };
+    if (f.id) { Object.assign(emp(f.id), clean); admLog('Updated employee ' + clean.name); toast('admin', 'Employee updated', clean.name); }
+    else { const y = (f.hired || ymd(now())).slice(0, 4), n = emps().filter(e => (e.no || '').includes('-' + y + '-')).length + 1; const id = 'E' + String(Math.max(0, ...emps().map(e => parseInt(e.id.slice(1)) || 0)) + 1).padStart(3, '0');
+      S.employees.push(Object.assign({ id, no: 'TT-' + y + '-' + String(n).padStart(3, '0'), status: 'active', level: 0, adminId: '', salt: '', pw: '' }, clean)); admLog('Registered employee ' + clean.name); toast('admin', 'Employee registered', clean.name + ' · ' + id); }
+    S.admin.empF = null; S.admin.empErr = ''; },
+  empSep: () => { const f = S.admin.empF, e = f && emp(f.id); if (!e || !f.sepDate) return; Object.assign(e, { status: f.sepType === 'Retirement' ? 'retired' : f.sepType.startsWith('Termination') ? 'terminated' : 'resigned', sepType: f.sepType, sepDate: f.sepDate, sepReason: f.sepReason || '', finalDed: +f.finalDed || 0, adminOff: true });
+    admLog('Recorded separation: ' + e.name + ' (' + f.sepType + ', ' + f.sepDate + ')'); S.admin.empF = Object.assign(empBlank(), JSON.parse(JSON.stringify(e)), { days: String(e.days) }); toast('admin', 'Separation recorded', 'Final pay due by ' + fmtYmd(finalPay(e).releaseBy)); },
+  empReinstate: id => { const e = emp(id); if (!e) return; Object.assign(e, { status: 'active', sepType: '', sepDate: '', sepReason: '', adminOff: false }); admLog('Undid separation: ' + e.name); S.admin.empF = null; },
+  attEdit: eid => { const d = S.admin.attDate || ymd(now()), e = emp(eid), r = (S.attendance || []).find(x => x.eid === eid && x.date === d), sh = shiftOf(e); S.admin.attEd = Object.assign({ eid, type: 'work', in: sh.in, out: sh.out, ot: '', nd: '', leave: 'Vacation leave', paid: true, note: '' }, r ? JSON.parse(JSON.stringify(r)) : {}); },
+  attCancel: () => { S.admin.attEd = null; },
+  attSave: () => { const f = S.admin.attEd, d = S.admin.attDate || ymd(now()); if (!f) return; const rec = { id: f.eid + '_' + d, eid: f.eid, date: d, type: f.type, note: f.note || '' };
+    if (f.type === 'work' || f.type === 'half') Object.assign(rec, { in: f.in || '', out: f.out || '', ot: +f.ot || 0, nd: +f.nd || 0 }); if (f.type === 'leave') Object.assign(rec, { leave: f.leave, paid: !!f.paid });
+    S.attendance = (S.attendance || []).filter(x => x.id !== rec.id); S.attendance.push(rec); S.admin.attEd = null; },
+  attDel: () => { const f = S.admin.attEd, d = S.admin.attDate || ymd(now()); if (!f) return; S.attendance = S.attendance.filter(x => x.id !== f.eid + '_' + d); S.admin.attEd = null; },
+  attFill: () => { const d = S.admin.attDate || ymd(now()); let n = 0; emps().filter(e => empActiveOn(e, d) && isWorkday(e, d) && !holOf(d)).forEach(e => { if (S.attendance.some(x => x.eid === e.id && x.date === d)) return; const sh = shiftOf(e); S.attendance.push({ id: e.id + '_' + d, eid: e.id, date: d, type: 'work', in: sh.in, out: sh.out, ot: 0, nd: 0, note: 'Marked present by HR' }); n++; }); toast('admin', n ? n + ' marked present' : 'Everyone already has a record', fmtYmd(d)); },
+  prApprove: () => { const per = S.admin.prPer || curPer(); if (runOf(per)) return; const lines = runLines(per); if (!lines.length) return; const u = admUser(); S.payrolls.push({ id: 'PR-' + per, per, kind: 'regular', status: 'approved', lines, at: now(), by: u ? u.name : '', approvedBy: u ? u.name : '' }); admLog('Approved payroll ' + perRange(per).label); toast('admin', 'Payroll approved', perRange(per).label + ' · net ' + peso(sumBy(lines, 'net'), 2)); },
+  prReopen: () => { const per = S.admin.prPer || curPer(), r = runOf(per); if (!r || r.status === 'paid') return; S.payrolls = S.payrolls.filter(x => x !== r); admLog('Reopened payroll ' + perRange(per).label); },
+  prPaid: () => { const per = S.admin.prPer || curPer(), r = runOf(per); if (!r) return; r.status = 'paid'; r.paidAt = now(); r.ref = String(S.admin.prRef || '').trim(); S.admin.prRef = ''; admLog('Marked payroll paid ' + perRange(per).label); toast('admin', 'Payroll paid', 'Payslips are on each employee\'s My work page.'); },
+  prRemit: arg => { const [ym, k] = arg.split('|'); S.fin.gov = S.fin.gov || {}; const g = S.fin.gov[ym] || (S.fin.gov[ym] = {}); g[k] = { at: now(), ref: '' }; admLog('Recorded remittance ' + GOVN[k] + ' ' + ym); toast('admin', 'Remittance recorded', GOVN[k]); },
+  prTh13: y => { if (runsAll().some(r => r.kind === '13th' && r.per.startsWith(String(y)))) return; const lines = emps().filter(e => e.status === 'active').map(e => { const t = th13Of(e, +y), amount = r2(Math.max(0, t.due - t.paid)), taxable = Math.max(0, amount - PH.EXEMPT13); return { eid: e.id, name: e.name, no: e.no, amount, taxable, tax: 0, net: amount }; }).filter(l => l.amount > 0); if (!lines.length) return; S.payrolls.push({ id: 'PR-' + y + '-13', per: y + '-13', kind: '13th', status: 'paid', lines, at: now(), paidAt: now(), ref: '13TH-' + y, by: (admUser() || {}).name || '' }); admLog('Recorded 13th month pay ' + y); toast('admin', '13th month recorded', peso(sumBy(lines, 'amount'), 2)); },
+  prHolAdd: () => { const h = S.admin.hol; if (!/^\d{4}-\d{2}-\d{2}$/.test(h.d) || !String(h.n).trim()) return; S.settings.holidays = HOLS().filter(x => x.d !== h.d).concat([{ d: h.d, n: String(h.n).trim(), t: h.t }]); S.admin.hol = { d: '', n: '', t: 'regular' }; },
+  prHolDel: d => { S.settings.holidays = HOLS().filter(x => x.d !== d); },
+  docIssue: arg => { const P = arg.split('|'), e = emp(P[1]); if (!e) return; const u = admUser(), y = ymd(now()).slice(0, 4);
+    if (P[0] === 'idcard') { const n = (S.hrDocs || []).filter(d => d.kind === 'idcard').length + 1; e.idNo = e.no; e.idIssued = ymd(now()); e.idValid = ymd(now() + 730 * DAY); S.hrDocs.unshift({ id: 'ID-' + y + '-' + String(n).padStart(4, '0'), eid: e.id, kind: 'idcard', at: now(), by: u ? u.name : '' }); admLog('Issued employee ID to ' + e.name); S.admin.doc = { k: 'idcard', a: e.id }; return; }
+    const n = (S.hrDocs || []).filter(d => d.kind === 'coe' && d.id.includes('-' + y + '-')).length + 1, no = 'COE-' + y + '-' + String(n).padStart(4, '0');
+    S.hrDocs.unshift({ id: no, eid: e.id, kind: 'coe', purpose: P[2], withPay: P[3] === '1', at: now(), by: u ? u.name : '' });
+    if (P[4]) { const r = S.hrReq.find(x => x.id === P[4]); if (r) { r.status = 'issued'; r.doneAt = now(); r.no = no; } }
+    admLog('Issued ' + no + ' to ' + e.name); S.admin.doc = { k: 'coe', a: [e.id, P[2], P[3], no].join('|') }; },
+  docDecline: id => { const r = S.hrReq.find(x => x.id === id); if (r) { r.status = 'declined'; r.doneAt = now(); } },
+  expSave: () => { const f = S.admin.ex, amt = r2(+f.amount); if (!(amt > 0) || !String(f.payee).trim()) return; const vat = f.vat ? r2(amt * 12 / 112) : 0, ewt = r2((amt - vat) * (+f.ewt || 0) / 100);
+    S.expenses.unshift({ id: 'EX-' + Date.now().toString(36).toUpperCase(), date: f.date, cat: f.cat, payee: f.payee.trim(), tin: f.tin, desc: f.desc, amount: amt, vatIn: vat, ewtRate: +f.ewt || 0, ewt, method: f.method, ref: f.ref, status: f.status, paidOn: f.status === 'paid' ? f.date : '', by: (admUser() || {}).name || '' });
+    S.admin.exMonth = f.date.slice(0, 7); S.admin.ex = Object.assign({}, f, { payee: '', tin: '', desc: '', amount: '', ref: '' }); toast('admin', 'Expense saved', f.cat + ' · ' + peso(amt, 2)); },
+  expPaid: id => { const x = S.expenses.find(e => e.id === id); if (x) { x.status = 'paid'; x.paidOn = ymd(now()); } },
+  expDel: id => { S.expenses = S.expenses.filter(e => e.id !== id); },
+  revSave: () => { const f = S.admin.rv, amt = r2(+f.amount); if (!(amt > 0)) return; S.incomes.unshift({ id: 'IN-' + Date.now().toString(36).toUpperCase(), date: f.date, src: f.src, desc: f.desc, amount: amt, ref: f.ref }); S.admin.rvMonth = f.date.slice(0, 7); S.admin.rv = Object.assign({}, f, { desc: '', amount: '', ref: '' }); toast('admin', 'Income saved', peso(amt, 2)); },
+  revDel: id => { S.incomes = S.incomes.filter(x => x.id !== id); },
+  ledMode: m => { S.admin.lgMode = m; },
+  accSave: eid => { const e = emp(eid), d = S.admin.acc[eid]; if (!e || !d) return; const id = String(d.id || '').trim().toLowerCase(), lv = +d.level || 0; S.admin.accErr = '';
+    if (lv && !/^[a-z0-9._-]{3,20}$/.test(id)) { S.admin.accErr = 'Admin ID: 3–20 letters, numbers, dot, dash or underscore.'; return; }
+    if (lv && emps().some(x => x.id !== eid && (x.adminId || '').toLowerCase() === id)) { S.admin.accErr = 'That admin ID is already used.'; return; }
+    const l1 = emps().filter(x => x.status === 'active' && +x.level === 1 && x.adminId && !x.adminOff && x.id !== eid).length; if (lv !== 1 && +e.level === 1 && !l1) { S.admin.accErr = 'Keep at least one Level 1 administrator.'; return; }
+    const was = (e.adminId ? 'Level ' + e.level + ' ' + e.adminId : 'no access'); e.adminId = lv ? id : e.adminId; e.level = lv; e.adminOff = !lv;
+    if (lv && !e.pw) { const pw = 'Tt' + String(100000 + Math.floor(Math.random() * 899999)); e.salt = newSalt(); e.pw = hashPw(pw, e.salt); S.admin.accPwShow = { eid, pw }; }
+    admLog(e.name + ': ' + was + ' → ' + (lv ? 'Level ' + lv + ' ' + id : 'no access')); toast('admin', 'Access saved', e.name + ' · ' + (lv ? 'Level ' + lv : 'no access')); },
+  accPw: eid => { const e = emp(eid); if (!e) return; const pw = 'Tt' + String(100000 + Math.floor(Math.random() * 899999)); e.salt = newSalt(); e.pw = hashPw(pw, e.salt); S.admin.accPwShow = { eid, pw }; admLog('Reset password for ' + e.name); },
+  accPwHide: () => { S.admin.accPwShow = null; },
+  accPerm: arg => { const [a, n] = arg.split('|'); if (a === 'access') return; S.settings.perm = Object.assign({}, PERM_DEF, S.settings.perm || {}); const was = permOf(a); S.settings.perm[a] = +n; if (was !== +n) admLog('Area "' + a + '": ' + PERM_TXT[was] + ' → ' + PERM_TXT[+n]); }
+};
+function firstArea() { const order = ['overview', 'approvals', 'live', 'late', 'calls', 'jobs', 'customers', 'providers', 'businesses', 'broadcast', 'ar', 'ap', 'promos', 'settings', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access']; return order.find(canArea) || 'me'; }
+/*MGMT-END*/
 /* =============== Connect to Ticktap staff: member → admin in-app voice call (WebRTC, signalled through helpCalls) =============== */
 const STAFF = { call: null, adm: null, view: null };
 const HOTLINE = '+63 917 555 0142';
@@ -4014,7 +4791,7 @@ function staffHang(why, fromAdmin) {
     const b = r.bid && bk(r.bid); if (b) logB(b, r.dur ? `Call with Ticktap staff · ${mmss(r.dur * 1000)}` : 'Staff call request cancelled'); }
   if (fromAdmin) endStaffLocal('adm'); else { endStaffLocal('call'); STAFF.view = r && r.dur ? { id: r.id, done: true } : null; }
 }
-const staffRinging = () => !!document.querySelector('[data-pane="admin"]') && (S.helpCalls || []).some(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !(S.admin.callHide || {})[r.id]);
+const staffRinging = () => !!document.querySelector('[data-pane="admin"]') && canArea('calls') && (S.helpCalls || []).some(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !(S.admin.callHide || {})[r.id]);
 function staffCallSync() {
   let ch = false;
   const c = STAFF.call;
@@ -4047,6 +4824,7 @@ function staffCallScreen(role) {
   return `<div class="callscreen" data-ov="staffcall"><div class="col" style="align-items:center;gap:12px;margin-top:12%;text-align:center">${logo}<b style="font-size:24px">Ticktap staff</b><span class="small" style="opacity:.85">${status}</span><span class="tiny" style="opacity:.65;max-width:300px">${sub}</span>${r.bid ? `<span class="tiny" style="opacity:.5">${r.bid} · in-app voice</span>` : ''}</div><div class="row" style="gap:${r.state === 'ended' ? 10 : 44}px;justify-content:center;margin-bottom:12%;flex-wrap:wrap">${actions}</div></div>`;
 }
 function staffCallWin() {
+  if (!canArea('calls')) return '';
   const hide = S.admin.callHide || {};
   const ring = (S.helpCalls || []).filter(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !hide[r.id]);
   const a = STAFF.adm, act = a && helpCall(a.id);
@@ -4563,7 +5341,7 @@ function render() {
   // Shared data loaded from the live room may predate accounts: make sure every demo account exists
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
-  if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {};
+  if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
@@ -5199,6 +5977,7 @@ function sampleId() {
   return c.toDataURL('image/png');
 }
 
+Object.assign(A, MG_ACTIONS);
 /* =============== Events =============== */
 document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
@@ -5207,6 +5986,7 @@ document.addEventListener('click', e => {
   if (el.tagName === 'INPUT' && el.type === 'radio') { A[el.dataset.act] && A[el.dataset.act](el.dataset.arg, el); render(); return; }
   e.preventDefault();
   const fn = A[el.dataset.act]; if (!fn) return;
+  if (!actAllowed(el.dataset.act)) { toast('admin', 'No access', 'Your admin level cannot do this.'); render(); return; }
   fn(el.dataset.arg, el);
   render();
 });
@@ -5263,7 +6043,7 @@ let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => {
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog'];
+const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -5381,7 +6161,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 100;
+const BUILD = 101;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
