@@ -493,6 +493,7 @@ ol.steps{margin:0;padding:0}
 .qap h4{margin:10px 0 4px;font-size:10pt}.qap table{width:100%;border-collapse:collapse}.qap th,.qap td{border:1px solid #444;padding:3px 5px;text-align:left}.qap th{background:#eee}.qap .num{text-align:right}
 .qap-2{display:grid;grid-template-columns:1fr 1.4fr;gap:14px}.qap-note{font-size:8pt;margin-top:10px}
 @media print{body.print-wide{} @page{size:auto}}
+.bc-pick{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:12px;padding:6px 10px}.bc-count{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:12px;background:var(--accent-soft)}.bc-count b{font-size:20px}.bc-count .btn{margin-left:auto}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -2416,6 +2417,8 @@ function bgEditor(me, i) {
   const n = String(me.intro || '').length;
   return `<div class="card" style="gap:10px"><div class="row between"><b>About me</b><span class="tiny muted">Shown on your profile</span></div>
     <label class="field">Introduce yourself (up to ${BG_MAX} characters)<textarea id="p-intro" class="textarea" maxlength="${BG_MAX}" data-bind="providers.${i}.intro" placeholder="e.g. Hilot and deep-tissue specialist, 9 years in hotel spas." oninput="var c=document.getElementById('p-intro-n');if(c)c.textContent=this.value.length+'/${BG_MAX}'">${esc(me.intro || '')}</textarea><span id="p-intro-n" class="tiny muted" style="text-align:right">${n}/${BG_MAX}</span></label>
+    <div class="row" style="gap:10px"><label class="field grow">Gender<select id="p-gender" class="select" data-bind="providers.${i}.gender"><option value="">Prefer not to say</option><option value="female" ${me.gender === 'female' ? 'selected' : ''}>Female</option><option value="male" ${me.gender === 'male' ? 'selected' : ''}>Male</option></select></label><label class="field" style="width:120px">Birth year<input id="p-by" class="input num" inputmode="numeric" maxlength="4" data-bind="providers.${i}.birthYear" data-type="num" value="${esc(me.birthYear || '')}" placeholder="1990"></label></div>
+    <span class="tiny muted">Gender and birth year are private and used only for Ticktap notices.</span>
     <span class="tiny muted">Customers see the first ${BG_SHOW} characters. "Read more" shows the rest and your photos.</span>
     <div class="bg-ed">${me.bgPhotos.map((u, k) => `<div class="bg-ed-ph"><img src="${phSrc(u)}" alt="Your photo ${k + 1}"><button class="iconbtn" data-act="bgDel" data-arg="${k}" aria-label="Remove photo ${k + 1}">${ic('x', 14)}</button></div>`).join('')}
       ${me.bgPhotos.length < BG_PHOTOS ? `<label class="bg-ed-add">${ic('camera', 20)}<span class="tiny">Add photo<br>${me.bgPhotos.length}/${BG_PHOTOS}</span><input type="file" accept="image/*" class="sr" data-file="providers.${i}.bgPhotos" data-compress="wide" id="p-bgph"></label>` : ''}</div>
@@ -2691,16 +2694,16 @@ function adminPane() {
   const apps = S.applications.filter(a => a.status === 'pending').length;
   const pendAll = apps + (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info').length;
   const nav = (id, l, icn, n, cls = 'bad', dup) => `<button data-act="adminTab" data-arg="${id}" ${t === id && !dup ? 'aria-current="page"' : ''} class="${dup ? 'dup' : ''}">${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill ${cls}" style="height:20px">${n}</span>` : ''}</button>`;
-  const GROUP = { members: ['customers', 'providers', 'businesses'], money: ['ar', 'ap', 'finance', 'promos'], rules: ['settings'] };
+  const GROUP = { members: ['customers', 'providers', 'businesses', 'broadcast'], money: ['ar', 'ap', 'finance', 'promos'], rules: ['settings'] };
   const openG = S.admin.groups || (S.admin.groups = isPhone() ? { members: false, money: false, rules: false } : { members: true, money: true, rules: true });
   const grp = (id, label, inner) => { const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, finance: admFinance, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, broadcast: admBroadcast, finance: admFinance, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <span class="side-h">Monitor now</span>
     ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guide', 'How to use', 'doc')}
-    ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
+    ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
 }
@@ -3067,6 +3070,80 @@ async function qapExcel(y, q) {
     const csv = rowsQ.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(',')).join('\n');
     save(new Blob(['﻿' + csv], { type: 'text/csv' }), name + '.csv'); toast('admin', 'Saved as CSV', 'Excel library could not load; the CSV opens in Excel.');
   }
+}
+/* ---------- broadcasts: SMS, in-app message and email to filtered audiences ---------- */
+const DEMO_MALE = ['p3', 'p7', 'p104', 'p115', 'p116', 'p117'];
+const yearNow = () => new Date(now()).getFullYear();
+function audienceAll() {
+  const out = [], seen = new Set();
+  Object.values(S.customers || {}).forEach(c => { if (!c || c.suspended || seen.has('c:' + c.cid)) return; seen.add('c:' + c.cid);
+    out.push({ key: 'c:' + c.cid, kind: 'customer', name: c.name || 'Customer', gender: c.gender || (c.cid === 'me' ? 'female' : ''), by: c.birthYear || (c.cid === 'me' ? 1990 : 0), phone: c.phone || '', email: c.email || '', area: (c.addr && c.addr.city) || '', alertTo: 'customer:' + c.cid, created: c.createdAt || 0 }); });
+  S.providers.forEach(p => { if (p.expelled) return; const staff = !!p.biz;
+    out.push({ key: 'p:' + p.id, kind: staff ? 'staff' : 'provider', name: p.name, gender: p.gender || (DEMO_MALE.includes(p.id) ? 'male' : 'female'), by: p.birthYear || (yearNow() - 22 - (p.years || 5)), phone: p.phone || '', email: p.email || '', cat: p.cat, biz: p.biz || '', area: p.area || '', alertTo: 'provider:' + p.id, rating: p.rating, active: p.active !== false }); });
+  S.businesses.forEach(b => { if (b.expelled) return; const a = S.accounts && S.accounts.find(x => x.role === 'business' && x.link && x.link.bizId === b.id);
+    out.push({ key: 'b:' + b.id, kind: 'owner', name: b.name, gender: '', by: 0, phone: b.phone || (a && a.phone) || '', email: (a && a.email) || '', cat: b.cat, area: b.area || '', alertTo: 'business:' + b.id }); });
+  return out;
+}
+function audienceOf(f) {
+  const y = yearNow();
+  return audienceAll().filter(r => {
+    if (f.mode === 'pick') return (f.pick || []).includes(r.key);
+    if (f.mode === 'group') { const g = (S.settings.bcGroups || []).find(x => x.id === f.group); return !!g && g.keys.includes(r.key); }
+    if (!(f.kinds || []).includes(r.kind)) return false;
+    if (f.gender && f.gender !== 'any' && r.gender !== f.gender) return false;
+    const age = r.by ? y - r.by : null;
+    if ((+f.ageMin || +f.ageMax) && age == null) return false;
+    if (+f.ageMin && age < +f.ageMin) return false; if (+f.ageMax && age > +f.ageMax) return false;
+    if (f.cat && f.cat !== 'any' && r.cat !== f.cat) return false;
+    if (f.biz && f.biz !== 'any' && r.biz !== f.biz && r.key !== 'b:' + f.biz) return false;
+    if (f.area && !String(r.area).toLowerCase().includes(String(f.area).toLowerCase())) return false;
+    return true; });
+}
+function admBroadcast() {
+  const f = S.admin.bc || (S.admin.bc = { mode: 'filter', kinds: ['customer', 'provider', 'staff', 'owner'], gender: 'any', ageMin: '', ageMax: '', cat: 'any', biz: 'any', area: '', ch: { app: true, sms: false, email: false }, title: '', body: '', pick: [], q: '', groupName: '' });
+  const rec = audienceOf(f), y = yearNow();
+  const smsN = rec.filter(r => r.phone).length, emN = rec.filter(r => r.email).length;
+  const K = { customer: 'Customers', provider: 'Individual providers', staff: 'Business staff', owner: 'Business owners' };
+  const chip = (k, l) => `<button class="chip" data-act="bcKind" data-arg="${k}" aria-pressed="${f.kinds.includes(k)}">${l}</button>`;
+  const groups = S.settings.bcGroups || [];
+  const pickList = audienceAll().filter(r => !f.q || (r.name + ' ' + r.area + ' ' + r.kind).toLowerCase().includes(f.q.toLowerCase())).slice(0, 60);
+  const sms = (f.body || '').length;
+  const hist = (S.broadcasts || []).slice(0, 12);
+  return `<div class="page-h"><div><h1>Messages</h1><p>Send an in-app message, SMS or email to members chosen by type, gender, age, service, business, area, a saved group, or by name.</p></div></div>
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>1 · Who receives it</h3><div class="row" style="gap:6px">${[['filter', 'By filters'], ['group', 'Saved group'], ['pick', 'Pick people']].map(([k, l]) => `<button class="chip" data-act="bcMode" data-arg="${k}" aria-pressed="${f.mode === k}">${l}</button>`).join('')}</div></div><div class="panel-b" style="gap:12px">
+    ${f.mode === 'filter' ? `<div class="col" style="gap:6px"><span class="eyebrow">Member type</span><div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(K).map(([k, l]) => chip(k, l)).join('')}<button class="btn ghost xs" data-act="bcAll">All members</button></div></div>
+      <div class="formgrid">
+        <label class="field">Gender<select id="bc-g" class="select" data-bind="admin.bc.gender" data-rerender="1">${[['any', 'Any'], ['female', 'Female'], ['male', 'Male']].map(([v, l]) => `<option value="${v}" ${f.gender === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+        <label class="field">Age from<input id="bc-a1" class="input num" inputmode="numeric" data-bind="admin.bc.ageMin" value="${esc(f.ageMin)}" placeholder="any"></label>
+        <label class="field">Age to<input id="bc-a2" class="input num" inputmode="numeric" data-bind="admin.bc.ageMax" value="${esc(f.ageMax)}" placeholder="any"></label>
+        <label class="field">Service<select id="bc-c" class="select" data-bind="admin.bc.cat" data-rerender="1"><option value="any">Any</option>${CATS.map(c => `<option value="${c.id}" ${f.cat === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></label>
+        <label class="field">Business<select id="bc-b" class="select" data-bind="admin.bc.biz" data-rerender="1"><option value="any">Any</option>${S.businesses.map(b => `<option value="${b.id}" ${f.biz === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('')}</select></label>
+        <label class="field">Area contains<input id="bc-ar" class="input" data-bind="admin.bc.area" value="${esc(f.area)}" placeholder="e.g. Makati"></label></div>
+      <span class="tiny muted">Age and gender come from member profiles; members who have not given them are left out when you filter by them.</span>` : ''}
+    ${f.mode === 'group' ? (groups.length ? `<div class="list">${groups.map(g => `<div class="li"><label class="row grow" style="gap:10px;cursor:pointer"><input type="radio" name="bc-grp" ${f.group === g.id ? 'checked' : ''} data-act="bcGroup" data-arg="${g.id}"><b class="small">${esc(g.name)}</b><span class="tiny muted">${g.keys.length} members</span></label><button class="btn ghost xs" style="color:var(--bad)" data-act="bcGroupDel" data-arg="${g.id}">Delete</button></div>`).join('')}</div>` : '<div class="empty small">No saved groups yet. Use Pick people, then Save as group.</div>') : ''}
+    ${f.mode === 'pick' ? `<input id="bc-q" class="input" data-bind="admin.bc.q" value="${esc(f.q)}" placeholder="Search name, area or type">
+      <div class="bc-pick">${pickList.map(r => `<label class="row" style="gap:10px;cursor:pointer;padding:6px 2px"><input type="checkbox" ${f.pick.includes(r.key) ? 'checked' : ''} data-act="bcPick" data-arg="${r.key}"><span class="grow small"><b>${esc(r.name)}</b> <span class="muted">· ${K[r.kind]}${r.area ? ' · ' + esc(r.area) : ''}</span></span></label>`).join('')}</div>
+      <div class="row" style="gap:8px"><input id="bc-gn" class="input" data-bind="admin.bc.groupName" value="${esc(f.groupName)}" placeholder="Group name, e.g. VIP customers" style="height:38px"><button class="btn secondary sm" data-act="bcGroupSave" ${f.pick.length ? '' : 'disabled'}>Save as group</button></div>` : ''}
+    <div class="bc-count"><b>${rec.length}</b> recipient${rec.length === 1 ? '' : 's'} <span class="muted small">· ${smsN} with mobile · ${emN} with email</span><button class="btn ghost xs" data-act="bcShowList">${S.admin.bcList ? 'Hide list' : 'Show list'}</button></div>
+    ${S.admin.bcList ? `<div class="bc-pick">${rec.map(r => `<div class="row between small" style="padding:4px 2px"><span><b>${esc(r.name)}</b> <span class="muted">· ${K[r.kind]}${r.gender ? ' · ' + r.gender : ''}${r.by ? ' · ' + (y - r.by) + ' yrs' : ''}</span></span><span class="muted tiny">${esc(r.phone || r.email || '')}</span></div>`).join('') || '<span class="small muted">Nobody matches.</span>'}</div>` : ''}
+  </div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>2 · Message</h3></div><div class="panel-b" style="gap:10px">
+    <div class="row" style="gap:12px;flex-wrap:wrap">${[['app', 'In-app message'], ['sms', 'SMS'], ['email', 'Email']].map(([k, l]) => `<label class="check"><input type="checkbox" data-act="bcCh" data-arg="${k}" ${f.ch[k] ? 'checked' : ''}>${l}</label>`).join('')}</div>
+    <label class="field">Title (app and email)<input id="bc-t" class="input" data-bind="admin.bc.title" value="${esc(f.title)}" placeholder="e.g. Double points this weekend"></label>
+    <label class="field">Message<textarea id="bc-m" class="textarea" data-bind="admin.bc.body" placeholder="Write your message" oninput="var c=document.getElementById('bc-n');if(c)c.textContent=this.value.length+' characters · '+Math.max(1,Math.ceil(this.value.length/160))+' SMS'">${esc(f.body)}</textarea><span id="bc-n" class="tiny muted" style="text-align:right">${sms} characters · ${Math.max(1, Math.ceil(sms / 160))} SMS</span></label>
+    <span class="tiny muted">In-app messages also reach phones with lock-screen alerts on. SMS and email are queued for the gateway (Semaphore / email service) once connected. Marketing messages must follow the Data Privacy Act: send only to members who agreed to receive them.</span>
+    <button class="btn primary block" data-act="bcSend" ${rec.length && (f.ch.app || f.ch.sms || f.ch.email) && String(f.body || '').trim() ? '' : 'disabled'}>${ic('send', 16)} Send to ${rec.length}</button>
+    ${S.admin.bcConfirm ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent;gap:8px"><b class="small">Send to ${rec.length} member(s) by ${['app', 'sms', 'email'].filter(k => f.ch[k]).join(', ')}?</b><div class="row" style="gap:8px"><button class="btn primary sm" data-act="bcSendGo">Yes, send</button><button class="btn ghost sm" data-act="bcSendNo">Cancel</button></div></div>` : ''}
+  </div></div></div>
+  <div class="panel"><div class="panel-h"><h3>Sent messages</h3></div><div class="tablewrap"><table><thead><tr><th>Sent</th><th>Title</th><th>Audience</th><th>Channels</th><th class="num">Recipients</th></tr></thead><tbody>
+    ${hist.map(h => `<tr><td class="mono small">${fmtD(h.at)} ${fmtT(h.at)}</td><td><b class="small">${esc(h.title || '—')}</b><br><span class="tiny muted">${esc(String(h.body).slice(0, 80))}</span></td><td class="small">${esc(h.audience)}</td><td class="small">${h.ch.join(', ')}</td><td class="num">${h.n}</td></tr>`).join('') || '<tr><td colspan="5" class="small muted">No messages sent yet.</td></tr>'}
+  </tbody></table></div></div>`;
+}
+function bcAudienceText(f) {
+  if (f.mode === 'pick') return f.pick.length + ' picked member(s)';
+  if (f.mode === 'group') { const g = (S.settings.bcGroups || []).find(x => x.id === f.group); return 'Group: ' + (g ? g.name : '—'); }
+  const K = { customer: 'customers', provider: 'providers', staff: 'staff', owner: 'owners' };
+  return [f.kinds.map(k => K[k]).join(' + '), f.gender !== 'any' ? f.gender : '', (f.ageMin || f.ageMax) ? 'age ' + (f.ageMin || '0') + '–' + (f.ageMax || '∞') : '', f.cat !== 'any' ? catName(f.cat) : '', f.biz !== 'any' ? (biz(f.biz) || {}).name : '', f.area ? 'area ' + f.area : ''].filter(Boolean).join(' · ');
 }
 function admFinance(mode) {
   const n = now(), q = quarterOf(n), y = new Date(n).getFullYear();
@@ -4024,6 +4101,7 @@ function authSignup() {
       <label class="field">Full name<input id="au-name" class="input" autocomplete="name" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
       <label class="field">Email<input id="au-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@example.com"></label>
       <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="au-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="auth.f.phone" value="${esc(f.phone || '')}" placeholder="917 555 0142"></div></label>
+      ${t !== 'business' ? `<div class="row" style="gap:10px"><label class="field grow">Gender <span class="muted small" style="font-weight:400">(optional)</span><select id="au-gender" class="select" data-bind="auth.f.gender"><option value="">Prefer not to say</option><option value="female" ${f.gender === 'female' ? 'selected' : ''}>Female</option><option value="male" ${f.gender === 'male' ? 'selected' : ''}>Male</option></select></label><label class="field" style="width:120px">Birth year <span class="muted small" style="font-weight:400">(optional)</span><input id="au-by" class="input num" inputmode="numeric" maxlength="4" data-bind="auth.f.by" value="${esc(f.by || '')}" placeholder="e.g. 1992"></label></div>` : ''}
       ${t === 'customer' ? `<label class="check"><input type="checkbox" id="au-also-p" data-bind="auth.f.alsoProv" ${f.alsoProv ? 'checked' : ''}><span>I also want to <b>work as a provider</b> (apply after sign-up)</span></label>` : t === 'provider' ? `<label class="check"><input type="checkbox" id="au-also-c" data-bind="auth.f.alsoCust" ${f.alsoCust ? 'checked' : ''}><span>I also want to <b>book services as a customer</b></span></label>` : ''}
       ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
       <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms.</span></label>`;
@@ -4235,7 +4313,7 @@ function render() {
   // Shared data loaded from the live room may predate accounts: make sure every demo account exists
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
-  if (!S.bizApps) S.bizApps = [];
+  if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = [];
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
@@ -4386,6 +4464,23 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  bcMode: m => { S.admin.bc.mode = m; S.admin.bcConfirm = false; },
+  bcKind: k => { const f = S.admin.bc, i = f.kinds.indexOf(k); if (i >= 0) f.kinds.splice(i, 1); else f.kinds.push(k); },
+  bcAll: () => { Object.assign(S.admin.bc, { kinds: ['customer', 'provider', 'staff', 'owner'], gender: 'any', ageMin: '', ageMax: '', cat: 'any', biz: 'any', area: '' }); },
+  bcPick: k => { const f = S.admin.bc, i = f.pick.indexOf(k); if (i >= 0) f.pick.splice(i, 1); else f.pick.push(k); },
+  bcGroup: id => { S.admin.bc.group = id; },
+  bcGroupSave: () => { const f = S.admin.bc; if (!f.pick.length) return; const g = { id: 'g' + Date.now().toString(36), name: String(f.groupName || '').trim() || 'Group ' + ((S.settings.bcGroups || []).length + 1), keys: f.pick.slice(), at: now() }; S.settings.bcGroups = (S.settings.bcGroups || []).concat([g]); f.groupName = ''; toast('admin', 'Group saved', g.name + ' · ' + g.keys.length + ' members'); },
+  bcGroupDel: id => { S.settings.bcGroups = (S.settings.bcGroups || []).filter(g => g.id !== id); if (S.admin.bc.group === id) S.admin.bc.group = null; },
+  bcCh: k => { S.admin.bc.ch[k] = !S.admin.bc.ch[k]; },
+  bcShowList: () => { S.admin.bcList = !S.admin.bcList; },
+  bcSend: () => { S.admin.bcConfirm = true; },
+  bcSendNo: () => { S.admin.bcConfirm = false; },
+  bcSendGo: () => { const f = S.admin.bc, rec = audienceOf(f), body = String(f.body || '').trim(), title = String(f.title || '').trim() || 'Message from Ticktap'; if (!rec.length || !body) return;
+    let a = 0, sm = 0, em = 0;
+    rec.forEach(r => { if (f.ch.app) { pushAlert(r.alertTo, title, body, null, 'info'); a++; } if (f.ch.sms && r.phone) { sendSms(r.phone, 'Ticktap: ' + body, 'broadcast'); sm++; } if (f.ch.email && r.email) em++; });
+    const ch = ['app', 'sms', 'email'].filter(k => f.ch[k]).map(k => ({ app: 'In-app ' + a, sms: 'SMS ' + sm, email: 'Email ' + em })[k]);
+    S.broadcasts.unshift({ id: 'bc' + Date.now().toString(36), at: now(), title, body, audience: bcAudienceText(f), ch, n: rec.length, keys: rec.map(r => r.key), email: f.ch.email ? rec.filter(r => r.email).map(r => r.email) : [] });
+    S.admin.bcConfirm = false; f.title = ''; f.body = ''; toast('admin', 'Message sent', rec.length + ' recipient(s) · ' + ch.join(' · ')); },
   qapPrint: a => { const [y, q] = a.split('-').map(Number); qapPrint(y, q); },
   qapExcel: a => { const [y, q] = a.split('-').map(Number); qapExcel(y, q); },
   poOpen: k => { S.admin.poOpen = Object.assign({}, S.admin.poOpen, { [k]: !(S.admin.poOpen || {})[k] }); },
@@ -4602,13 +4697,13 @@ const A = {
   auAddr: id => { S.auth.f.addr = id; S.customer.addr = id; },
   auCustomer: () => { const f = S.auth.f, c = S.customer; const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
     Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: true, phoneOk: true, idOk: false, signedIn: true });
-    S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
+    S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
     { const rp = provByRef(f.ref); if (rp) { S.customers[cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + cid); } }
     const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
     S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to Ticktap', 'Your account ' + a.loginId + ' is ready.');
     if (f.alsoProv) setTimeout(() => { A.becomeProv(); render(); }, 50); },
   auProvider: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36);
-    const a = { id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
+    const a = { gender: f.gender || '', birthYear: +f.by > 1900 ? +f.by : 0, id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
     if (f.alsoCust) newCustFor(a);
     S.accounts.push(a); S.session = { uid, at: Date.now(), mode: 'provider' }; S.auth = null; S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.ref = f.ref || ''; S.prov.apply.uid = uid;
     toast('provider', 'Account created', 'Now set up your provider profile.'); },
@@ -4810,7 +4905,7 @@ const A = {
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Ticktap.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
     prov(nid).avail = a.avail ? JSON.parse(JSON.stringify(a.avail)) : defAvail();
-    { const ua = a.uid && acct(a.uid); if (ua) { const keepCid = ua.link && ua.link.cid; ua.status = 'active'; ua.provState = 'active'; ua.link = Object.assign({ pid: nid, bizId: prov(nid).biz || null }, keepCid ? { cid: keepCid } : {}); if (ua.role !== 'customer') ua.role = prov(nid).biz ? 'staff' : 'provider'; pushAlert('provider:' + nid, 'You are approved as a provider', keepCid ? 'Switch to Provider mode from your Account page.' : 'You can go on stand-by now.', null, 'good'); prov(nid).phone = ua.phone || prov(nid).phone; } }
+    { const ua = a.uid && acct(a.uid); if (ua) { const keepCid = ua.link && ua.link.cid; ua.status = 'active'; ua.provState = 'active'; if (ua.gender) prov(nid).gender = ua.gender; if (ua.birthYear) prov(nid).birthYear = ua.birthYear; ua.link = Object.assign({ pid: nid, bizId: prov(nid).biz || null }, keepCid ? { cid: keepCid } : {}); if (ua.role !== 'customer') ua.role = prov(nid).biz ? 'staff' : 'provider'; pushAlert('provider:' + nid, 'You are approved as a provider', keepCid ? 'Switch to Provider mode from your Account page.' : 'You can go on stand-by now.', null, 'good'); prov(nid).phone = ua.phone || prov(nid).phone; } }
     { const src = a.tcId && (S.consents || []).find(c => c.who === a.tcId); if (src && !consentOf('provider', nid)) S.consents.unshift(Object.assign({}, src, { id: 'tc' + Date.now().toString(36), who: nid, name: prov(nid).name, method: 'Accepted when applying (' + a.id + ')' })); }
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by Ticktap.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
@@ -4891,7 +4986,7 @@ let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => {
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps'];
+const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -5009,7 +5104,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 98;
+const BUILD = 99;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
