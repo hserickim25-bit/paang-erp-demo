@@ -478,6 +478,14 @@ ol.steps{margin:0;padding:0}
 .modebar .mb-to{display:inline-flex;align-items:center;gap:4px;opacity:.85}.modebar .mb-arrow{opacity:.8}
 .modebar .mb-tap{margin-left:auto;padding:4px 12px;border-radius:999px;background:#FFB800;color:#14213D;font-weight:800}
 .modebar + .appbar{padding-top:8px}
+
+/* payout queue */
+.po-row{border:1px solid var(--line);border-left:5px solid var(--good-dot);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.po-row.warn{border-left-color:#E8A400}.po-row.bad{border-left-color:var(--bad);background:var(--bad-soft)}
+.po-main{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.po-amt{align-items:flex-end;flex-shrink:0}.po-amt b{font-size:18px}
+.po-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.po-meta .btn{margin-left:auto}
+.po-jobs{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
+.po-act{display:flex;gap:8px}.po-act .input{height:38px;flex:1;min-width:0}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -796,7 +804,7 @@ const S = {
   cust: { screen: 'home', cat: null, filter: 'nearest', q: '', pid: null, bizId: null, cart: [], when: 'now', slot: null, bid: null, pay: null, review: { stars: 5, tags: ['On time'], text: '', photos: [] }, addrSheet: false, signup: null, help: false },
   prov: { id: 'p1', screen: 'jobs', bid: null, eta: 30, apply: null, perf: false },
   biz: { id: 'b1', tab: 'bookings', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
-  admin: { tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
+  admin: { poRef: {}, tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
   fin: { remit: {}, filed: {}, issued: {}, ref: '' },
   providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], consents: null, terms: null, accounts: null, bizApps: [], session: null, auth: null, modal: null,
   settings: {
@@ -2961,6 +2969,43 @@ function admStaffFees(month) {
       ${Object.values(rows).sort((a, b) => b.gross - a.gross).map(o => `<tr><td><b>${esc(o.p.name)}</b></td><td>${esc(biz(o.p.biz) ? biz(o.p.biz).name : '')}</td><td class="num">${o.p.credits}</td><td class="num">${tierRate(o.p)}%${o.p.tierOverride != null ? ' <span class="tiny muted">manual</span>' : ''}</td><td class="num">${o.jobs}</td><td class="num">${peso(o.gross, 2)}</td><td class="num">${peso(o.fee, 2)}</td><td class="num">${peso(o.net, 2)}</td><td>${o.jobs ? (o.paid >= o.net - .01 ? '<span class="pill good">Paid</span>' : `<span class="pill warn">${peso(o.net - o.paid, 2)} due</span>`) : '<span class="muted">—</span>'}</td></tr>`).join('') || '<tr><td colspan="9"><div class="empty">No business staff yet.</div></td></tr>'}
     </tbody></table></div></div>`;
 }
+/* ---------- payouts: one GCash transfer per payee, within 72 hours of the customer's payment ---------- */
+const PAY_SLA = 72 * HOUR;
+const payKey = b => b.bizId ? 'b:' + b.bizId : 'p:' + b.pid;
+const paidRefOf = b => b.paidAt || (b.ledger && b.ledger.at) || b.createdAt;
+function payeeWallet(b) { const o = payeeOf(b) || {}; if (b.bizId) return o.gcash ? 'GCash ' + o.gcash : (o.bank || 'Bank details missing'); return 'GCash ' + String(o.gcash || o.phone || 'number missing').replace(/^\+63\s?/, '0'); }
+const ageTxt = ms => { const h = Math.floor(ms / HOUR), m = Math.floor((ms % HOUR) / MIN); return h >= 24 ? Math.floor(h / 24) + 'd ' + (h % 24) + 'h' : h + 'h ' + m + 'm'; };
+function payoutQueue() {
+  const t = now(), A0 = S.admin, open = A0.poOpen || {};
+  const due = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded);
+  const groups = {}; due.forEach(b => { const k = payKey(b); const g = groups[k] || (groups[k] = { k, name: b.ledger.payeeName, wallet: payeeWallet(b), jobs: [], total: 0, oldest: Infinity }); g.jobs.push(b); g.total += b.ledger.net; g.oldest = Math.min(g.oldest, paidRefOf(b)); });
+  const list = Object.values(groups).sort((a, b) => a.oldest - b.oldest);
+  const over = list.filter(g => t - g.oldest > PAY_SLA).length, sum = list.reduce((a, g) => a + g.total, 0);
+  const row = g => { const age = t - g.oldest, left = PAY_SLA - age, cls = left < 0 ? 'bad' : left < 12 * HOUR ? 'warn' : 'good';
+    return `<div class="po-row ${cls}"><div class="po-main"><div class="col" style="gap:2px;min-width:0"><b class="ellipsis">${esc(g.name)}</b><span class="small muted mono">${esc(g.wallet)}</span></div>
+      <div class="col po-amt"><b class="num">${peso(g.total, 2)}</b><span class="tiny muted">${g.jobs.length} job${g.jobs.length > 1 ? 's' : ''}</span></div></div>
+      <div class="po-meta"><span class="pill ${cls}">${left < 0 ? 'Overdue ' + ageTxt(-left) : ageTxt(left) + ' left'}</span><span class="tiny muted">Oldest payment ${fmtWhen(g.oldest)} · ${ageTxt(age)} ago</span><button class="btn ghost xs" data-act="poOpen" data-arg="${g.k}">${open[g.k] ? 'Hide jobs' : 'Jobs'}</button></div>
+      ${open[g.k] ? `<div class="po-jobs">${g.jobs.sort((a, b) => paidRefOf(a) - paidRefOf(b)).map(b => `<div class="row between small"><span class="mono">${b.id}</span><span class="muted">paid ${fmtWhen(paidRefOf(b))} · ${ageTxt(t - paidRefOf(b))} ago</span><b class="num">${peso(b.ledger.net, 2)}</b></div>`).join('')}</div>` : ''}
+      <div class="po-act"><input id="po-ref-${g.k.replace(/[^a-z0-9]/gi, '')}" class="input" data-bind="admin.poRef.${g.k}" value="${esc((A0.poRef || {})[g.k] || '')}" placeholder="GCash reference no. (optional)"><button class="btn primary sm" data-act="poPaid" data-arg="${g.k}">${ic('check', 15)} Paid</button></div></div>`; };
+  return `<div class="panel" style="${over ? 'border-color:var(--bad)' : ''}"><div class="panel-h" style="flex-wrap:wrap"><div class="col"><h3>Payouts to send · ${list.length} payee${list.length === 1 ? '' : 's'}</h3><span class="small muted">Send each payee by GCash within 72 hours of the customer's payment, then tap Paid. Oldest first.</span></div>
+    <div class="row" style="gap:6px"><span class="pill ${over ? 'bad' : 'good'}">${over} overdue</span><span class="pill outline num">${peso(sum, 2)}</span></div></div>
+    <div class="panel-b" style="gap:10px">${list.length ? list.map(row).join('') : '<div class="empty">Nothing to pay right now.</div>'}</div></div>`;
+}
+function payoutReport() {
+  const A0 = S.admin, view = A0.poView || 'day', t = new Date(now());
+  const ym = A0.poMonth || `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}`, yr = A0.poYear || String(t.getFullYear());
+  const paid = S.bookings.filter(b => b.ledger && b.ledger.paidAt);
+  const dkey = ms => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const bucket = {}; paid.forEach(b => { const k = view === 'day' ? dkey(b.ledger.paidAt) : dkey(b.ledger.paidAt).slice(0, 7); if (view === 'day' ? !k.startsWith(ym) : !k.startsWith(yr)) return; const o = bucket[k] || (bucket[k] = { k, amt: 0, jobs: 0, payees: new Set(), list: [] }); o.amt += b.ledger.net; o.jobs++; o.payees.add(payKey(b)); o.list.push(b); });
+  const rows = Object.values(bucket).sort((a, b) => b.k < a.k ? -1 : 1), total = rows.reduce((a, r) => a + r.amt, 0);
+  const lbl = k => view === 'day' ? new Date(k + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : new Date(k + '-01T00:00:00').toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return `<div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:8px"><div class="col"><h3>Payouts sent · ${view === 'day' ? 'by day' : 'by month'}</h3><span class="small muted">Total ${peso(total, 2)} · ${rows.reduce((a, r) => a + r.jobs, 0)} jobs</span></div>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="chip" data-act="poView" data-arg="day" aria-pressed="${view === 'day'}">Daily</button><button class="chip" data-act="poView" data-arg="month" aria-pressed="${view === 'month'}">Monthly</button>
+      ${view === 'day' ? `<input id="po-month" class="input" type="month" data-bind="admin.poMonth" data-rerender="1" value="${ym}" style="height:36px;width:180px">` : `<input id="po-year" class="input num" type="number" min="2025" max="2035" data-bind="admin.poYear" data-rerender="1" value="${yr}" style="height:36px;width:100px">`}</div></div>
+    <div class="tablewrap"><table><thead><tr><th>${view === 'day' ? 'Date' : 'Month'}</th><th class="num">Payees</th><th class="num">Jobs</th><th class="num">Amount paid</th><th></th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${lbl(r.k)}</td><td class="num">${r.payees.size}</td><td class="num">${r.jobs}</td><td class="num"><b>${peso(r.amt, 2)}</b></td><td><button class="btn ghost xs" data-act="poDay" data-arg="${r.k}">${A0.poDay === r.k ? 'Hide' : 'Details'}</button></td></tr>${A0.poDay === r.k ? `<tr><td colspan="5"><div class="po-jobs">${r.list.sort((a, b) => b.ledger.paidAt - a.ledger.paidAt).map(b => `<div class="row between small" style="gap:8px"><span>${fmtWhen(b.ledger.paidAt)} · <b>${esc(b.ledger.payeeName)}</b> · <span class="mono">${b.id}</span>${b.ledger.paidRef ? ' · ref ' + esc(b.ledger.paidRef) : ''}</span><b class="num">${peso(b.ledger.net, 2)}</b></div>`).join('')}</div></td></tr>` : ''}`).join('') || `<tr><td colspan="5" class="muted small">No payouts in this ${view === 'day' ? 'month' : 'year'}.</td></tr>`}
+    </tbody>${rows.length ? `<tfoot><tr><td><b>Total</b></td><td></td><td class="num"><b>${rows.reduce((a, r) => a + r.jobs, 0)}</b></td><td class="num"><b>${peso(total, 2)}</b></td><td></td></tr></tfoot>` : ''}</table></div></div>`;
+}
 function admFinance(mode) {
   const n = now(), q = quarterOf(n), y = new Date(n).getFullYear();
   const F = S.fin || (S.fin = { remit: {}, filed: {}, issued: {}, ref: '' });
@@ -2978,11 +3023,8 @@ function admFinance(mode) {
   const rec = (done, label, form, act, arg) => `<div class="card tight" style="${done ? 'border-color:var(--good-dot)' : ''}"><div class="row between"><div class="col"><b class="small">${label}</b><span class="tiny muted">${form}</span></div>${done ? `<span class="pill good">${ic('check', 13)} ${fmtD(done.at)}</span>` : `<button class="btn primary xs" data-act="${act}" data-arg="${arg}" ${(F.ref || '').trim() ? '' : 'disabled'}>Record</button>`}</div>${done ? `<span class="tiny muted">Ref. ${esc(done.ref)}</span>` : ''}</div>`;
   return `<div class="page-h"><div><h1>Finance & tax</h1><p>Ticktap earns only the platform fee. As an e-marketplace operator under BIR RR 16-2023, it withholds 1% of half the gross remittance once a payee's yearly remittances pass ${peso(S.settings.whtThreshold)}, remits it to BIR and issues Form 2307 to each payee.</p></div></div>
     <div class="kpis"><div class="kpi"><span class="l">Customer payments · month</span><span class="v">${peso(s('gross'))}</span></div><div class="kpi accent"><span class="l">Platform fee revenue</span><span class="v">${peso(s('fee'), 2)}</span></div><div class="kpi"><span class="l">Tax withheld · ${monthKey}</span><span class="v">${peso(s('wht'), 2)}</span></div><div class="kpi"><span class="l">Waiting to be paid out</span><span class="v">${peso(unpaid.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Payout batches</h3></div><div class="panel-b">
-      <div class="row between"><div class="col"><b>Individual providers · daily to GCash or bank</b><span class="small muted">${unpaidInd.length} jobs · ${peso(unpaidInd.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div><button class="btn primary sm" data-act="runPayout" data-arg="ind" ${unpaidInd.length ? '' : 'disabled'}>Run payout</button></div>
-      <div class="divider"></div>
-      ${S.businesses.map(bz => { const r = unpaidBiz.filter(b => b.bizId === bz.id); return `<div class="row between"><div class="col"><b>${esc(bz.name)} · ${({ weekly: 'weekly', biweekly: 'twice a month', monthly: 'monthly' })[bz.cycle]} to ${esc(bz.bank)}</b><span class="small muted">${r.length} jobs · ${peso(r.reduce((a, b) => a + b.ledger.net, 0), 2)}</span></div><button class="btn secondary sm" data-act="runPayout" data-arg="${bz.id}" ${r.length ? '' : 'disabled'}>Run payout</button></div>`; }).join('')}
-      <span class="tiny muted">Payouts go through the payment partner's disbursement service. Each job shows "Paid out" in the job detail once included.</span></div></div>
+    ${mode === 'ap' ? payoutQueue() + payoutReport() : ''}
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Payout schedule</h3></div><div class="panel-b"><span class="small">Payouts are sent per payee by GCash (or the business bank account) within 72 hours of the customer's payment. Use Accounts payable to send them and see daily and monthly totals.</span><button class="btn secondary sm" style="align-self:flex-start" data-act="adminTab" data-arg="ap">Open Accounts payable</button></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>BIR filings</h3></div><div class="panel-b">
       <label class="field">Reference / confirmation no.<input id="fin-ref" class="input" data-bind="fin.ref" value="${esc(F.ref || '')}" placeholder="e.g. eFPS ref. 2026-10-123456"></label>
       ${rec(F.remit[monthKey], 'Remit tax withheld · ' + monthKey, 'BIR Form 0619-E · ' + peso(s('wht'), 2), 'finRemit', monthKey)}
@@ -4282,6 +4324,14 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  poOpen: k => { S.admin.poOpen = Object.assign({}, S.admin.poOpen, { [k]: !(S.admin.poOpen || {})[k] }); },
+  poView: v => { S.admin.poView = v; S.admin.poDay = null; },
+  poDay: k => { S.admin.poDay = S.admin.poDay === k ? null : k; },
+  poPaid: k => { const t = now(), ref = String((S.admin.poRef || {})[k] || '').trim(); const rows = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded && payKey(b) === k); if (!rows.length) return;
+    const amt = rows.reduce((a, b) => a + b.ledger.net, 0); rows.forEach(b => { b.ledger.paidAt = t; b.ledger.paidRef = ref; b.ledger.paidBy = 'admin'; b.ledger.paidMethod = 'GCash'; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName + (ref ? ' · ref ' + ref : '')); });
+    if (S.admin.poRef) delete S.admin.poRef[k];
+    const who = k.startsWith('b:') ? 'business:' + k.slice(2) : 'provider:' + k.slice(2); pushAlert(who, 'Payout sent · ' + peso(amt, 2), rows.length + ' job(s) paid by GCash' + (ref ? ' · ref ' + ref : '') + '.', null, 'good');
+    toast('admin', 'Marked as paid', rows[0].ledger.payeeName + ' · ' + peso(amt, 2)); },
   modeSwitch: m => { const a = meAcct(); if (!a) return; if (m === 'customer' && !custOk(a)) return; if (m === 'provider' && !provOk(a)) return;
     S.session = Object.assign({}, S.session, { mode: m }); S.prov.apply = null; applySession(); S.role = m; if (m === 'customer') S.cust.screen = 'home'; else S.prov.screen = 'jobs';
     toast(m, m === 'customer' ? 'Customer mode' : 'Provider mode', m === 'customer' ? 'Book home services. Your provider jobs still alert you.' : 'Take requests and manage your jobs.'); },
@@ -4895,7 +4945,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 96;
+const BUILD = 97;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
