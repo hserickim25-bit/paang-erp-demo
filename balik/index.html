@@ -486,6 +486,13 @@ ol.steps{margin:0;padding:0}
 .po-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.po-meta .btn{margin-left:auto}
 .po-jobs{display:flex;flex-direction:column;gap:4px;padding:8px 10px;border-radius:10px;background:var(--surface-2)}
 .po-act{display:flex;gap:8px}.po-act .input{height:38px;flex:1;min-width:0}
+
+.wht-tot{display:flex;flex-direction:column;align-items:flex-end;padding:6px 12px;border-radius:12px;background:var(--accent-soft)}.wht-tot b{font-size:18px}
+#printArea .qap{font:9.5pt/1.35 Arial,sans-serif;color:#000}
+.qap-h{display:flex;justify-content:space-between;gap:16px;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px}.qap-h>div{display:flex;flex-direction:column}.qap-h>div:last-child{text-align:right}
+.qap h4{margin:10px 0 4px;font-size:10pt}.qap table{width:100%;border-collapse:collapse}.qap th,.qap td{border:1px solid #444;padding:3px 5px;text-align:left}.qap th{background:#eee}.qap .num{text-align:right}
+.qap-2{display:grid;grid-template-columns:1fr 1.4fr;gap:14px}.qap-note{font-size:8pt;margin-top:10px}
+@media print{body.print-wide{} @page{size:auto}}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -3006,6 +3013,61 @@ function payoutReport() {
     ${rows.map(r => `<tr><td>${lbl(r.k)}</td><td class="num">${r.payees.size}</td><td class="num">${r.jobs}</td><td class="num"><b>${peso(r.amt, 2)}</b></td><td><button class="btn ghost xs" data-act="poDay" data-arg="${r.k}">${A0.poDay === r.k ? 'Hide' : 'Details'}</button></td></tr>${A0.poDay === r.k ? `<tr><td colspan="5"><div class="po-jobs">${r.list.sort((a, b) => b.ledger.paidAt - a.ledger.paidAt).map(b => `<div class="row between small" style="gap:8px"><span>${fmtWhen(b.ledger.paidAt)} · <b>${esc(b.ledger.payeeName)}</b> · <span class="mono">${b.id}</span>${b.ledger.paidRef ? ' · ref ' + esc(b.ledger.paidRef) : ''}</span><b class="num">${peso(b.ledger.net, 2)}</b></div>`).join('')}</div></td></tr>` : ''}`).join('') || `<tr><td colspan="5" class="muted small">No payouts in this ${view === 'day' ? 'month' : 'year'}.</td></tr>`}
     </tbody>${rows.length ? `<tfoot><tr><td><b>Total</b></td><td></td><td class="num"><b>${rows.reduce((a, r) => a + r.jobs, 0)}</b></td><td class="num"><b>${peso(total, 2)}</b></td><td></td></tr></tfoot>` : ''}</table></div></div>`;
 }
+/* ---------- quarterly withholding report (BIR 1601-EQ with QAP), print and Excel ---------- */
+const WHT_ORG = { name: 'Ticktap, Inc.', tin: '[Ticktap TIN]', rdo: '[RDO code]', address: '[Registered address]' };
+function qapData(y, q) {
+  const months = [0, 1, 2].map(i => (q - 1) * 3 + i);
+  const jobs = S.bookings.filter(b => b.ledger && !b.refunded && new Date(b.endedAt).getFullYear() === y && quarterOf(b.endedAt) === q);
+  const P = {};
+  jobs.forEach(b => { const key = payKey(b), o = P[key] || (P[key] = { key, kind: b.bizId ? 'b' : 'p', name: b.ledger.payeeName, tin: b.ledger.payeeTin || '', gross: 0, wht: 0, m: [0, 0, 0], mw: [0, 0, 0], jobs: 0 });
+    const mi = months.indexOf(new Date(b.endedAt).getMonth()); o.gross += b.gross; o.wht += b.ledger.wht; o.jobs++; if (mi >= 0) { o.m[mi] += b.gross; o.mw[mi] += b.ledger.wht; } });
+  const all = Object.values(P).sort((a, b) => a.name.localeCompare(b.name));
+  const qap = all.filter(o => o.wht > 0).map((o, i) => { const parts = o.name.trim().split(/\s+/); return Object.assign({}, o, { seq: i + 1, atc: o.kind === 'b' ? 'WC760' : 'WI760', last: o.kind === 'b' ? '' : parts.slice(-1)[0], first: o.kind === 'b' ? '' : parts.slice(0, -1).join(' '), corp: o.kind === 'b' ? o.name : '', base: Math.round(o.gross * (S.settings.whtBase || 50)) / 100 }); });
+  const monthTot = [0, 1, 2].map(i => ({ label: new Date(y, months[i], 1).toLocaleString('en-US', { month: 'long', year: 'numeric' }), gross: all.reduce((a, o) => a + o.m[i], 0), wht: all.reduce((a, o) => a + o.mw[i], 0) }));
+  const atc = ['WI760', 'WC760'].map(c => ({ atc: c, n: qap.filter(o => o.atc === c).length, base: qap.filter(o => o.atc === c).reduce((a, o) => a + o.base, 0), wht: qap.filter(o => o.atc === c).reduce((a, o) => a + o.wht, 0) }));
+  return { y, q, all, qap, monthTot, atc, jobs, totalWht: all.reduce((a, o) => a + o.wht, 0), totalGross: all.reduce((a, o) => a + o.gross, 0), rate: S.settings.whtRate || 1 };
+}
+const m2 = v => (Math.round(v * 100) / 100).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function qapHtml(d) {
+  return `<div class="qap"><div class="qap-h"><div><b>BIR Form 1601-EQ · Quarterly Alphalist of Payees (QAP)</b><span>Creditable withholding tax · Q${d.q} ${d.y} (${d.monthTot[0].label.split(' ')[0]}–${d.monthTot[2].label})</span></div>
+      <div><span>Withholding agent: <b>${esc(WHT_ORG.name)}</b></span><span>TIN ${esc(WHT_ORG.tin)} · RDO ${esc(WHT_ORG.rdo)}</span><span>${esc(WHT_ORG.address)}</span></div></div>
+    <h4>Schedule 1 · Alphalist of payees subject to creditable withholding (RR 16-2023, e-marketplace remittances)</h4>
+    <table><thead><tr><th>Seq</th><th>TIN</th><th>Registered name (corporation)</th><th>Last name</th><th>First name</th><th>ATC</th><th>Nature of income payment</th><th class="num">Gross remittance</th><th class="num">Tax base (${S.settings.whtBase || 50}%)</th><th class="num">Rate</th><th class="num">Tax withheld</th></tr></thead><tbody>
+    ${d.qap.map(o => `<tr><td>${o.seq}</td><td>${esc(o.tin)}</td><td>${esc(o.corp)}</td><td>${esc(o.last)}</td><td>${esc(o.first)}</td><td>${o.atc}</td><td>Remittance via e-marketplace</td><td class="num">${m2(o.gross)}</td><td class="num">${m2(o.base)}</td><td class="num">${d.rate}%</td><td class="num">${m2(o.wht)}</td></tr>`).join('') || '<tr><td colspan="11">No payees subject to withholding this quarter.</td></tr>'}
+    </tbody><tfoot><tr><td colspan="7"><b>Total</b></td><td class="num"><b>${m2(d.qap.reduce((a, o) => a + o.gross, 0))}</b></td><td class="num"><b>${m2(d.qap.reduce((a, o) => a + o.base, 0))}</b></td><td></td><td class="num"><b>${m2(d.qap.reduce((a, o) => a + o.wht, 0))}</b></td></tr></tfoot></table>
+    <div class="qap-2"><div><h4>Summary by ATC (1601-EQ Part II)</h4><table><thead><tr><th>ATC</th><th class="num">Payees</th><th class="num">Tax base</th><th class="num">Tax withheld</th></tr></thead><tbody>${d.atc.map(a => `<tr><td>${a.atc}</td><td class="num">${a.n}</td><td class="num">${m2(a.base)}</td><td class="num">${m2(a.wht)}</td></tr>`).join('')}</tbody></table></div>
+      <div><h4>Monthly remittances (0619-E)</h4><table><thead><tr><th>Month</th><th class="num">Gross remittances</th><th class="num">Tax withheld</th><th>Remitted</th></tr></thead><tbody>${d.monthTot.map((m, i) => { const k = d.y + '-' + String((d.q - 1) * 3 + i + 1).padStart(2, '0'), r = ((S.fin || {}).remit || {})[k]; return `<tr><td>${m.label}</td><td class="num">${m2(m.gross)}</td><td class="num">${m2(m.wht)}</td><td>${r ? fmtD(r.at) + (r.ref ? ' · ' + esc(r.ref) : '') : '—'}</td></tr>`; }).join('')}</tbody><tfoot><tr><td><b>Quarter</b></td><td class="num"><b>${m2(d.totalGross)}</b></td><td class="num"><b>${m2(d.totalWht)}</b></td><td></td></tr></tfoot></table></div></div>
+    <p class="qap-note">Prepared from Ticktap records on ${new Date().toLocaleString('en-US')}. File 1601-EQ with the QAP (DAT file from the BIR Alphalist Data Entry module) by the last day of the month after the quarter. Confirm ATC codes and figures with your tax adviser before filing.</p></div>`;
+}
+function qapPrint(y, q) {
+  if (window.BALIK_PREVIEW) { toast('admin', 'Printing works on the live site', 'Open Ticktap in your browser to print.'); return; }
+  let el = document.getElementById('printArea'); if (!el) { el = document.createElement('div'); el.id = 'printArea'; document.body.appendChild(el); }
+  el.innerHTML = qapHtml(qapData(y, q)); document.body.classList.add('printing', 'print-wide');
+  const done = () => { document.body.classList.remove('printing', 'print-wide'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done); setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(done, 60000); }, 300);
+}
+async function qapExcel(y, q) {
+  if (window.BALIK_PREVIEW) { toast('admin', 'Downloads work on the live site', 'Open Ticktap in your browser to download.'); return; }
+  const d = qapData(y, q);
+  const rowsQ = [['Seq', 'TIN', 'Registered name (corporation)', 'Last name', 'First name', 'ATC', 'Nature of income payment', 'Gross remittance', 'Tax base', 'Rate %', 'Tax withheld']].concat(d.qap.map(o => [o.seq, o.tin, o.corp, o.last, o.first, o.atc, 'Remittance via e-marketplace', +o.gross.toFixed(2), +o.base.toFixed(2), d.rate, +o.wht.toFixed(2)]));
+  const rowsA = [['ATC', 'Payees', 'Tax base', 'Tax withheld']].concat(d.atc.map(a => [a.atc, a.n, +a.base.toFixed(2), +a.wht.toFixed(2)]));
+  const rowsM = [['Month', 'Gross remittances', 'Tax withheld']].concat(d.monthTot.map(m => [m.label, +m.gross.toFixed(2), +m.wht.toFixed(2)]), [['Quarter total', +d.totalGross.toFixed(2), +d.totalWht.toFixed(2)]]);
+  const rowsP = [['Payee', 'Type', 'TIN', 'Jobs', 'Gross ' + d.monthTot[0].label, 'Gross ' + d.monthTot[1].label, 'Gross ' + d.monthTot[2].label, 'Quarter gross', 'Tax withheld']].concat(d.all.map(o => [o.name, o.kind === 'b' ? 'Business' : 'Individual', o.tin, o.jobs, ...o.m.map(v => +v.toFixed(2)), +o.gross.toFixed(2), +o.wht.toFixed(2)]));
+  const rowsJ = [['Job', 'Ended', 'Payee', 'Gross', 'Fee %', 'Fee', 'Tax withheld', 'Net to payee', 'Paid out']].concat(d.jobs.map(b => [b.id, new Date(b.endedAt).toISOString().slice(0, 10), b.ledger.payeeName, b.gross, b.ledger.rate, +b.ledger.fee.toFixed(2), +b.ledger.wht.toFixed(2), +b.ledger.net.toFixed(2), b.ledger.paidAt ? new Date(b.ledger.paidAt).toISOString().slice(0, 10) : '']));
+  const name = `Ticktap_1601EQ_QAP_${y}_Q${q}`;
+  const save = (blob, fn) => { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = fn; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); };
+  try {
+    if (!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+    const wb = XLSX.utils.book_new(), add = (rows, n, w) => { const ws = XLSX.utils.aoa_to_sheet(rows); ws['!cols'] = w.map(x => ({ wch: x })); XLSX.utils.book_append_sheet(wb, ws, n); };
+    add([['BIR Form 1601-EQ · Quarterly Alphalist of Payees · Q' + q + ' ' + y], ['Withholding agent: ' + WHT_ORG.name + ' · TIN ' + WHT_ORG.tin], []].concat(rowsQ), 'QAP', [6, 18, 28, 16, 18, 8, 28, 16, 14, 8, 14]);
+    add(rowsA, 'Summary by ATC', [10, 10, 16, 16]); add(rowsM, 'Monthly 0619-E', [20, 18, 16]); add(rowsP, 'Payees', [26, 12, 18, 6, 16, 16, 16, 16, 14]); add(rowsJ, 'Jobs', [10, 12, 26, 10, 7, 10, 12, 14, 12]);
+    const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' }); save(new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }), name + '.xlsx');
+    toast('admin', 'Excel file downloaded', name + '.xlsx');
+  } catch (e) {
+    const csv = rowsQ.map(r => r.map(v => /[",\n]/.test(String(v)) ? '"' + String(v).replace(/"/g, '""') + '"' : v).join(',')).join('\n');
+    save(new Blob(['﻿' + csv], { type: 'text/csv' }), name + '.csv'); toast('admin', 'Saved as CSV', 'Excel library could not load; the CSV opens in Excel.');
+  }
+}
 function admFinance(mode) {
   const n = now(), q = quarterOf(n), y = new Date(n).getFullYear();
   const F = S.fin || (S.fin = { remit: {}, filed: {}, issued: {}, ref: '' });
@@ -3032,7 +3094,7 @@ function admFinance(mode) {
       <div class="card tight"><div class="row between"><div class="col"><b class="small">Form 2307 · Q${q} ${y}</b><span class="tiny muted">${Object.keys(issued).length} of ${withWht.length} payees issued</span></div><button class="btn primary xs" data-act="finIssueAll" ${withWht.length && Object.keys(issued).length < withWht.length ? '' : 'disabled'}>Issue all</button></div></div>
       <p class="tiny muted">Confirm forms and deadlines with a Philippine tax adviser before launch.</p></div></div></div>
     ${mode === 'ap' ? '' : admStaffFees(month)}
-    <div class="panel"><div class="panel-h"><h3>Withholding by payee · Q${q} ${y}</h3></div><div class="tablewrap"><table><thead><tr><th>Payee</th><th>TIN</th><th class="num">YTD remittance</th><th class="num">Q${q} gross</th><th class="num">Withheld</th><th>2307</th></tr></thead><tbody>
+    <div class="panel"><div class="panel-h" style="flex-wrap:wrap;gap:10px"><h3>Withholding by payee · Q${q} ${y}</h3><div class="row" style="gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto"><div class="wht-tot"><span class="tiny muted">Withheld so far this quarter</span><b class="num">${peso(Object.values(payees).reduce((a, o) => a + o.wht, 0), 2)}</b><span class="tiny muted">on ${peso(Object.values(payees).reduce((a, o) => a + o.gross, 0), 2)} gross</span></div><button class="btn secondary sm" data-act="qapPrint" data-arg="${y}-${q}">${ic('doc', 15)} Print 1601-EQ / QAP</button><button class="btn secondary sm" data-act="qapExcel" data-arg="${y}-${q}">${ic('receipt', 15)} Excel</button></div></div><div class="tablewrap"><table><thead><tr><th>Payee</th><th>TIN</th><th class="num">YTD remittance</th><th class="num">Q${q} gross</th><th class="num">Withheld</th><th>2307</th></tr></thead><tbody>
       ${Object.values(payees).sort((a, b) => b.ytd - a.ytd).map(o => `<tr><td><b>${esc(o.name)}</b></td><td class="mono small">${esc(o.tin)}</td><td class="num">${peso(o.ytd)}${o.ytd > S.settings.whtThreshold ? ' <span class="pill warn" style="height:20px">Over</span>' : ''}</td><td class="num">${peso(o.gross)}</td><td class="num">${peso(o.wht, 2)}</td><td><div class="row" style="gap:6px"><button class="btn secondary xs" data-act="open2307" data-arg="${o.key}">View</button>${o.wht > 0 ? (issued[o.key] ? `<span class="pill good">Issued ${fmtD(issued[o.key])}</span>` : `<button class="btn ghost xs" data-act="finIssue" data-arg="${o.key}">Issue</button>`) : '<span class="tiny muted">Not needed</span>'}</div></td></tr>`).join('')}
     </tbody></table></div></div>
     <div class="panel"><div class="panel-h"><h3>Ledger · this month</h3></div><div class="tablewrap"><table><thead><tr><th>Job</th><th>Ended</th><th>Payee</th><th class="num">Gross</th><th class="num">Fee %</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th><th>Payout</th></tr></thead><tbody>
@@ -4324,6 +4386,8 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  qapPrint: a => { const [y, q] = a.split('-').map(Number); qapPrint(y, q); },
+  qapExcel: a => { const [y, q] = a.split('-').map(Number); qapExcel(y, q); },
   poOpen: k => { S.admin.poOpen = Object.assign({}, S.admin.poOpen, { [k]: !(S.admin.poOpen || {})[k] }); },
   poView: v => { S.admin.poView = v; S.admin.poDay = null; },
   poDay: k => { S.admin.poDay = S.admin.poDay === k ? null : k; },
@@ -4945,7 +5009,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 97;
+const BUILD = 98;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
