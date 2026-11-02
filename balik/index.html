@@ -584,6 +584,9 @@ table.pnl td{padding:6px 12px}table.pnl tr.ph td{background:var(--surface-2,var(
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
 .kpi{border:1px solid var(--line);border-radius:14px;padding:14px 16px;background:var(--surface);display:flex;flex-direction:column;gap:6px}
 .kpi .v{font-family:var(--mono);font-size:24px;font-weight:600;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.kpi{min-width:0}.kpi .v{display:block;max-width:100%;white-space:nowrap;overflow:hidden}
+[data-fit]{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden;vertical-align:bottom}
+.wht-tot,.slip-net{min-width:0;max-width:100%}.wht-tot b,.slip-net b,.bc-count b{display:inline-block;max-width:100%;white-space:nowrap;overflow:hidden}
 .kpi .l{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .kpi.accent{background:#12355B;color:#fff;border-color:#12355B}
 .kpi.accent .l{color:rgba(255,255,255,.72)}
@@ -731,7 +734,7 @@ function availEditor(path, av, idp) {
     <div class="row" style="gap:8px"><label class="field grow">From<select id="${idp}-from" class="select" data-bind="${path}.from" data-type="num">${opts(av.from)}</select></label><label class="field grow">To<select id="${idp}-to" class="select" data-bind="${path}.to" data-type="num">${opts(av.to)}</select></label></div>
     <span class="tiny muted">${availText(av)}. Night hours are fine: choose an end time earlier than the start for shifts past midnight.</span></div>`;
 }
-const peso = (n, d = 0) => '₱' + Number(n || 0).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: d });
+const peso = (n, d = 0) => { const v = Number(n || 0), r = Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: d }); return (v < 0 && +r.replace(/,/g, '') ? '−' : '') + '₱' + r; };
 const pct = n => Math.round(n) + '%';
 const mmss = ms => { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 const haversine = (a, b) => {
@@ -1293,7 +1296,7 @@ function custList() {
 
 function ratingBlock(o) {
   return `<div class="card rb-card"><div class="row" style="gap:16px;align-items:center">
-    <div class="col" style="align-items:center;width:78px;gap:0"><span class="num" style="font-size:28px;font-weight:600;line-height:1.1">${o.rating.toFixed(1)}</span>${starsH(o.rating)}<span class="tiny muted">${o.count} reviews</span></div>
+    <div class="col" style="align-items:center;width:78px;gap:0"><span class="num" data-fit style="font-size:28px;font-weight:600;line-height:1.1">${o.rating.toFixed(1)}</span>${starsH(o.rating)}<span class="tiny muted">${o.count} reviews</span></div>
     <div class="col grow" style="gap:2px">${o.dist.map((v, i) => `<div class="row" style="gap:8px;min-height:0;line-height:1.1"><span class="tiny muted" style="width:8px;font-size:11px">${5 - i}</span><div class="progress grow" style="height:6px"><span style="width:${v}%;background:#E8A400"></span></div></div>`).join('')}</div></div></div>`;
 }
 function reviewsBlock(o) {
@@ -1332,7 +1335,7 @@ function custProfile() {
       ${reviewsBlock(p)}
     </div>`;
   const blocked = p.status === 'red';
-  const f = `<div class="row between"><div class="col"><span class="small muted">${sel.length ? sel.length + ' service' + (sel.length > 1 ? 's' : '') : 'Add a service'}</span><b class="num" style="font-size:18px">${peso(total)}</b></div>
+  const f = `<div class="row between"><div class="col"><span class="small muted">${sel.length ? sel.length + ' service' + (sel.length > 1 ? 's' : '') : 'Add a service'}</span><b class="num" data-fit style="font-size:18px">${peso(total)}</b></div>
     <button class="btn primary" data-act="goBook" ${!sel.length || blocked ? 'disabled' : ''}>${blocked ? 'Not available today' : 'Continue'}</button></div>`;
   return [h, f];
 }
@@ -1374,7 +1377,7 @@ function payExtras(b) {
   if (k.free) h += `<label class="row payopt" style="gap:10px"><input type="checkbox" data-act="payToggle" data-arg="useFree" ${k.useFree ? 'checked' : ''}><div class="col grow"><b class="small">${ic('heart', 14)} Use your free service</b><span class="tiny muted">${esc(k.free.item)} is free (loyalty reward)</span></div><b class="num" style="color:var(--good)">−${peso(k.free.value)}</b></label>`;
   if (k.bal > 0) h += `<label class="row payopt" style="gap:10px;${k.canPts ? '' : 'opacity:.6'}"><input type="checkbox" data-act="payToggle" data-arg="usePts" ${k.ptsUse ? 'checked' : ''} ${k.canPts ? '' : 'disabled'}><div class="col grow"><b class="small">${ic('sparkle', 14)} Pay with Ticktap Points</b><span class="tiny muted">${k.bal} points available${k.canPts ? ` · 1 point = ${peso(P.value)}` : ` · usable from ${P.min} points`}</span></div><b class="num" style="color:var(--good)">${k.ptsUse ? '−' + peso(k.ptsValue) : ''}</b></label>`;
   { const P2 = PTS(), m = ptMultNow(), e = Math.floor(k.cash / P2.per) * m; if (e > 0) h += `<div class="row" style="gap:6px;padding:0 4px;color:var(--good)">${ic('sparkle', 14)}<span class="small">This booking earns <b>${e} point${e > 1 ? 's' : ''}</b>${m > 1 ? ` (${m}× event)` : ''} when the service ends</span></div>`; }
-  if (k.useFree || k.ptsUse) h += `<div class="row between" style="padding:0 4px"><b>You pay</b><b class="num" style="font-size:18px">${peso(k.cash)}</b></div>`;
+  if (k.useFree || k.ptsUse) h += `<div class="row between" style="padding:0 4px"><b>You pay</b><b class="num" data-fit style="font-size:18px">${peso(k.cash)}</b></div>`;
   return h;
 }
 function cartInfo() {
@@ -1452,7 +1455,7 @@ function custRequest() {
   else if (b.status === 'offered') hero = `<div class="card" style="gap:6px;padding:18px;border-color:var(--good-dot);box-shadow:0 0 0 3px var(--good-soft)">
       <span class="eyebrow" style="color:var(--good)">${esc(first)} accepted</span>
       <span style="font-size:15px">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span>
-      <div class="row" style="align-items:baseline;gap:10px"><span class="num" style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
+      <div class="row" style="align-items:baseline;gap:10px"><span class="num" data-fit style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
       ${b.when === 'later' ? `<span class="small" style="color:var(--warn)">Pay by <b>${fmtWhen(b.offerExpires)}</b> (1 hour before). Unpaid bookings are cancelled automatically.</span>` : `<span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span>`}<button class="pay-link" data-act="openPay" data-arg="${b.id}">Pay now · ${peso(b.gross)} ›</button></div>
       ${b.reminders && b.reminders.length ? remindersCard(b) : ''}`;
   else hero = `<div class="card" style="align-items:center;text-align:center;gap:10px;padding:22px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>
@@ -1558,7 +1561,7 @@ function custPoints() {
   const lo = S.bookings.filter(b => b.cid === cid).map(b => ownerKeyOf(b)).filter((k, i, a) => a.indexOf(k) === i).map(k => loyStatus(k, cid)).filter(Boolean);
   return `${bar('Ticktap Points', 'custBackAccount')}<div class="scroll" data-scroll="c-pts">
     ${ptBanner()}${P.on ? '' : '<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><b class="small">Earning points is paused for now.</b><span class="tiny">You can still use the points you have.</span></div>'}
-    <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent;gap:4px"><span class="eyebrow" style="color:inherit;opacity:.75">Your points</span><span class="num" style="font-size:40px;font-weight:600">${bal}</span><span class="small" style="opacity:.85">Worth ${peso(bal * P.value)} · ${bal >= P.min ? 'ready to use when you pay' : `usable from ${P.min} points (${P.min - bal} more)`}</span></div>
+    <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent;gap:4px"><span class="eyebrow" style="color:inherit;opacity:.75">Your points</span><span class="num" data-fit style="font-size:40px;font-weight:600">${bal}</span><span class="small" style="opacity:.85">Worth ${peso(bal * P.value)} · ${bal >= P.min ? 'ready to use when you pay' : `usable from ${P.min} points (${P.min - bal} more)`}</span></div>
     <div class="card tight" style="gap:4px"><b class="small">How points work</b><span class="small muted">Earn 1 point for every ${peso(P.per)} you pay, credited when the service ends. From ${P.min} points you can pay part or all of a booking (1 point = ${peso(P.value)}). Points used on a cancelled booking are returned.</span></div>
     ${lo.length ? `<div class="col" style="gap:8px"><h3 style="font-size:15px">Loyalty rewards</h3>${lo.map(l => `<div class="li" style="border:1px solid var(--line);border-radius:12px;background:var(--surface)"><div class="col grow"><b class="small">${esc(l.o.name)} · ${esc(l.L.title || 'Loyalty')}</b><span class="tiny muted">${l.prog} of ${l.need} visits${l.avail ? ' · ' + l.avail + ' free ready' : ''}</span></div>${l.avail ? '<span class="pill good">Free ready</span>' : ''}</div>`).join('')}</div>` : ''}
     <div class="col" style="gap:8px"><h3 style="font-size:15px">History</h3><div class="list">${log.map(e => `<div class="li"><div class="col grow"><b class="small">${e.kind === 'earn' ? 'Earned' : e.kind === 'use' ? 'Used' : e.kind === 'admin' ? 'Adjusted by Ticktap' : 'Returned'}${e.bid ? ' · ' + e.bid : ''}</b><span class="tiny muted">${fmtD(e.at)} ${fmtT(e.at)}${e.note ? ' · ' + esc(e.note) : ''}</span></div><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${e.pts > 0 ? '+' : ''}${e.pts}</b></div>`).join('') || '<div class="empty">No points yet. Book a service to start earning.</div>'}</div></div>
@@ -1737,7 +1740,7 @@ function provJobs() {
     ${!reqs.length && !active ? `<div class="card" style="align-items:center;text-align:center;padding:22px"><span class="dot ${statusOf(me).cls}" style="width:14px;height:14px"></span><b>${me.status === 'green' ? "You're on stand-by" : me.status === 'yellow' ? 'Away until ' + fmtT(me.backAt) : 'Off today'}</b><span class="small muted">${me.status === 'green' ? 'New requests arrive here and by SMS.' : 'Switch to stand-by to get requests.'}</span></div>` : ''}
     <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent">
       <div class="row between"><span class="eyebrow" style="color:inherit;opacity:.7">Household goal · ${new Date(n).toLocaleString('en-US', { month: 'long' })}</span><button class="btn xs" data-act="provTab" data-arg="account" style="background:transparent;color:inherit;border-color:rgba(255,255,255,.35)">Edit</button></div>
-      <div class="row" style="align-items:baseline;gap:8px"><span class="num" style="font-size:30px;font-weight:600">${peso(goalBase)}</span><span class="small" style="opacity:.7">of ${peso(me.goal)}</span></div>
+      <div class="row" style="align-items:baseline;gap:8px"><span class="num" data-fit style="font-size:30px;font-weight:600">${peso(goalBase)}</span><span class="small" style="opacity:.7">of ${peso(me.goal)}</span></div>
       <div class="progress" style="background:rgba(255,255,255,.18)"><span style="width:${Math.min(100, goalBase / me.goal * 100)}%;background:var(--good-dot)"></span></div>
       <span class="small" style="opacity:.75">${staff ? 'Job value you delivered for ' + esc(biz(me.biz).name) : 'Take-home after platform fee and tax withheld'} · ${today.length} job${today.length === 1 ? '' : 's'} today</span></div>
     <button class="card" data-act="provTab" data-arg="status" style="text-align:left"><div class="row between"><b>Stand-by this week</b><span class="num small">${wk.toFixed(1)} / ${S.settings.weeklyTarget} h</span></div><div class="progress good"><span style="width:${Math.min(100, wk / S.settings.weeklyTarget * 100)}%"></span></div><span class="small muted">${me.credits} reward credits · platform fee ${tierRate(me)}%</span></button>
@@ -1843,8 +1846,8 @@ function provPerf() {
   if (sub === 'reviews') return head + `${ratingBlock(me)}<div class="col" style="gap:8px">${me.reviews.filter(x => !x.hidden).map(r => `<div class="card tight"><div class="row between"><b class="small">${esc(r.by)}</b><span class="tiny muted">${esc(r.ago || (r.at ? fmtD(r.at) : ''))}</span></div>${starsH(r.stars)}${r.tags && r.tags.length ? `<div class="row" style="flex-wrap:wrap;gap:6px">${r.tags.map(t => `<span class="pill">${esc(t)}</span>`).join('')}</div>` : ''}${r.text ? `<p class="small">${esc(r.text)}</p>` : ''}</div>`).join('') || '<div class="empty">No reviews yet. Reviews appear here after customers rate your service.</div>'}</div><span class="tiny muted">Customers write text reviews after the service. Reviews that break the rules can be hidden by Ticktap.</span></div>`;
   return head + `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent"><span class="eyebrow" style="color:inherit;opacity:.7">Reward credits</span><span class="num" style="font-size:32px;font-weight:600">${pr.cur}<span style="font-size:15px;opacity:.6"> / ${C.max}</span></span><span class="tiny" style="opacity:.75">${CR().bands[bandIdx(pr.cur)].label}</span></div>
-      <div class="card" style="background:var(--good-soft);border-color:transparent;color:var(--good)"><span class="eyebrow" style="color:inherit">Platform fee now</span><span class="num" style="font-size:32px;font-weight:600">${tierRate(me)}%</span><span class="tiny">${me.tierOverride != null ? 'Set by Ticktap' : 'Updates every Sunday'}</span></div></div>
+      <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent"><span class="eyebrow" style="color:inherit;opacity:.7">Reward credits</span><span class="num" data-fit style="font-size:32px;font-weight:600">${pr.cur}<span style="font-size:15px;opacity:.6"> / ${C.max}</span></span><span class="tiny" style="opacity:.75">${CR().bands[bandIdx(pr.cur)].label}</span></div>
+      <div class="card" style="background:var(--good-soft);border-color:transparent;color:var(--good)"><span class="eyebrow" style="color:inherit">Platform fee now</span><span class="num" data-fit style="font-size:32px;font-weight:600">${tierRate(me)}%</span><span class="tiny">${me.tierOverride != null ? 'Set by Ticktap' : 'Updates every Sunday'}</span></div></div>
     <div class="card" style="gap:10px;border-color:var(--accent)"><div class="row between"><span class="eyebrow">This week so far · ${weekLabel(weekKeyOf(now()))}</span><b class="num" style="color:${pr.sum >= 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(pr.sum)}</b></div>
       <div class="list">${pr.items.map(e => `<div class="li"><span class="small grow">${esc(e.text)}${e.kind === 'hours' || e.kind === 'under' || e.kind === 'daily' ? ' <span class="tiny muted">(so far)</span>' : ''}</span><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(e.pts)}</b></div>`).join('')}</div>
       <span class="small">If the week ended now: <b>${pr.cur} → ${pr.after} credits</b>, platform fee <b>${nextRate}%</b> from Monday.</span></div>
@@ -1871,12 +1874,12 @@ function provPerf() {
 function provHistory(me) {
   const r = records(me), evs = (me.creditLog || []).slice(0, 60);
   const reqs = S.bookings.filter(x => x.pid === me.id).sort((x, y) => (y.createdAt || 0) - (x.createdAt || 0)).slice(0, 30);
-  return `<div class="card" style="gap:6px"><div class="row between"><span class="eyebrow">Credits now</span><b class="num" style="font-size:20px">${me.credits} · fee ${tierRate(me)}%</b></div><span class="tiny muted">Pending changes are counted in the Sunday update.</span></div>
+  return `<div class="card" style="gap:6px"><div class="row between"><span class="eyebrow">Credits now</span><b class="num" data-fit style="font-size:20px">${me.credits} · fee ${tierRate(me)}%</b></div><span class="tiny muted">Pending changes are counted in the Sunday update.</span></div>
     <div class="card"><span class="eyebrow">Your job record</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;text-align:center">
-        <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.jobs}</span><span class="tiny muted">jobs</span></div>
-        <div class="col"><span class="num" style="font-size:20px;font-weight:600">${pct(r.onTime)}</span><span class="tiny muted">on-time arrival</span></div>
-        <div class="col"><span class="num" style="font-size:20px;font-weight:600">${r.hrs.toFixed(1)}</span><span class="tiny muted">service hours</span></div></div></div>
+        <div class="col"><span class="num" data-fit style="font-size:20px;font-weight:600">${r.jobs}</span><span class="tiny muted">jobs</span></div>
+        <div class="col"><span class="num" data-fit style="font-size:20px;font-weight:600">${pct(r.onTime)}</span><span class="tiny muted">on-time arrival</span></div>
+        <div class="col"><span class="num" data-fit style="font-size:20px;font-weight:600">${r.hrs.toFixed(1)}</span><span class="tiny muted">service hours</span></div></div></div>
     ${(me.creditWeeks || []).length ? `<div class="col" style="gap:8px"><h3 style="font-size:15px">Sunday updates</h3><div class="list">${me.creditWeeks.slice(0, 8).map(w => `<div class="li"><div class="col grow"><b class="small">${weekLabel(w.week)}</b><span class="tiny muted">${w.before} → ${w.after} credits · fee ${w.rateBefore}% → ${w.rate}%</span></div><span class="pill ${w.sum >= 0 ? 'good' : 'bad'}">${sgn(w.sum)}</span></div>`).join('')}</div></div>` : ''}
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Credit history</h3><div class="list">${evs.map(e => `<div class="li"><div class="col grow"><b class="small">${esc(e.text)}</b><span class="tiny muted">${fmtD(e.at)} · ${e.applied ? 'applied' : 'counts on Sunday'}</span></div><span class="pill ${e.pts > 0 ? 'good' : 'bad'}">${sgn(e.pts)}</span></div>`).join('') || '<div class="empty">No credit changes yet.</div>'}</div></div>
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Requests and jobs</h3><div class="list">${reqs.map(x => `<div class="li"><div class="col grow"><b class="small">${esc(x.services.map(s => s.name).join(' + '))}</b><span class="tiny muted">${x.id} · ${esc(x.customer || '')} · ${fmtD(x.createdAt)} ${fmtT(x.createdAt)}</span></div>${statusPill(x.status)}</div>`).join('') || '<div class="empty">No requests yet.</div>'}</div></div>`;
@@ -1955,7 +1958,7 @@ function provEarnings() {
   const ytd = payee.ytd, thr = S.settings.whtThreshold;
   return `${provHeader('Earnings')}<div class="scroll" data-scroll="p-earn">
     ${staff ? `<div class="card tight" style="background:var(--accent-soft);border-color:transparent"><p class="small">You work as staff of <b>${esc(payee.name)}</b>. Job payouts go to the business on its ${esc(payee.cycle)} cycle, and the business pays you.</p></div>` : ''}
-    <div class="card" style="gap:4px"><span class="eyebrow">${new Date(n).toLocaleString('en-US', { month: 'long' })} · ${staff ? 'job value delivered' : 'take-home'}</span><span class="num" style="font-size:34px;font-weight:600;letter-spacing:-.03em">${peso(staff ? g : net, 2)}</span><span class="small muted">${month.length} completed jobs</span></div>
+    <div class="card" style="gap:4px"><span class="eyebrow">${new Date(n).toLocaleString('en-US', { month: 'long' })} · ${staff ? 'job value delivered' : 'take-home'}</span><span class="num" data-fit style="font-size:34px;font-weight:600;letter-spacing:-.03em">${peso(staff ? g : net, 2)}</span><span class="small muted">${month.length} completed jobs</span></div>
     <div class="list">
       <div class="li"><span class="grow">Customer payments</span><b class="num">${peso(g, 2)}</b></div>
       <div class="li"><span class="grow">Platform fee <span class="muted small">(${tierRate(me)}% now)</span></span><b class="num">−${peso(fee, 2)}</b></div>
@@ -2722,7 +2725,7 @@ function bizBookings(b) {
   const inSvc = mine.filter(x => x.status === 'arrived');
   const upcoming = mine.filter(x => ['offered', 'paid'].includes(x.status) && x.when === 'later');
   const wkGross = mine.filter(x => ['ended', 'reviewed'].includes(x.status) && x.endedAt >= weekStartOf(n)).reduce((a, x) => a + x.gross, 0);
-  const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
+  const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" data-fit style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
   const fb = (id, l) => `<button data-act="bizBF" data-arg="${id}" aria-pressed="${f === id}">${l}</button>`;
   return `<div class="page-h"><div><h1>Bookings & services</h1><p>Customers book your therapists directly. Watch every staff booking, service and payment here; the therapist handles arrival time, check-in and ending the service.</p></div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">${tile('Bookings today', today.length, 'requests and bookings')}${tile('In service now', inSvc.length, inSvc.map(x => prov(x.pid).name.split(' ')[0]).join(', ') || 'none')}${tile('Upcoming', upcoming.length, 'scheduled')}${tile('Earned this week', peso(wkGross), 'completed services')}${tile('On stand-by', bizGreen(b) + ' / ' + b.staff.length, 'green lights now')}</div>
@@ -5354,7 +5357,7 @@ function popOffer(b) {
   const p = b.pid ? prov(b.pid) : null, first = (p ? p.name : 'Your pro').split(' ')[0];
   return popShell('offer', first + ' accepted', `
     <div class="act-head"><span class="act-badge good">${ic('check', 16)} ${esc(first)} accepted</span>${b.when === 'later' ? '' : `<span class="pill warn num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</span>`}</div>
-    <div class="row" style="gap:12px;align-items:center">${p ? avatar(p.name, p.hue, 56) : ''}<div class="col" style="gap:2px;min-width:0"><span class="small muted">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span><b style="font-size:30px;letter-spacing:-.02em" class="num">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</b></div></div>
+    <div class="row" style="gap:12px;align-items:center">${p ? avatar(p.name, p.hue, 56) : ''}<div class="col" style="gap:2px;min-width:0"><span class="small muted">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span><b style="font-size:30px;letter-spacing:-.02em" class="num" data-fit>${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</b></div></div>
     <div class="act-rows"><div><span>Service</span><b>${esc(b.services.map(s => s.name).join(' + '))}</b></div><div><span>Total</span><b class="num">${peso(b.gross)}</b></div></div>
     <span class="small" style="color:var(--warn)">${b.when === 'later' ? 'Pay by ' + fmtWhen(b.offerExpires) + '. Unpaid bookings are cancelled automatically.' : 'Pay before the timer ends to confirm.'}</span>
     <div class="act-btns one"><button class="btn primary" data-act="openPay" data-arg="${b.id}">Accept & pay ${peso(b.gross)}</button></div>
@@ -5417,6 +5420,21 @@ function maybeRatePrompt() {
   if (S.cust.screen === 'review' && S.cust.bid === b.id) return;
   S.modal = { kind: 'rate', bid: b.id, stars: 0 };
 }
+/* shrink big numbers so they always fit inside their box (KPI cards, totals, earnings) */
+const FIT_SEL = '.kpi .v, .wht-tot b, .slip-net b, .bc-count b, [data-fit]';
+function fitText(root) {
+  (root || document).querySelectorAll(FIT_SEL).forEach(el => {
+    el.style.fontSize = '';
+    for (let i = 0; i < 3; i++) {
+      const sw = el.scrollWidth, cw = el.clientWidth;
+      if (!cw || sw <= cw + 1) break;
+      const fs = parseFloat(getComputedStyle(el).fontSize) || 16;
+      el.style.fontSize = Math.max(10, Math.floor(fs * cw / sw * 0.98 * 10) / 10) + 'px';
+    }
+  });
+}
+let fitT = 0; window.addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => fitText(), 80); });
+try { document.fonts && document.fonts.ready.then(() => fitText()); } catch (e) { }
 function render() {
   normalizeCredits();
   try { maybeRatePrompt(); } catch (e) { }
@@ -5447,6 +5465,7 @@ function render() {
     } else if (nu) nu.focus({ preventScroll: true });
   } else if (fid) { const el = document.getElementById(fid); if (el) el.focus({ preventScroll: true }); }
   mountKeeps();
+  try { fitText(); } catch (e) { }
   syncGps();
   callSync();
   save();
@@ -6244,7 +6263,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 103;
+const BUILD = 104;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
