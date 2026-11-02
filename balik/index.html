@@ -470,6 +470,14 @@ ol.steps{margin:0;padding:0}
 .pay-link{align-self:flex-start;margin-top:4px;border:0;background:none;padding:2px 0;color:var(--accent);font-weight:800;font-size:15px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 .mode-row{background:linear-gradient(90deg,var(--accent-soft),transparent)}
 .gd-tip{gap:6px}.gd-tip-t{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:clamp(12.5px,3.6vw,15px)}.gd-tip-t span{font-weight:600;color:#5B4A12}
+
+/* mode bar for members with both sides */
+.modebar{flex-shrink:0;display:flex;align-items:center;gap:8px;width:100%;border:0;cursor:pointer;padding:7px max(16px,env(safe-area-inset-left,0px));padding-top:calc(7px + env(safe-area-inset-top,0px));font:inherit;font-size:13px;font-weight:700;color:#fff;background:linear-gradient(90deg,#12355B,#1E4E86)}
+.modebar.provider{background:linear-gradient(90deg,#7A4A00,#B87400)}
+.modebar .mb-now{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;background:rgba(255,255,255,.18)}
+.modebar .mb-to{display:inline-flex;align-items:center;gap:4px;opacity:.85}.modebar .mb-arrow{opacity:.8}
+.modebar .mb-tap{margin-left:auto;padding:4px 12px;border-radius:999px;background:#FFB800;color:#14213D;font-weight:800}
+.modebar + .appbar{padding-top:8px}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1162,7 +1170,7 @@ function custPane() {
     case 'account': h = custAccount(); tab = 'account'; break;
     case 'points': h = custPoints(); tab = 'account'; break;
   }
-  return `<div class="screen" data-pane="customer">${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
+  return `<div class="screen" data-pane="customer">${modeBar('customer')}${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
 }
 
 function custHome() {
@@ -1614,7 +1622,7 @@ function provPane() {
     case 'idcard': h = provIdCard(); tab = 'account'; break;
     case 'alerts': h = `${provHeader('Alerts')}<div class="scroll" data-scroll="p-al"><div class="row between"><h3 style="font-size:16px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${S.prov.id}">Mark all read</button></div>${alertList('provider:' + S.prov.id)}</div>`; tab = 'jobs'; break;
   }
-  return `<div class="screen" data-pane="provider">${h}${f ? `<div class="footer-bar">${f}</div>` : ''}${tab ? provTabs(tab) : ''}${provOverlays()}${toastsFor('provider')}</div>`;
+  return `<div class="screen" data-pane="provider">${S.prov.apply ? '' : modeBar('provider')}${h}${f ? `<div class="footer-bar">${f}</div>` : ''}${tab ? provTabs(tab) : ''}${provOverlays()}${toastsFor('provider')}</div>`;
 }
 function provHeader(title) {
   const me = prov(S.prov.id), st = statusOf(me);
@@ -2345,6 +2353,11 @@ function guideOverlay(role) {
   const g = guideData(role), L = GUIDE_UI[guideLang(role)];
   return `<div class="gd-ov" role="dialog" aria-label="${g.title}"><header class="appbar"><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 22)}</button><h2>${L.head}</h2></header>
     <div class="gd-scroll"><h1 class="gd-title">${g.title}</h1>${guideBody(role)}<button class="btn primary block" data-act="closeModal" style="margin-top:8px">${L.ok}</button></div></div>`;
+}
+function modeBar(side) {   // shown only to members who hold both sides
+  const a = meAcct(); if (!a || !dualOk(a) || !isPhone()) return '';
+  const to = side === 'customer' ? 'provider' : 'customer';
+  return `<button class="modebar ${side}" data-act="modeSwitch" data-arg="${to}" aria-label="Switch to ${to} mode"><span class="mb-now">${ic(side === 'customer' ? 'user' : 'bag', 14)} ${side === 'customer' ? 'Customer' : 'Provider'}</span><span class="mb-arrow">→</span><span class="mb-to">${ic(to === 'customer' ? 'user' : 'bag', 14)} ${to === 'customer' ? 'Customer' : 'Provider'}</span><span class="mb-tap">Switch</span></button>`;
 }
 function modeRowCust() {
   const a = meAcct(); if (!a) return '';
@@ -4882,7 +4895,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 95;
+const BUILD = 96;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
