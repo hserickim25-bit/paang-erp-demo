@@ -106,6 +106,16 @@ button.brand:hover{background:var(--surface-2)}
 .fab{position:fixed}.fabdot{position:absolute;top:2px;right:2px;width:12px;height:12px;border-radius:50%;border:2px solid #fff;background:#22B573}.fabdot.bad{background:#E5484D}
 .switch{position:relative;width:46px;height:28px;border-radius:14px;border:0;background:var(--line-2);cursor:pointer;flex-shrink:0;transition:background .15s}.switch span{position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
 .switch[aria-checked="true"]{background:#22B573}.switch[aria-checked="true"] span{left:21px}
+.ntc{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;padding:11px 12px;border-radius:14px;border:1px solid var(--line);background:var(--surface);color:inherit;cursor:pointer;font:inherit}
+.ntc .ntc-i{flex-shrink:0;width:32px;height:32px;border-radius:10px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}
+.ntc.imp{border-color:transparent;background:var(--warn-soft)}.ntc.imp .ntc-i{background:var(--warn);color:#fff}
+.clamp2{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.mkt-box{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:12px;background:var(--surface-2,var(--surface-3))}
+.phone-prev{max-width:360px}
+.callwin{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));z-index:200;width:min(360px,calc(100vw - 32px));max-height:80vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:10px;border-radius:18px;background:var(--surface);border:1px solid var(--line);box-shadow:0 18px 50px rgba(10,20,40,.28);animation:fade .2s}
+.cw-card{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:14px;border:1.5px solid var(--line)}
+.cw-card.ring{border-color:var(--bad);animation:cwpulse 1.4s ease-in-out infinite}.cw-card.on{border-color:var(--good)}
+@keyframes cwpulse{0%,100%{box-shadow:0 0 0 0 rgba(229,72,77,.35)}50%{box-shadow:0 0 0 7px rgba(229,72,77,0)}}
 .side-h{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);padding:6px 10px 4px}
 .side-g{display:flex;flex-direction:column;gap:2px;margin-top:8px;border-top:1px solid var(--line);padding-top:8px}
 .side .side-gh{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--fg-2);padding:6px 10px}.side .side-gh svg{transform:rotate(90deg);transition:transform .15s}.side .side-gh[aria-expanded="false"] svg{transform:none}
@@ -742,6 +752,9 @@ const P = {
   heart: '<path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"/>',
   send: '<path d="M21 3 10 14M21 3l-6.5 18-4.5-7-7-4.5z"/>',
   sos: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5v5M12 15.8h.01"/>',
+  headset: '<path d="M4 14v-2a8 8 0 0 1 16 0v2"/><path d="M4 14h3v6H5.5A1.5 1.5 0 0 1 4 18.5zM20 14h-3v6h1.5a1.5 1.5 0 0 0 1.5-1.5z"/><path d="M17 20c0 1-1.5 1.5-4 1.5"/>',
+  mega: '<path d="M3.5 10v4h3l8 4.5V5.5l-8 4.5z"/><path d="M18 9.2a3.6 3.6 0 0 1 0 5.6M6.5 14l1.2 5h2.3l-1-5"/>',
+  pin2: '<path d="M9 4h6l-1 6 3 3v1H7v-1l3-3zM12 14v6"/>',
   share: '<path d="M12 15V4M8 8l4-4 4 4M5 13v6.5h14V13"/>',
   doc: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',
   logout: '<path d="M9 21H5V3h4M16 17l5-5-5-5M21 12H9"/>',
@@ -1028,7 +1041,7 @@ function openFromToast(pane, bid) {
   else if (pane === 'business') { S.biz.tab = 'requests'; }
 }
 const tgt = to => to === 'customer' ? 'customer:' + (S.customer.cid || 'me') : to;
-const unread = to => S.alerts.filter(a => a.to === tgt(to) && !a.read).length;
+const unread = to => S.alerts.filter(a => a.to === tgt(to) && !a.read && a.kind !== 'notice').length + noticesFor(to).filter(n => !noticeSeen(n)).length;
 const custActive = () => S.bookings.find(b => b.cid === (S.customer.cid || 'me') && ['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'].includes(b.status));
 
 /* ---------- small renderers ---------- */
@@ -1198,7 +1211,7 @@ function custHome() {
         <span class="eyebrow ellipsis" style="display:block">Distances from ${esc(a.label)}</span>
         <span class="row" style="gap:4px;font-weight:600;font-size:14px;min-width:0"><span class="ellipsis">${esc(a.short)}</span> ${ic('down', 16)}</span></button>
       <button class="iconbtn" data-act="custTab" data-arg="alerts" aria-label="Alerts">${ic('bell', 22)}${unread('customer') ? `<span class="badge-n">${unread('customer')}</span>` : ''}</button></header>
-    <div class="scroll" data-scroll="c-home">
+    <div class="scroll" data-scroll="c-home">${noticeBanner('customer')}
       ${guideTip('customer')}${ptBanner()}
       ${act ? activeCard(act) : ''}
       <label class="row" style="height:46px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
@@ -1464,7 +1477,7 @@ function custTrack() {
       ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Arrival check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Check-in photo taken by ${esc(first)} at arrival" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;background:#0E1520"></div>` : ''}
       <div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>
       ${b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : ''}
-      ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff" data-act="sos">${ic('sos', 18)} SOS</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted"><b>SOS</b> alerts the Ticktap safety team at once if you feel unsafe during the visit. <b>Share trip</b> sends who is coming, the arrival time and your address to family or a friend.</p></div>` : ''}
+      ${['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff;line-height:1.15" data-act="staffCall" data-arg="customer:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted"><b>Connect to Ticktap staff</b> opens an in-app voice call with our safety team at once if anything feels wrong during the visit. In an emergency, call 911. <b>Share trip</b> sends who is coming, the arrival time and your address to family or a friend.</p></div>` : ''}
       <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
       ${['paid', 'departed'].includes(b.status) ? (S.cust.cancelAsk === b.id ? (() => { const q = refundQuote(b); return `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this booking?</b>
         <div class="row between small"><span>Paid</span><b class="num">${peso(b.gross, 2)}</b></div>
@@ -1500,8 +1513,8 @@ function custBookings() {
 }
 function alertList(to) {
   to = tgt(to);
-  const list = S.alerts.filter(a => a.to === to);
-  return list.length ? `<div class="list">${list.map(a => `<button class="li" data-act="openAlert" data-arg="${a.id}"><span class="avatar" style="width:36px;height:36px;background:${a.kind === 'bad' ? 'var(--bad-soft)' : a.kind === 'good' ? 'var(--good-soft)' : 'var(--accent-soft)'};color:${a.kind === 'bad' ? 'var(--bad)' : a.kind === 'good' ? 'var(--good)' : 'var(--accent)'}">${ic(a.kind === 'bad' ? 'alert' : a.kind === 'good' ? 'check' : 'bell', 18)}</span><div class="col grow"><b class="small">${esc(a.title)}</b><span class="small muted">${esc(a.body)}</span></div><span class="tiny muted num">${fmtT(a.at)}</span>${a.read ? '' : '<span class="dot green" style="background:var(--accent);box-shadow:none"></span>'}</button>`).join('')}</div>` : '<div class="empty">No alerts yet. Updates about your bookings show up here.</div>';
+  const list = S.alerts.filter(a => a.to === to && a.kind !== 'notice');
+  return noticeList(to) + (list.length ? `<div class="list">${list.map(a => `<button class="li" data-act="openAlert" data-arg="${a.id}"><span class="avatar" style="width:36px;height:36px;background:${a.kind === 'bad' ? 'var(--bad-soft)' : a.kind === 'good' ? 'var(--good-soft)' : 'var(--accent-soft)'};color:${a.kind === 'bad' ? 'var(--bad)' : a.kind === 'good' ? 'var(--good)' : 'var(--accent)'}">${ic(a.kind === 'bad' ? 'alert' : a.kind === 'good' ? 'check' : 'bell', 18)}</span><div class="col grow"><b class="small">${esc(a.title)}</b><span class="small muted">${esc(a.body)}</span></div><span class="tiny muted num">${fmtT(a.at)}</span>${a.read ? '' : '<span class="dot green" style="background:var(--accent);box-shadow:none"></span>'}</button>`).join('')}</div>` : '<div class="empty">No alerts yet. Updates about your bookings show up here.</div>');
 }
 function custAlerts() { return `${bar('Alerts', null, `<button class="btn ghost xs" data-act="readAll" data-arg="customer">Mark all read</button>`)}<div class="scroll" data-scroll="c-al">${pushCard(false)}${alertList('customer')}</div>`; }
 function custPoints() {
@@ -1530,7 +1543,9 @@ function custAccount() {
       <button class="li" data-act="custGo" data-arg="points">${ic('sparkle', 20)}<div class="col grow"><b>Ticktap Points</b><span class="small muted">${ptBal(S.customer.cid || 'me')} points · earn 1 for every ${peso(PTS().per)}</span></div><b class="num" style="color:var(--accent)">${ptBal(S.customer.cid || 'me')}</b>${ic('chev', 16)}</button>
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
+      <button class="li" data-act="staffCall" data-arg="customer:">${ic('headset', 20)}<div class="col grow"><b>Connect to Ticktap staff</b><span class="small muted">In-app voice call with our support team</span></div>${ic('chev', 16)}</button>
     </div>
+    ${mktCard('c:' + (S.customer.cid || 'me'))}
     <div class="card"><span class="eyebrow">About Ticktap</span><p class="small">Tick for verified, tap for one tap: every pro is ID-checked, and booking takes a single tap. The platform helps experienced salon, spa and grooming professionals earn again from home-service work, with flexible hours that fit family life.</p></div>
     <button class="btn secondary block" data-act="signOut">${ic('logout', 18)} Sign out</button>
     <button class="btn ghost sm" data-act="resetDemo">Reset demo data</button>
@@ -1582,7 +1597,7 @@ function custSignup() {
 }
 function custOverlays() {
   const c = S.cust; let o = '';
-  const cs = callScreen('customer'); if (cs) return cs;
+  const cs = callScreen('customer') || staffCallScreen('customer'); if (cs) return cs;
   if (c.chat) o += chatSheet('customer');
   if (c.zoom && prov(c.zoom)) {
     const p = prov(c.zoom), b = p.biz ? biz(p.biz) : null;
@@ -1676,7 +1691,7 @@ function provJobs() {
   const today = myLedger(me, b => sameDay(b.endedAt, n));
   const wk = weekTotal(me), staff = !!me.biz;
   const goalBase = staff ? monthGross : monthNet;
-  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${liveLine()}${offlineBanner('provider')}${pushCard(true)}${guideTip('provider')}
+  return `${provHeader('Jobs')}<div class="scroll" data-scroll="p-jobs">${liveLine()}${offlineBanner('provider')}${noticeBanner('provider:' + S.prov.id)}${pushCard(true)}${guideTip('provider')}
     ${reqs.map(b => `<button class="card" data-act="openReq" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)">
       <div class="row between"><span class="eyebrow" style="color:var(--accent)">New request · also sent by SMS</span><span class="pill warn num" data-cd="${b.respondBy}">${mmss(b.respondBy - n)}</span></div>
       <b style="font-size:17px">${esc(b.services.map(s => s.name).join(' + '))}</b>
@@ -1731,7 +1746,7 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack')}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
-    ${['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
+    ${['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button><button class="btn block" style="background:var(--bad-dot);color:#fff" data-act="staffCall" data-arg="provider:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button>` : ''}
     ${canTalk(b) ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${b.reminders && b.reminders.length && b.status === 'paid' ? remindersCard(b) : ''}
@@ -2041,7 +2056,7 @@ function guideFil(role) {
         ['pin', 'I-track ang provider', 'Kapag na-tap nila ang Depart, makikita mo sila sa mapa kasama ang oras ng pagdating.'],
         ['chat', 'Mag-message o tumawag sa app', 'Kapag may bagong message, may pop-up na may Reply button. Nakatago ang phone number ninyo sa isa\'t isa. Magsasara ang chat pagkatapos ng serbisyo.'],
         ['camera', 'Pag-check sa pagdating', 'Pagdating, kukuha ang provider ng check-in photo na makikita mo. Hilingin na makita ang kanilang Ticktap ID; puwedeng i-scan ng guard ang QR code nito.'],
-        ['sos', 'Kaligtasan', 'Gamitin ang SOS button sa booking screen kung may hindi tama.']]],
+        ['headset', 'Kaligtasan', 'Pindutin ang "Connect to Ticktap staff" sa booking screen kung may hindi tama: agad kang makakausap ng Ticktap team sa in-app call. Sa emergency, tumawag sa 911.']]],
       ['Pagtatapos', [
         ['check', 'Tapos na ang serbisyo', 'I-tap ng provider ang End service, o kusa itong matatapos sa naka-book na oras.'],
         ['heart', 'Mag-rate at mag-review', 'Pagkatapos ng serbisyo, may lalabas na pop-up na "Thank you for choosing Ticktap today!". I-tap ang stars at Write a review, o Later para mag-rate mula sa Bookings. Nakakatulong ang reviews sa ibang customer at sa reward credits ng provider.'],
@@ -2111,10 +2126,13 @@ function guideFil(role) {
         ['shield', 'Approvals', 'Providers: compare the live face photo with the ID, check certificates, then approve, ask for more, or reject. Businesses: check permits.'],
         ['light', 'Live status', 'Who is on green, yellow or red right now.'],
         ['alert', 'Late alerts', 'Call the provider, tell the customer, reassign or cancel and refund.'],
+        ['headset', 'Support calls', 'When a member taps "Connect to Ticktap staff", a call window opens on every admin screen with a ring. Answer to talk in the app, or call back on the number shown. Missed calls stay in Support calls until marked handled.'],
         ['list', 'Requests & jobs', 'Every booking with its log, payment and check-in photo. Members answer requests, offers and messages from pop-ups, so a stuck booking usually means a phone was offline.']]],
       ['Members', [
         ['users', 'Customers, Providers, Businesses', 'Search a member, adjust reward credits, suspend or reactivate. Suspension makes the provider\'s Ticktap ID show "Not active" at once. One login can hold both sides: the account list shows "Customer + Provider" or "Provider pending". Suspending the provider side does not block the customer side; forced withdrawal closes the whole account.'],
-        ['x', 'Forced withdrawal', 'For serious violations (Terms, Section 18): the account is closed, open bookings are cancelled and refunded.']]],
+        ['x', 'Forced withdrawal', 'For serious violations (Terms, Section 18): the account is closed, open bookings are cancelled and refunded.'],
+        ['send', 'Messages', 'Send a message by member type, gender, age, service, business, area, saved group or name. Promotion reaches only members who agreed to promos, channel by channel; Service notice is for account, safety or policy information.'],
+        ['mega', 'Notice board', 'Messages › Notice board posts a notice to the top of members\' Alerts. Choose who sees it, the dates, pin it, or mark it Important to show it once on the home screen.']]],
       ['Money', [
         ['wallet', 'Accounts receivable', 'Customer payments due and received.'],
         ['receipt', 'Accounts payable', 'Payouts to providers and businesses, refunds, and withholding tax (0619-E monthly, 1601-EQ quarterly).'],
@@ -2151,7 +2169,7 @@ function guideEn(role) {
         ['pin', 'Track the provider', 'When they tap Depart you see them on the map with the arrival time.'],
         ['chat', 'Message or call in the app', 'A new message pops up with a Reply button. Your phone numbers stay hidden from each other. The chat closes when the service ends.'],
         ['camera', 'Arrival check', 'On arrival the provider takes a check-in photo, which you see. Ask to see their Ticktap ID; the guard can scan its QR code.'],
-        ['sos', 'Safety', 'Use the SOS button on the booking screen if anything feels wrong.']]],
+        ['headset', 'Safety', 'Tap "Connect to Ticktap staff" on the booking screen if anything feels wrong: our team answers in an in-app voice call. In an emergency, call 911.']]],
       ['Finish', [
         ['check', 'Service ends', 'The provider taps End service, or it ends automatically at the booked time.'],
         ['heart', 'Rate and review', 'A "Thank you for choosing Ticktap today!" pop-up appears. Tap the stars and Write a review, or Later to rate from Bookings. Reviews help other customers and set the provider\'s reward credits.'],
@@ -2239,7 +2257,7 @@ function guideKo(role) {
         ['pin', '제공자 위치 확인', '제공자가 Depart를 누르면 지도에서 위치와 도착 예정 시간을 볼 수 있습니다.'],
         ['chat', '앱 안에서 메시지·통화', '새 메시지가 오면 Reply 버튼이 있는 팝업이 뜹니다. 서로의 전화번호는 보이지 않고, 서비스가 끝나면 채팅이 닫힙니다.'],
         ['camera', '도착 확인', '도착하면 제공자가 현장 사진을 찍고, 고객도 그 사진을 봅니다. Ticktap ID를 보여달라고 하세요. 경비는 ID의 QR 코드를 찍어 확인할 수 있습니다.'],
-        ['sos', '안전', '불안한 일이 있으면 예약 화면의 SOS 버튼을 누르세요.']]],
+        ['headset', '안전', '불안한 일이 있으면 예약 화면의 "Connect to Ticktap staff"(플랫폼 담당자 연결)를 누르세요. 바로 담당자와 앱 음성통화가 연결됩니다. 긴급 상황은 911에 전화하세요.']]],
       ['마무리', [
         ['check', '서비스 종료', '제공자가 End service를 누르거나, 예약된 시간이 되면 자동으로 끝납니다.'],
         ['heart', '별점과 리뷰', '"Thank you for choosing Ticktap today!" 팝업이 뜹니다. 별을 누르고 Write a review를 누르거나, Later를 눌러 나중에 Bookings에서 평가합니다. 리뷰는 다른 고객과 제공자의 리워드 크레딧에 반영됩니다.'],
@@ -2309,10 +2327,13 @@ function guideKo(role) {
         ['shield', 'Approvals', '제공자: 실시간 얼굴 사진과 신분증을 대조하고 자격증을 확인한 뒤 승인·보완 요청·거절. 업소: 인허가 서류 확인.'],
         ['light', 'Live status', '지금 초록·노랑·빨강 상태인 제공자 현황.'],
         ['alert', 'Late alerts', '제공자에게 전화하고 고객에게 알린 뒤, 재배정하거나 취소·환불합니다.'],
+        ['headset', 'Support calls', '회원이 "Connect to Ticktap staff"(플랫폼 담당자 연결)를 누르면 모든 관리자 화면에 벨소리와 함께 통화창이 뜹니다. 받기를 눌러 앱으로 통화하거나 표시된 번호로 전화하세요. 못 받은 통화는 처리 완료로 표시할 때까지 Support calls에 남습니다.'],
         ['list', 'Requests & jobs', '모든 예약의 기록, 결제, 도착 사진. 회원들은 요청·결제·메시지에 팝업으로 응답하므로, 멈춘 예약은 대개 해당 폰이 오프라인이었다는 뜻입니다.']]],
       ['회원', [
         ['users', '고객·제공자·업소', '회원을 찾아 리워드 크레딧을 조정하고 정지·재활성화합니다. 정지하면 제공자의 Ticktap ID가 즉시 "Not active"로 표시됩니다. 한 계정이 고객·제공자를 함께 가질 수 있으며 목록에 "Customer + Provider" 또는 "Provider pending"으로 표시됩니다. 제공자 정지는 고객 이용을 막지 않고, 강제 탈퇴는 계정 전체를 닫습니다.'],
-        ['x', '강제 탈퇴', '중대한 위반 시(약관 제18조): 계정이 폐쇄되고 진행 중인 예약은 취소·환불됩니다.']]],
+        ['x', '강제 탈퇴', '중대한 위반 시(약관 제18조): 계정이 폐쇄되고 진행 중인 예약은 취소·환불됩니다.'],
+        ['send', 'Messages', '회원 종류·성별·연령·서비스·업체·지역·저장 그룹·이름으로 골라 보냅니다. 프로모션은 채널별로 수신 동의한 회원에게만, 서비스 공지는 계정·안전·정책 안내에만 씁니다.'],
+        ['mega', '공지 게시판', 'Messages › Notice board에서 회원 알림 화면 맨 위에 공지를 올립니다. 대상·기간·상단 고정, 중요 공지는 홈 화면에 한 번 표시됩니다.']]],
       ['매출입', [
         ['wallet', 'Accounts receivable', '고객 결제 예정과 수납 내역.'],
         ['receipt', 'Accounts payable', '제공자·업소 지급, 환불, 원천세(매월 0619-E, 분기 1601-EQ).'],
@@ -2332,10 +2353,13 @@ function guideFilAdmin() {
         ['shield', 'Approvals', 'Providers: ikumpara ang live na litrato ng mukha sa ID at suriin ang mga certificate, saka i-approve, humingi ng dagdag, o i-reject. Businesses: suriin ang mga permit.'],
         ['light', 'Live status', 'Sino ang naka-green, yellow o red ngayon.'],
         ['alert', 'Late alerts', 'Tawagan ang provider, sabihan ang customer, i-reassign o i-cancel at i-refund.'],
+        ['headset', 'Support calls', 'Kapag pinindot ng miyembro ang "Connect to Ticktap staff", lalabas ang call window na may ring sa bawat admin screen. Sagutin para mag-usap sa app, o tawagan ang numerong nakalagay. Nananatili sa Support calls ang missed calls hanggang markahang handled.'],
         ['list', 'Requests & jobs', 'Lahat ng booking kasama ang log, bayad at check-in photo. Sumasagot ang mga miyembro sa pop-up, kaya kapag naipit ang isang booking, kadalasan ay offline ang isang phone.']]],
       ['Mga miyembro', [
         ['users', 'Customers, Providers, Businesses', 'Hanapin ang miyembro, ayusin ang reward credits, i-suspend o i-reactivate. Kapag na-suspend, agad na "Not active" ang Ticktap ID ng provider. Puwedeng may dalawang side ang isang login: "Customer + Provider" o "Provider pending" sa listahan. Ang suspension ng provider side ay hindi humaharang sa customer side; ang forced withdrawal ay nagsasara ng buong account.'],
-        ['x', 'Forced withdrawal', 'Para sa mabibigat na paglabag (Terms, Section 18): isasara ang account at ika-cancel at ire-refund ang mga bukas na booking.']]],
+        ['x', 'Forced withdrawal', 'Para sa mabibigat na paglabag (Terms, Section 18): isasara ang account at ika-cancel at ire-refund ang mga bukas na booking.'],
+        ['send', 'Messages', 'Magpadala ayon sa uri ng miyembro, kasarian, edad, serbisyo, business, lugar, saved group o pangalan. Ang Promotion ay para lang sa pumayag, bawat channel; ang Service notice ay para sa account, safety o policy.'],
+        ['mega', 'Notice board', 'Sa Messages › Notice board, maglagay ng notice sa itaas ng Alerts ng mga miyembro. Piliin kung sino, ang petsa, i-pin, o gawing Important para lumabas minsan sa home screen.']]],
       ['Pera', [
         ['wallet', 'Accounts receivable', 'Mga bayad ng customer na paparating at natanggap na.'],
         ['receipt', 'Accounts payable', 'Payout sa providers at businesses, refunds, at withholding tax (0619-E buwan-buwan, 1601-EQ kada quarter).'],
@@ -2442,6 +2466,8 @@ function provAccount() {
       <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Reward credits & platform fee</b><span class="small muted">${me.credits} credits · ${tierRate(me)}% fee</span></div>${ic('chev', 16)}</button>
     </div>
     <div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${me.id}">Mark all read</button></div>${alertList('provider:' + me.id)}</div>
+    <button class="btn secondary block" data-act="staffCall" data-arg="provider:">${ic('headset', 18)} Connect to Ticktap staff</button>
+    ${mktCard('p:' + me.id)}
     ${meAcct() ? `<button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out (${esc(meAcct().loginId)})</button>` : `<button class="btn secondary block" data-act="startApply">${ic('user', 18)} Preview the new-provider application</button>`}
   </div>`;
 }
@@ -2500,7 +2526,7 @@ function faceSheet() {
 }
 function provOverlays() {
   if (S.prov.face) { const fs = faceSheet(); if (S.prov.face.stage !== 'cam' || !S.prov.apply || true) return fs; }
-  const cs = callScreen('provider'); if (cs) return cs;
+  const cs = callScreen('provider') || staffCallScreen('provider'); if (cs) return cs;
   if (S.prov.chat) { const ch = chatSheet('provider'); if (ch) return ch; }
   if (S.prov.cam) return camSheet();
   const me = prov(S.prov.id);
@@ -2533,7 +2559,7 @@ function bizPane() {
   if (tab === 'guide') main = `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('business')].page}</h1></div></div><div class="gd-page">${guideBody('business')}</div>`;
   return `<div class="web" data-pane="business"><aside class="side"><div class="org">${bizLogo(b, 36, 10, 19, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
     ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${nav('guide', 'Paano Gamitin', 'doc')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
-    <main class="main">${pushCard(true)}${main}</main>${toastsFor('business', true)}</div>`;
+    <main class="main">${pushCard(true)}${noticeList('business:' + b.id)}${main}</main>${toastsFor('business', true)}</div>`;
 }
 function bizRequests(b, q) {
   const active = S.bookings.filter(x => x.bizId === b.id && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status));
@@ -2699,13 +2725,13 @@ function adminPane() {
   const grp = (id, label, inner) => { const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, broadcast: admBroadcast, finance: admFinance, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, broadcast: admBroadcast, calls: admCalls, finance: admFinance, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <span class="side-h">Monitor now</span>
-    ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guide', 'How to use', 'doc')}
+    ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
-    ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}</aside><main class="main">${m}</main>${toastsFor('admin', true)}</div>`;
+    ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}</aside><main class="main">${m}</main>${staffCallWin()}${toastsFor('admin', true)}</div>`;
 }
 function admLive() {
   const groups = [['green', 'On stand-by'], ['yellow', 'Away'], ['red', 'Off today']];
@@ -3071,17 +3097,58 @@ async function qapExcel(y, q) {
     save(new Blob(['﻿' + csv], { type: 'text/csv' }), name + '.csv'); toast('admin', 'Saved as CSV', 'Excel library could not load; the CSV opens in Excel.');
   }
 }
+/* ---------- marketing consent (Data Privacy Act of 2012, RA 10173) ---------- */
+const MKT_VER = '1.0';
+const MKT_LINE = 'Yes, send me Ticktap promos, events and news by in-app notice, SMS and email.';
+const MKT_DETAIL = 'Optional. Ticktap uses your name, mobile number, email, area and, if you give them, your gender, birth year and booking history to send offers, events and news that suit you. Saying no never affects bookings: booking, payment and safety messages are always sent. You can turn each channel off any time in Account › Promos & news, and every promo SMS says how to opt out. We keep a record of this choice and its date, and we stop promos promptly after you withdraw. Under the Data Privacy Act of 2012 you may ask to see, correct or delete your data, or object to its use, through our Data Protection Officer in the app.';
+function mktRec(key) { const i = String(key).indexOf(':'), k = key.slice(0, i), id = key.slice(i + 1); return k === 'c' ? (S.customers || {})[id] : k === 'p' ? prov(id) : k === 'b' ? biz(id) : null; }
+const mktOf = key => { const r = mktRec(key); return (r && r.mkt) || null; };
+const mktAny = m => !!(m && (m.app || m.sms || m.email));
+function mktSet(key, ch, on, method) {
+  const r = mktRec(key); if (!r) return;
+  const m = Object.assign({ app: false, sms: false, email: false }, r.mkt || {});
+  if (ch === 'all') m.app = m.sms = m.email = !!on; else m[ch] = !!on;
+  m.at = now(); m.ver = MKT_VER; r.mkt = m;
+  if (!Array.isArray(S.mktLog)) S.mktLog = [];
+  S.mktLog.unshift({ id: 'mk' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), key, name: r.name || '', app: m.app, sms: m.sms, email: m.email, at: now(), ver: MKT_VER, method: method || 'Changed in Account › Promos & news', device: DEVICE });
+  if (S.mktLog.length > 500) S.mktLog.length = 500;
+}
+function mktCard(key) {
+  const m = mktOf(key) || {};
+  const sw = (ch, l) => `<div class="row between" style="padding:4px 0"><span class="small">${l}</span><button class="switch" role="switch" aria-checked="${!!m[ch]}" aria-label="${l}" data-act="mktToggle" data-arg="${key}|${ch}"><span></span></button></div>`;
+  return `<div class="card" style="gap:6px" id="mkt-card"><div class="row between"><span class="eyebrow">Promos & news</span>${mktAny(m) ? '<span class="pill good">Subscribed</span>' : '<span class="pill outline">Off</span>'}</div>
+    <span class="small muted">Offers, events and news from Ticktap. Booking, payment and safety messages always arrive, whatever you choose here.</span>
+    ${sw('app', 'In-app notices')}${sw('sms', 'SMS')}${sw('email', 'Email')}
+    <details class="tiny muted"><summary style="cursor:pointer">How we use this</summary><p style="margin:6px 0 0">${esc(MKT_DETAIL)}</p></details>
+    ${m.at ? `<span class="tiny muted">Last changed ${fmtD(m.at)} ${fmtT(m.at)}</span>` : ''}</div>`;
+}
+const mktSignup = f => `<div class="mkt-box"><label class="check" style="align-items:flex-start"><input type="checkbox" id="au-mkt" data-bind="auth.f.mkt" ${f.mkt ? 'checked' : ''}><span class="small"><b>Promos & news</b> <span class="muted">(optional)</span><br>${MKT_LINE}</span></label><details class="tiny muted"><summary style="cursor:pointer">How we use this</summary><p style="margin:6px 0 0">${esc(MKT_DETAIL)}</p></details></div>`;
+
+/* ---------- notice board: posts shown at the top of members' Alerts ---------- */
+const NOTICE_AUD = { customer: 'Customers', provider: 'Providers & staff', business: 'Businesses' };
+const noticeLive = (n, t = now()) => !!n && !n.ended && (!n.from || dayTs(n.from) <= t) && (!n.until || dayTs(n.until) + DAY > t);
+const noticeState = n => n.ended ? 'Ended' : n.from && dayTs(n.from) > now() ? 'Scheduled' : n.until && dayTs(n.until) + DAY <= now() ? 'Expired' : 'Live';
+function noticesFor(to) { const k = String(tgt(to)).split(':')[0]; return (S.notices || []).filter(n => noticeLive(n) && (n.aud || []).includes(k)).sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.at - a.at); }
+const noticeSeen = n => !!(S.noticeSeen || {})[n.id];
+function noticeItem(n) {
+  const open = S.noticeOpen === n.id, imp = n.level === 'important';
+  return `<button class="ntc ${imp ? 'imp' : ''}" data-act="noticeOpen" data-arg="${n.id}" aria-expanded="${open}"><span class="ntc-i">${ic(n.pin ? 'pin2' : 'mega', 18)}</span><span class="col grow" style="gap:2px;min-width:0"><span class="row" style="gap:6px"><b class="small grow ellipsis">${esc(n.title)}</b>${noticeSeen(n) ? '' : '<span class="pill accent" style="height:18px;font-size:10px">New</span>'}</span><span class="small ${open ? '' : 'clamp2'}" style="white-space:pre-line">${esc(n.body)}</span><span class="tiny muted">Ticktap notice · ${fmtD(n.at)}${n.until ? ' · until ' + esc(n.until) : ''}</span></span></button>`;
+}
+function noticeList(to) { const L = noticesFor(to); return L.length ? `<div class="col" style="gap:8px"><span class="eyebrow">Notices</span>${L.map(noticeItem).join('')}</div>` : ''; }
+// important notices also show once as a banner on the main screen until opened
+function noticeBanner(to) { const n = noticesFor(to).find(x => x.level === 'important' && !noticeSeen(x)); return n ? `<button class="ntc imp" data-act="noticeOpen" data-arg="${n.id}" style="margin-bottom:2px"><span class="ntc-i">${ic('mega', 18)}</span><span class="col grow" style="gap:2px;min-width:0"><b class="small">${esc(n.title)}</b><span class="small clamp2">${esc(n.body)}</span><span class="tiny muted">Tap to read · Ticktap notice</span></span></button>` : ''; }
+
 /* ---------- broadcasts: SMS, in-app message and email to filtered audiences ---------- */
 const DEMO_MALE = ['p3', 'p7', 'p104', 'p115', 'p116', 'p117'];
 const yearNow = () => new Date(now()).getFullYear();
 function audienceAll() {
   const out = [], seen = new Set();
   Object.values(S.customers || {}).forEach(c => { if (!c || c.suspended || seen.has('c:' + c.cid)) return; seen.add('c:' + c.cid);
-    out.push({ key: 'c:' + c.cid, kind: 'customer', name: c.name || 'Customer', gender: c.gender || (c.cid === 'me' ? 'female' : ''), by: c.birthYear || (c.cid === 'me' ? 1990 : 0), phone: c.phone || '', email: c.email || '', area: (c.addr && c.addr.city) || '', alertTo: 'customer:' + c.cid, created: c.createdAt || 0 }); });
+    out.push({ key: 'c:' + c.cid, kind: 'customer', name: c.name || 'Customer', gender: c.gender || (c.cid === 'me' ? 'female' : ''), by: c.birthYear || (c.cid === 'me' ? 1990 : 0), phone: c.phone || '', email: c.email || '', area: (c.addr && c.addr.city) || '', alertTo: 'customer:' + c.cid, created: c.createdAt || 0, mkt: c.mkt || null }); });
   S.providers.forEach(p => { if (p.expelled) return; const staff = !!p.biz;
-    out.push({ key: 'p:' + p.id, kind: staff ? 'staff' : 'provider', name: p.name, gender: p.gender || (DEMO_MALE.includes(p.id) ? 'male' : 'female'), by: p.birthYear || (yearNow() - 22 - (p.years || 5)), phone: p.phone || '', email: p.email || '', cat: p.cat, biz: p.biz || '', area: p.area || '', alertTo: 'provider:' + p.id, rating: p.rating, active: p.active !== false }); });
+    out.push({ key: 'p:' + p.id, kind: staff ? 'staff' : 'provider', name: p.name, gender: p.gender || (DEMO_MALE.includes(p.id) ? 'male' : 'female'), by: p.birthYear || (yearNow() - 22 - (p.years || 5)), phone: p.phone || '', email: p.email || '', cat: p.cat, biz: p.biz || '', area: p.area || '', alertTo: 'provider:' + p.id, rating: p.rating, active: p.active !== false, mkt: p.mkt || null }); });
   S.businesses.forEach(b => { if (b.expelled) return; const a = S.accounts && S.accounts.find(x => x.role === 'business' && x.link && x.link.bizId === b.id);
-    out.push({ key: 'b:' + b.id, kind: 'owner', name: b.name, gender: '', by: 0, phone: b.phone || (a && a.phone) || '', email: (a && a.email) || '', cat: b.cat, area: b.area || '', alertTo: 'business:' + b.id }); });
+    out.push({ key: 'b:' + b.id, kind: 'owner', name: b.name, gender: '', by: 0, phone: b.phone || (a && a.phone) || '', email: (a && a.email) || '', cat: b.cat, area: b.area || '', alertTo: 'business:' + b.id, mkt: b.mkt || null }); });
   return out;
 }
 function audienceOf(f) {
@@ -3100,16 +3167,22 @@ function audienceOf(f) {
     return true; });
 }
 function admBroadcast() {
+  if (S.admin.msgTab === 'notice') return admNotices();
   const f = S.admin.bc || (S.admin.bc = { mode: 'filter', kinds: ['customer', 'provider', 'staff', 'owner'], gender: 'any', ageMin: '', ageMax: '', cat: 'any', biz: 'any', area: '', ch: { app: true, sms: false, email: false }, title: '', body: '', pick: [], q: '', groupName: '' });
-  const rec = audienceOf(f), y = yearNow();
-  const smsN = rec.filter(r => r.phone).length, emN = rec.filter(r => r.email).length;
+  if (!f.type) f.type = 'promo';
+  const all = audienceOf(f), y = yearNow(), promo = f.type === 'promo';
+  const okCh = (r, ch) => !promo || !!(r.mkt && r.mkt[ch]);
+  const reach = r => (f.ch.app && okCh(r, 'app')) || (f.ch.sms && r.phone && okCh(r, 'sms')) || (f.ch.email && r.email && okCh(r, 'email'));
+  const rec = all.filter(reach), agreed = all.filter(r => mktAny(r.mkt)).length;
+  const appN = all.filter(r => okCh(r, 'app')).length, smsN = all.filter(r => r.phone && okCh(r, 'sms')).length, emN = all.filter(r => r.email && okCh(r, 'email')).length;
   const K = { customer: 'Customers', provider: 'Individual providers', staff: 'Business staff', owner: 'Business owners' };
   const chip = (k, l) => `<button class="chip" data-act="bcKind" data-arg="${k}" aria-pressed="${f.kinds.includes(k)}">${l}</button>`;
   const groups = S.settings.bcGroups || [];
   const pickList = audienceAll().filter(r => !f.q || (r.name + ' ' + r.area + ' ' + r.kind).toLowerCase().includes(f.q.toLowerCase())).slice(0, 60);
   const sms = (f.body || '').length;
   const hist = (S.broadcasts || []).slice(0, 12);
-  return `<div class="page-h"><div><h1>Messages</h1><p>Send an in-app message, SMS or email to members chosen by type, gender, age, service, business, area, a saved group, or by name.</p></div></div>
+  return `<div class="page-h"><div><h1>Messages</h1><p>Send an in-app message, SMS or email to members chosen by type, gender, age, service, business, area, a saved group, or by name. Promotions reach only members who agreed to receive them.</p></div></div>
+  ${msgTabs()}
   <div class="split"><div class="wide panel"><div class="panel-h"><h3>1 · Who receives it</h3><div class="row" style="gap:6px">${[['filter', 'By filters'], ['group', 'Saved group'], ['pick', 'Pick people']].map(([k, l]) => `<button class="chip" data-act="bcMode" data-arg="${k}" aria-pressed="${f.mode === k}">${l}</button>`).join('')}</div></div><div class="panel-b" style="gap:12px">
     ${f.mode === 'filter' ? `<div class="col" style="gap:6px"><span class="eyebrow">Member type</span><div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(K).map(([k, l]) => chip(k, l)).join('')}<button class="btn ghost xs" data-act="bcAll">All members</button></div></div>
       <div class="formgrid">
@@ -3124,19 +3197,59 @@ function admBroadcast() {
     ${f.mode === 'pick' ? `<input id="bc-q" class="input" data-bind="admin.bc.q" value="${esc(f.q)}" placeholder="Search name, area or type">
       <div class="bc-pick">${pickList.map(r => `<label class="row" style="gap:10px;cursor:pointer;padding:6px 2px"><input type="checkbox" ${f.pick.includes(r.key) ? 'checked' : ''} data-act="bcPick" data-arg="${r.key}"><span class="grow small"><b>${esc(r.name)}</b> <span class="muted">· ${K[r.kind]}${r.area ? ' · ' + esc(r.area) : ''}</span></span></label>`).join('')}</div>
       <div class="row" style="gap:8px"><input id="bc-gn" class="input" data-bind="admin.bc.groupName" value="${esc(f.groupName)}" placeholder="Group name, e.g. VIP customers" style="height:38px"><button class="btn secondary sm" data-act="bcGroupSave" ${f.pick.length ? '' : 'disabled'}>Save as group</button></div>` : ''}
-    <div class="bc-count"><b>${rec.length}</b> recipient${rec.length === 1 ? '' : 's'} <span class="muted small">· ${smsN} with mobile · ${emN} with email</span><button class="btn ghost xs" data-act="bcShowList">${S.admin.bcList ? 'Hide list' : 'Show list'}</button></div>
-    ${S.admin.bcList ? `<div class="bc-pick">${rec.map(r => `<div class="row between small" style="padding:4px 2px"><span><b>${esc(r.name)}</b> <span class="muted">· ${K[r.kind]}${r.gender ? ' · ' + r.gender : ''}${r.by ? ' · ' + (y - r.by) + ' yrs' : ''}</span></span><span class="muted tiny">${esc(r.phone || r.email || '')}</span></div>`).join('') || '<span class="small muted">Nobody matches.</span>'}</div>` : ''}
+    <div class="bc-count"><b>${rec.length}</b> recipient${rec.length === 1 ? '' : 's'} <span class="muted small">${promo ? `· ${all.length} match, ${agreed} agreed to promos · app ${appN} · SMS ${smsN} · email ${emN}` : `· ${smsN} with mobile · ${emN} with email`}</span><button class="btn ghost xs" data-act="bcShowList">${S.admin.bcList ? 'Hide list' : 'Show list'}</button></div>
+    ${S.admin.bcList ? `<div class="bc-pick">${all.map(r => `<div class="row between small" style="padding:4px 2px"><span><b>${esc(r.name)}</b> <span class="muted">· ${K[r.kind]}${r.gender ? ' · ' + r.gender : ''}${r.by ? ' · ' + (y - r.by) + ' yrs' : ''}</span></span><span class="muted tiny">${promo ? (mktAny(r.mkt) ? `<span class="pill good" style="height:18px">Agreed ${['app', 'sms', 'email'].filter(c => r.mkt[c]).join('/')}</span>` : '<span class="pill outline" style="height:18px">No consent · skipped</span>') : esc(r.phone || r.email || '')}</span></div>`).join('') || '<span class="small muted">Nobody matches.</span>'}</div>` : ''}
   </div></div>
   <div class="narrow panel"><div class="panel-h"><h3>2 · Message</h3></div><div class="panel-b" style="gap:10px">
+    <div class="col" style="gap:6px"><span class="eyebrow">Message type</span>
+      <button class="opt" data-act="bcType" data-arg="promo" aria-pressed="${promo}" style="padding:10px 12px"><div class="col grow"><b class="small">Promotion, event or news</b><span class="tiny muted">Sent only to members who agreed, channel by channel</span></div></button>
+      <button class="opt" data-act="bcType" data-arg="service" aria-pressed="${!promo}" style="padding:10px 12px"><div class="col grow"><b class="small">Service notice</b><span class="tiny muted">Account, safety or policy information for everyone. No advertising.</span></div></button></div>
     <div class="row" style="gap:12px;flex-wrap:wrap">${[['app', 'In-app message'], ['sms', 'SMS'], ['email', 'Email']].map(([k, l]) => `<label class="check"><input type="checkbox" data-act="bcCh" data-arg="${k}" ${f.ch[k] ? 'checked' : ''}>${l}</label>`).join('')}</div>
     <label class="field">Title (app and email)<input id="bc-t" class="input" data-bind="admin.bc.title" value="${esc(f.title)}" placeholder="e.g. Double points this weekend"></label>
     <label class="field">Message<textarea id="bc-m" class="textarea" data-bind="admin.bc.body" placeholder="Write your message" oninput="var c=document.getElementById('bc-n');if(c)c.textContent=this.value.length+' characters · '+Math.max(1,Math.ceil(this.value.length/160))+' SMS'">${esc(f.body)}</textarea><span id="bc-n" class="tiny muted" style="text-align:right">${sms} characters · ${Math.max(1, Math.ceil(sms / 160))} SMS</span></label>
-    <span class="tiny muted">In-app messages also reach phones with lock-screen alerts on. SMS and email are queued for the gateway (Semaphore / email service) once connected. Marketing messages must follow the Data Privacy Act: send only to members who agreed to receive them.</span>
+    <span class="tiny muted">In-app messages also reach phones with lock-screen alerts on. SMS and email are queued for the gateway (Semaphore / email service) once connected.${promo ? ' Promo SMS end with the opt-out line “Stop: Ticktap app › Account › Promos & news”.' : ' Use Service notice only for information members need about their account, bookings, safety or the Terms — never for offers.'}</span>
     <button class="btn primary block" data-act="bcSend" ${rec.length && (f.ch.app || f.ch.sms || f.ch.email) && String(f.body || '').trim() ? '' : 'disabled'}>${ic('send', 16)} Send to ${rec.length}</button>
-    ${S.admin.bcConfirm ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent;gap:8px"><b class="small">Send to ${rec.length} member(s) by ${['app', 'sms', 'email'].filter(k => f.ch[k]).join(', ')}?</b><div class="row" style="gap:8px"><button class="btn primary sm" data-act="bcSendGo">Yes, send</button><button class="btn ghost sm" data-act="bcSendNo">Cancel</button></div></div>` : ''}
+    ${S.admin.bcConfirm ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent;gap:8px"><b class="small">Send this ${promo ? 'promotion' : 'service notice'} to ${rec.length} member(s) by ${['app', 'sms', 'email'].filter(k => f.ch[k]).join(', ')}?</b><div class="row" style="gap:8px"><button class="btn primary sm" data-act="bcSendGo">Yes, send</button><button class="btn ghost sm" data-act="bcSendNo">Cancel</button></div></div>` : ''}
   </div></div></div>
-  <div class="panel"><div class="panel-h"><h3>Sent messages</h3></div><div class="tablewrap"><table><thead><tr><th>Sent</th><th>Title</th><th>Audience</th><th>Channels</th><th class="num">Recipients</th></tr></thead><tbody>
-    ${hist.map(h => `<tr><td class="mono small">${fmtD(h.at)} ${fmtT(h.at)}</td><td><b class="small">${esc(h.title || '—')}</b><br><span class="tiny muted">${esc(String(h.body).slice(0, 80))}</span></td><td class="small">${esc(h.audience)}</td><td class="small">${h.ch.join(', ')}</td><td class="num">${h.n}</td></tr>`).join('') || '<tr><td colspan="5" class="small muted">No messages sent yet.</td></tr>'}
+  <div class="panel"><div class="panel-h"><h3>Sent messages</h3></div><div class="tablewrap"><table><thead><tr><th>Sent</th><th>Type</th><th>Title</th><th>Audience</th><th>Channels</th><th class="num">Recipients</th></tr></thead><tbody>
+    ${hist.map(h => `<tr><td class="mono small">${fmtD(h.at)} ${fmtT(h.at)}</td><td class="small">${h.type === 'service' ? 'Service notice' : 'Promotion'}</td><td><b class="small">${esc(h.title || '—')}</b><br><span class="tiny muted">${esc(String(h.body).slice(0, 80))}</span></td><td class="small">${esc(h.audience)}${h.skipped ? `<br><span class="tiny muted">${h.skipped} without consent skipped</span>` : ''}</td><td class="small">${h.ch.join(', ')}</td><td class="num">${h.n}</td></tr>`).join('') || '<tr><td colspan="6" class="small muted">No messages sent yet.</td></tr>'}
+  </tbody></table></div></div>
+  ${mktPanel()}`;
+}
+const msgTabs = () => { const t = S.admin.msgTab || 'send', live = (S.notices || []).filter(n => noticeLive(n)).length; return `<div class="seg" role="tablist" style="align-self:flex-start">${[['send', 'Send a message', 'send', 0], ['notice', 'Notice board', 'mega', live]].map(([k, l, i, n]) => `<button data-act="msgTab" data-arg="${k}" aria-pressed="${t === k}">${ic(i, 15)} ${l}${n ? ` <span class="pill accent" style="height:18px">${n}</span>` : ''}</button>`).join('')}</div>`; };
+function mktPanel() {
+  const rows = audienceAll(), K = { customer: 'Customers', provider: 'Providers', staff: 'Business staff', owner: 'Business owners' };
+  const by = k => { const g = rows.filter(r => r.kind === k); return [g.length, g.filter(r => mktAny(r.mkt)).length, g.filter(r => r.mkt && r.mkt.sms).length, g.filter(r => r.mkt && r.mkt.email).length]; };
+  const log = (S.mktLog || []).slice(0, 8);
+  return `<div class="panel"><div class="panel-h"><div class="col"><h3>Promo consent</h3><span class="small muted">Members opt in at sign-up or in Account › Promos & news (consent v${MKT_VER}). Every change is recorded with its date and device.</span></div></div>
+    <div class="tablewrap"><table><thead><tr><th>Member type</th><th class="num">Members</th><th class="num">Agreed</th><th class="num">SMS</th><th class="num">Email</th></tr></thead><tbody>
+    ${Object.keys(K).map(k => { const [n, a, sm, em] = by(k); return `<tr><td>${K[k]}</td><td class="num">${n}</td><td class="num"><b>${a}</b> <span class="tiny muted">${n ? Math.round(a / n * 100) : 0}%</span></td><td class="num">${sm}</td><td class="num">${em}</td></tr>`; }).join('')}
+    </tbody></table></div>
+    ${log.length ? `<div class="panel-b" style="gap:4px"><span class="eyebrow">Latest changes</span>${log.map(l => `<div class="row between small" style="gap:8px"><span><b>${esc(l.name)}</b> <span class="muted">· ${mktAny(l) ? 'agreed to ' + ['app', 'sms', 'email'].filter(c => l[c]).join(', ') : 'withdrew all'}</span></span><span class="tiny muted">${esc(l.method)} · ${fmtD(l.at)} ${fmtT(l.at)}</span></div>`).join('')}</div>` : ''}</div>`;
+}
+function admNotices() {
+  const f = S.admin.nt || (S.admin.nt = { title: '', body: '', aud: ['customer', 'provider', 'business'], level: 'info', pin: false, from: '', until: '', push: false });
+  const L = (S.notices || []).slice().sort((a, b) => b.at - a.at);
+  const reach = audienceAll().filter(r => f.aud.includes(r.kind === 'staff' ? 'provider' : r.kind === 'owner' ? 'business' : r.kind)).length;
+  const ok = String(f.title || '').trim() && String(f.body || '').trim() && f.aud.length;
+  const stCls = { Live: 'good', Scheduled: 'accent', Ended: 'outline', Expired: 'outline' };
+  return `<div class="page-h"><div><h1>Messages</h1><p>Post a notice to the top of members' Alerts screen: service updates, holiday hours, safety reminders or policy changes. Important notices also show once on the home screen.</p></div></div>
+  ${msgTabs()}
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>New notice</h3></div><div class="panel-b" style="gap:12px">
+    <div class="col" style="gap:6px"><span class="eyebrow">Show to</span><div class="row" style="gap:6px;flex-wrap:wrap">${Object.entries(NOTICE_AUD).map(([k, l]) => `<button class="chip" data-act="ntAud" data-arg="${k}" aria-pressed="${f.aud.includes(k)}">${l}</button>`).join('')}</div></div>
+    <label class="field">Title<input id="nt-t" class="input" maxlength="70" data-bind="admin.nt.title" value="${esc(f.title)}" placeholder="e.g. Holiday schedule: Nov 1–2"></label>
+    <label class="field">Notice<textarea id="nt-b" class="textarea" maxlength="600" data-bind="admin.nt.body" placeholder="What members need to know">${esc(f.body)}</textarea></label>
+    <div class="formgrid">
+      <label class="field">Level<select id="nt-l" class="select" data-bind="admin.nt.level" data-rerender="1"><option value="info" ${f.level === 'info' ? 'selected' : ''}>Normal</option><option value="important" ${f.level === 'important' ? 'selected' : ''}>Important (home banner)</option></select></label>
+      <label class="field">Show from<input id="nt-f" class="input" type="date" data-bind="admin.nt.from" value="${esc(f.from)}"></label>
+      <label class="field">Show until<input id="nt-u" class="input" type="date" data-bind="admin.nt.until" value="${esc(f.until)}"></label></div>
+    <div class="row" style="gap:16px;flex-wrap:wrap"><label class="check"><input type="checkbox" id="nt-pin" data-bind="admin.nt.pin" ${f.pin ? 'checked' : ''}>Pin to the top</label><label class="check"><input type="checkbox" id="nt-push" data-bind="admin.nt.push" ${f.push ? 'checked' : ''}>Also send a lock-screen alert</label></div>
+    <span class="tiny muted">Notices are service information and reach everyone in the chosen groups (${reach} members). For offers and events, use Send a message › Promotion so only members who agreed receive them. Leave the dates empty to show it from now until you end it.</span>
+    <button class="btn primary block" data-act="ntPost" ${ok ? '' : 'disabled'}>${ic('mega', 16)} Post notice</button>
+  </div></div>
+  <div class="narrow panel"><div class="panel-h"><h3>Preview</h3></div><div class="panel-b"><div class="phone-prev">${noticeItem({ id: 'preview', title: f.title || 'Notice title', body: f.body || 'Your notice text shows here.', at: now(), level: f.level, pin: f.pin, until: f.until })}</div><span class="tiny muted">Members see this at the top of Alerts${f.level === 'important' ? ', and once on their home screen' : ''}.</span></div></div></div>
+  <div class="panel"><div class="panel-h"><h3>Posted notices</h3></div><div class="tablewrap"><table><thead><tr><th>Posted</th><th>Notice</th><th>Shown to</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>
+    ${L.map(n => { const st = noticeState(n); return `<tr><td class="mono small">${fmtD(n.at)} ${fmtT(n.at)}</td><td><b class="small">${n.pin ? '📌 ' : ''}${esc(n.title)}</b>${n.level === 'important' ? ' <span class="pill bad" style="height:18px">Important</span>' : ''}<br><span class="tiny muted">${esc(String(n.body).slice(0, 90))}</span></td><td class="small">${n.aud.map(a => NOTICE_AUD[a]).join(', ')}</td><td class="small">${esc(n.from || fmtD(n.at))} – ${esc(n.until || 'until ended')}</td><td><span class="pill ${stCls[st]}">${st}</span></td><td><div class="row" style="gap:6px;justify-content:flex-end">${st === 'Ended' || st === 'Expired' ? '' : `<button class="btn ghost xs" data-act="ntPin" data-arg="${n.id}">${n.pin ? 'Unpin' : 'Pin'}</button><button class="btn secondary xs" data-act="ntEnd" data-arg="${n.id}">End</button>`}<button class="btn ghost xs" style="color:var(--bad)" data-act="ntDel" data-arg="${n.id}">Delete</button></div></td></tr>`; }).join('') || '<tr><td colspan="6" class="small muted">No notices yet.</td></tr>'}
   </tbody></table></div></div>`;
 }
 function bcAudienceText(f) {
@@ -3627,6 +3740,13 @@ function addTestPros() {
     S.providers.forEach((p, pi) => { if (!Array.isArray(p.reviews)) p.reviews = []; const lines = say[p.cat] || say.massage;
       for (let k = 0; p.reviews.length < 9 && k < 9; k++) p.reviews.push({ by: who[(pi * 3 + k) % who.length], stars: (pi + k) % 6 === 0 ? 4 : 5, text: lines[(pi + k) % lines.length], tags: [], photos: [], ago: ago[k % ago.length], demo: true }); });
   }
+  if (!S.settings.demoMkt2026) {
+    S.settings.demoMkt2026 = true; const t0 = now() - 20 * DAY;
+    const give = (r, i, all) => { if (!r || r.mkt) return; r.mkt = all ? { app: true, sms: true, email: true, at: t0 + i * HOUR, ver: MKT_VER } : i % 3 === 1 ? { app: true, sms: false, email: true, at: t0 + i * HOUR, ver: MKT_VER } : null; if (!r.mkt) delete r.mkt; };
+    S.providers.forEach((p, i) => give(p, i, i % 3 !== 2 && i % 3 !== 1));
+    S.businesses.forEach((b, i) => give(b, i, i % 2 === 0));
+    Object.values(S.customers || {}).forEach((c, i) => give(c, i, c.cid === 'me' || i % 2 === 0));
+  }
   if (!S.settings.demoPromos2026) {
     S.settings.demoPromos2026 = true;
     const t0 = now();
@@ -3773,6 +3893,7 @@ function callSync() {
       if (meC || meP) ringing = true;
     }
   });
+  try { if (staffCallSync()) ch = true; if (staffRinging()) ringing = true; } catch (e) { }
   ringing ? startRing() : stopRing();
   return ch;
 }
@@ -3825,6 +3946,133 @@ function callScreen(role) {
   else if (!c) { status = 'On a call on another device'; actions = `<button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="End call">${ic('phone', 28)}</button>`; }
   else { status = `<span data-calltime="${b.call.startedAt}">${mmss(Date.now() - b.call.startedAt)}</span>${c.conn && c.conn !== 'connected' ? ' · ' + esc(c.conn) : ''}`; actions = `<button class="callbtn mute ${c.muted ? 'on' : ''}" data-act="callMute" data-arg="${role}" aria-label="${c.muted ? 'Unmute' : 'Mute'}">${ic(c.muted ? 'micoff' : 'mic', 26)}</button><button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="End call">${ic('phone', 28)}</button>`; }
   return `<div class="callscreen" data-ov="call-${k}"><div class="col" style="align-items:center;gap:12px;margin-top:12%">${pic}<b style="font-size:24px">${esc(who)}</b><span class="small" style="opacity:.8">${status}</span><span class="tiny" style="opacity:.55">${b.id} · in-app voice · your number stays private</span></div><div class="row" style="gap:44px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
+}
+
+/* =============== Connect to Ticktap staff: member → admin in-app voice call (WebRTC, signalled through helpCalls) =============== */
+const STAFF = { call: null, adm: null, view: null };
+const HOTLINE = '+63 917 555 0142';
+const helpCall = id => (S.helpCalls || []).find(r => r.id === id);
+function newPeerStaff(side) {
+  const pc = new RTCPeerConnection({ iceServers: ICE });
+  const audio = new Audio(); audio.autoplay = true; audio.playsInline = true;
+  pc.ontrack = e => { const c = STAFF[side]; if (c && c.sameDevice) return; audio.srcObject = e.streams[0]; audio.play().catch(() => { }); };
+  pc.onconnectionstatechange = () => { const c = STAFF[side]; if (c) { c.conn = pc.connectionState; render(); } };
+  return { pc, audio };
+}
+function endStaffLocal(side) {
+  (side ? [side] : ['call', 'adm']).forEach(k => { const c = STAFF[k]; if (!c) return;
+    try { c.stream && c.stream.getTracks().forEach(t => t.stop()); } catch (e) { } try { c.pc && c.pc.close(); } catch (e) { } try { c.audio && (c.audio.srcObject = null); } catch (e) { }
+    STAFF[k] = null; });
+}
+async function staffCallStart(role, bid) {
+  const open = STAFF.call && helpCall(STAFF.call.id); if (open && ['ringing', 'active'].includes(open.state)) return;
+  endStaffLocal('call'); STAFF.view = null;
+  const b = bid ? bk(bid) : null;
+  let me;
+  if (role === 'customer') me = { key: 'c:' + (S.customer.cid || 'me'), who: S.customer.name || 'Customer', phone: S.customer.phone || '' };
+  else { const p = prov(S.prov.id) || {}; me = { key: 'p:' + p.id, who: p.name || 'Provider', phone: p.phone || '' }; }
+  const id = 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
+  const other = b ? (role === 'customer' ? (b.pid ? (prov(b.pid) || {}).name : '') : b.customer) : '';
+  S.helpCalls.unshift({ id, from: role, key: me.key, who: me.who, phone: me.phone, bid: b ? b.id : null, svc: b ? b.services.map(x => x.name).join(' + ') : '', other: other || '', addr: b ? b.address : '', status: b ? b.status : '', urgent: !!b, dev: DEVICE, state: 'ringing', offer: null, answer: null, at: srvNow(), mic: true });
+  if (S.helpCalls.length > 200) S.helpCalls.length = 200;
+  STAFF.call = { id, role, caller: true, answered: false };
+  pushAlert('admin', (b ? 'URGENT · ' : '') + 'Call request · ' + me.who, (role === 'customer' ? 'Customer' : 'Provider') + (b ? ' on ' + b.id : '') + ' tapped Connect to Ticktap staff. Answer in the admin console.', b ? b.id : null, 'bad');
+  sendSms(S.settings.adminNumbers, `[Ticktap] ${me.who} (${role}) wants to talk to staff now${b ? ' · ' + b.id : ''}. Answer in the admin console or call ${me.phone}.`, 'late');
+  if (b) logB(b, (role === 'customer' ? 'Customer' : 'Provider') + ' tapped Connect to Ticktap staff');
+  render();
+  try {
+    const stream = await getMic(); const { pc, audio } = newPeerStaff('call'); stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    if (!STAFF.call || STAFF.call.id !== id) { stream.getTracks().forEach(t => t.stop()); pc.close(); return; }
+    Object.assign(STAFF.call, { pc, stream, audio });
+    const off = await pc.createOffer(); await pc.setLocalDescription(off); await waitIce(pc);
+    const r = helpCall(id); if (r && ['ringing', 'active'].includes(r.state)) { r.offer = JSON.stringify(pc.localDescription); render(); }
+  } catch (e) { const r = helpCall(id); if (r) r.mic = false; if (STAFF.call) STAFF.call.micErr = 'Microphone is off, so staff will call you on ' + (me.phone || 'your mobile') + '.'; render(); }
+}
+async function staffAnswer(id) {
+  const r = helpCall(id); if (!r || r.state !== 'ringing') return;
+  endStaffLocal('adm');
+  r.state = 'active'; r.by = DEVICE; r.byName = (meAcct() && meAcct().name) || 'Ticktap staff'; r.startedAt = Date.now();
+  STAFF.adm = { id, pending: true, sameDevice: r.dev === DEVICE };
+  if (STAFF.call && STAFF.call.id === id) STAFF.call.sameDevice = true;
+  render();
+  if (r.mic === false) { STAFF.adm.note = 'The caller has no microphone. Call them on ' + (r.phone || 'their mobile') + '.'; render(); return; }
+  try { STAFF.adm.stream = await getMic(); } catch (e) { if (STAFF.adm) STAFF.adm.note = 'Your microphone is blocked. Allow it in the browser, or call ' + (r.phone || 'the member') + '.'; render(); return; }
+  staffConnect();
+}
+async function staffConnect() {
+  const a = STAFF.adm; if (!a || !a.pending || !a.stream) return; const r = helpCall(a.id); if (!r || !r.offer) return;
+  a.pending = false;
+  try {
+    const { pc, audio } = newPeerStaff('adm'); a.stream.getTracks().forEach(t => pc.addTrack(t, a.stream)); Object.assign(a, { pc, audio });
+    await pc.setRemoteDescription(JSON.parse(r.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce(pc);
+    const r2 = helpCall(a.id); if (r2 && r2.state === 'active') { r2.answer = JSON.stringify(pc.localDescription); render(); }
+  } catch (e) { a.note = 'Could not connect the voice line. Call ' + (r.phone || 'the member') + ' instead.'; render(); }
+}
+function staffHang(why, fromAdmin) {
+  const id = fromAdmin ? STAFF.adm && STAFF.adm.id : STAFF.call && STAFF.call.id; const r = id && helpCall(id);
+  if (r && ['ringing', 'active'].includes(r.state)) { r.state = 'ended'; r.endedAt = Date.now(); r.why = r.startedAt ? 'hangup' : why; r.endedBy = fromAdmin ? 'staff' : r.from; r.dur = r.startedAt ? Math.round((Date.now() - r.startedAt) / 1000) : 0;
+    const b = r.bid && bk(r.bid); if (b) logB(b, r.dur ? `Call with Ticktap staff · ${mmss(r.dur * 1000)}` : 'Staff call request cancelled'); }
+  if (fromAdmin) endStaffLocal('adm'); else { endStaffLocal('call'); STAFF.view = r && r.dur ? { id: r.id, done: true } : null; }
+}
+const staffRinging = () => !!document.querySelector('[data-pane="admin"]') && (S.helpCalls || []).some(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !(S.admin.callHide || {})[r.id]);
+function staffCallSync() {
+  let ch = false;
+  const c = STAFF.call;
+  if (c) { const r = helpCall(c.id);
+    if (!r) { endStaffLocal('call'); ch = true; }
+    else if (r.state === 'ended') { endStaffLocal('call'); STAFF.view = { id: r.id, done: true }; ch = true; }
+    else {
+      if (r.state === 'active' && r.answer && c.pc && !c.answered) { c.answered = true; c.pc.setRemoteDescription(JSON.parse(r.answer)).catch(() => { }); }
+      if (r.state === 'ringing' && r.dev === DEVICE && srvNow() - r.at > 60000) { r.state = 'ended'; r.why = 'missed'; r.endedAt = Date.now(); r.dur = 0; ch = true; }
+    } }
+  const a = STAFF.adm;
+  if (a) { const r = helpCall(a.id);
+    if (!r || r.state === 'ended' || (r.by && r.by !== DEVICE)) { endStaffLocal('adm'); ch = true; }
+    else if (a.pending && r.offer && a.stream) staffConnect(); }
+  return ch;
+}
+function staffCallScreen(role) {
+  const c = STAFF.call, v = STAFF.view;
+  const id = (c && c.role === role && c.id) || (v && v.id); if (!id) return '';
+  const r = helpCall(id); if (!r || r.from !== role) return '';
+  const logo = `<span class="avatar" style="width:96px;height:96px;background:#fff;padding:14px"><img src="${ICON_T}" alt="" style="width:100%;height:100%;object-fit:contain"></span>`;
+  let status, sub = '', actions;
+  if (r.state === 'ringing') { status = 'Connecting you to Ticktap staff…'; sub = c && c.micErr ? c.micErr : 'Most calls are answered within a minute. Stay on this screen.'; actions = `<button class="callbtn end" data-act="staffCancel" aria-label="Cancel">${ic('phone', 28)}</button>`; }
+  else if (r.state === 'active') { const conn = c && c.conn && c.conn !== 'connected' ? ' · ' + esc(c.conn) : ''; status = `<span data-calltime="${r.startedAt}">${mmss(Date.now() - r.startedAt)}</span>${conn}`; sub = r.mic === false ? 'Staff will phone you on ' + esc(r.phone) + ' now.' : 'You are talking to ' + esc(r.byName || 'Ticktap staff') + '.';
+    actions = `${c && c.stream ? `<button class="callbtn mute ${c.muted ? 'on' : ''}" data-act="staffMute" aria-label="${c && c.muted ? 'Unmute' : 'Mute'}">${ic(c && c.muted ? 'micoff' : 'mic', 26)}</button>` : ''}<button class="callbtn end" data-act="staffHangup" aria-label="End call">${ic('phone', 28)}</button>`; }
+  else { const missed = r.why === 'missed';
+    status = missed ? 'Staff could not answer yet' : 'Call ended' + (r.dur ? ' · ' + mmss(r.dur * 1000) : '');
+    sub = missed ? `Your request reached the team by app alert and SMS. They will call you on ${esc(r.phone || 'your mobile')}. Hotline: <b>${HOTLINE}</b>. In an emergency, call 911.` : 'Thank you. If you need anything else, connect again.';
+    actions = `${missed ? `<button class="btn" style="background:#fff;color:#12355B" data-act="staffCall" data-arg="${role}:${r.bid || ''}">${ic('headset', 18)} Try again</button>` : ''}<button class="btn secondary" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)" data-act="staffClose">Close</button>`; }
+  return `<div class="callscreen" data-ov="staffcall"><div class="col" style="align-items:center;gap:12px;margin-top:12%;text-align:center">${logo}<b style="font-size:24px">Ticktap staff</b><span class="small" style="opacity:.85">${status}</span><span class="tiny" style="opacity:.65;max-width:300px">${sub}</span>${r.bid ? `<span class="tiny" style="opacity:.5">${r.bid} · in-app voice</span>` : ''}</div><div class="row" style="gap:${r.state === 'ended' ? 10 : 44}px;justify-content:center;margin-bottom:12%;flex-wrap:wrap">${actions}</div></div>`;
+}
+function staffCallWin() {
+  const hide = S.admin.callHide || {};
+  const ring = (S.helpCalls || []).filter(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !hide[r.id]);
+  const a = STAFF.adm, act = a && helpCall(a.id);
+  if (!ring.length && !act) return '';
+  const info = r => `<div class="col" style="gap:3px"><div class="row" style="gap:8px">${r.urgent ? '<span class="pill bad" style="height:20px">Urgent · during a booking</span>' : '<span class="pill accent" style="height:20px">Support</span>'}<span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'} · ${fmtT(r.at)}</span></div>
+    <b style="font-size:17px">${esc(r.who)}</b><span class="small mono">${esc(r.phone || 'no mobile on file')}</span>
+    ${r.bid ? `<span class="small">${r.bid} · ${esc(r.svc)}${r.other ? ' · with ' + esc(r.other) : ''}</span><span class="tiny muted">${esc(r.addr)}</span>` : ''}
+    ${r.mic === false ? '<span class="tiny" style="color:var(--bad)">Caller has no microphone: phone them back.</span>' : ''}</div>`;
+  const links = r => `<div class="row" style="gap:6px;flex-wrap:wrap">${r.phone ? `<a class="btn ghost xs" href="tel:${esc(r.phone.replace(/\s/g, ''))}">${ic('phone', 14)} Phone ${esc(r.phone)}</a>` : ''}${r.bid ? `<button class="btn ghost xs" data-act="hcOpen" data-arg="${r.bid}">Open ${r.bid}</button>` : ''}</div>`;
+  let body = '';
+  if (act && act.state === 'active') {
+    body = `<div class="cw-card on"><div class="row between"><span class="eyebrow" style="color:var(--good)">● On call</span><b class="num" data-calltime="${act.startedAt}">${mmss(Date.now() - act.startedAt)}</b></div>${info(act)}
+      ${a.note ? `<span class="small" style="color:var(--warn)">${esc(a.note)}</span>` : a.pending ? '<span class="small muted">Connecting the voice line…</span>' : a.conn && a.conn !== 'connected' ? `<span class="small muted">Line: ${esc(a.conn)}</span>` : ''}
+      ${links(act)}<div class="row" style="gap:8px">${a.stream ? `<button class="btn secondary sm" data-act="staffMute">${ic(a.muted ? 'micoff' : 'mic', 16)} ${a.muted ? 'Unmute' : 'Mute'}</button>` : ''}<button class="btn sm grow" style="background:var(--bad-dot);color:#fff" data-act="staffAdmEnd">${ic('phone', 16)} End call</button></div></div>`;
+  }
+  body += ring.map(r => `<div class="cw-card ring">${info(r)}${links(r)}<div class="row" style="gap:8px"><button class="btn sm grow" style="background:var(--good-dot,#22B573);color:#fff" data-act="staffAnswer" data-arg="${r.id}" ${act && act.state === 'active' ? 'disabled' : ''}>${ic('phone', 16)} Answer</button><button class="btn ghost sm" data-act="staffLater" data-arg="${r.id}">Hide</button></div></div>`).join('');
+  return `<div class="callwin" data-ov="callwin" role="dialog" aria-label="Ticktap support call"><div class="row between" style="padding:2px 4px"><b class="small">${ic('headset', 16)} ${ring.length ? 'Incoming call' + (ring.length > 1 ? 's · ' + ring.length : '') : 'Support call'}</b><span class="tiny muted">Connect to Ticktap staff</span></div>${body}</div>`;
+}
+function admCalls() {
+  const L = (S.helpCalls || []).slice().sort((a, b) => b.at - a.at);
+  const why = r => r.state === 'ringing' ? '<span class="pill bad">Ringing</span>' : r.state === 'active' ? '<span class="pill good">On call</span>' : r.why === 'missed' ? (r.handled ? '<span class="pill outline">Missed · handled</span>' : '<span class="pill bad">Missed · call back</span>') : r.why === 'cancelled' ? '<span class="pill outline">Cancelled by caller</span>' : '<span class="pill good">Talked</span>';
+  return `<div class="page-h"><div><h1>Support calls</h1><p>Members tap <b>Connect to Ticktap staff</b> on a booking or in their account. A call window rings on every admin screen; answer to talk in the app. Missed calls stay here until you mark them handled.</p></div></div>
+  <div class="panel"><div class="tablewrap"><table><thead><tr><th>Time</th><th>Caller</th><th>Booking</th><th>Status</th><th class="num">Length</th><th>Answered by</th><th></th></tr></thead><tbody>
+  ${L.map(r => `<tr><td class="mono small">${fmtD(r.at)} ${fmtT(r.at)}</td><td><b class="small">${esc(r.who)}</b><br><span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'} · ${esc(r.phone || '—')}</span></td><td class="small">${r.bid ? `<button class="inlinelink" data-act="hcOpen" data-arg="${r.bid}">${r.bid}</button>${r.urgent ? ' <span class="pill bad" style="height:18px">Urgent</span>' : ''}` : '—'}</td><td>${why(r)}</td><td class="num">${r.dur ? mmss(r.dur * 1000) : '—'}</td><td class="small">${esc(r.byName || '—')}</td><td><div class="row" style="gap:6px;justify-content:flex-end">${r.phone ? `<a class="btn ghost xs" href="tel:${esc(r.phone.replace(/\s/g, ''))}">Call back</a>` : ''}${r.state === 'ended' && r.why === 'missed' && !r.handled ? `<button class="btn secondary xs" data-act="hcHandled" data-arg="${r.id}">Mark handled</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="7" class="small muted">No support calls yet.</td></tr>'}
+  </tbody></table></div></div>
+  <p class="tiny muted">Voice uses a direct connection between the two browsers. Some mobile networks block direct connections; a relay (TURN) server will be added for launch so every call connects. If the line does not connect, use the phone number shown.</p>`;
 }
 
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
@@ -3891,7 +4139,7 @@ const TERMS = {
       'Customers must give an accurate address, provide a safe place to work, keep pets under control and tell the Provider about any health condition or allergy that matters for the service. Providers must arrive on time, keep tools clean and hygienic, perform only the booked service and leave if they feel unsafe.',
       'On arrival, a Provider must check in with a photo taken in the app\'s live camera. Photos from the gallery cannot be used. The photo is time-stamped and shared with the Customer and the Company.',
       'With permission, the app uses the device location so Customers can find nearby Providers and see the Provider on a live map while the Provider is on the way. Location sharing stops at check-in.',
-      'The SOS button alerts the Company\'s safety team, and "Share trip" lets a Customer send booking details to someone they trust. These tools help but do not replace emergency services. In an emergency, call 911 or the nearest police station.',
+      'The "Connect to Ticktap staff" button opens an in-app voice call with the Company\'s safety team, and "Share trip" lets a Customer send booking details to someone they trust. These tools help but do not replace emergency services. In an emergency, call 911 or the nearest police station.',
       'After payment, the Customer and Provider can send in-app messages and make in-app voice calls until the service ends. Phone numbers are not shared. Messages, call times and booking records are kept to help with safety and disputes.'
     ]],
     ['11. Reviews', [
@@ -4039,7 +4287,7 @@ const dualOk = a => custOk(a) && provOk(a);
 function newCustFor(a) {   // give an approved provider (or applicant) a customer side
   const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
   S.customers[cid] = { cid, name: a.name, email: a.email || '', phone: a.phone || '', addr: 'home', idOk: true, suspended: false, createdAt: now(), fromProvider: (a.link && a.link.pid) || a.id };
-  a.link = Object.assign({}, a.link, { cid }); recordConsent('customer', cid, a.name, (a.email || '') + ' · ' + (a.phone || ''));
+  a.link = Object.assign({}, a.link, { cid }); recordConsent('customer', cid, a.name, (a.email || '') + ' · ' + (a.phone || '')); if (a.mkt) mktSet('c:' + cid, 'all', true, 'Ticked “Promos & news” at sign-up');
   return cid;
 }
 function applySession() {
@@ -4104,6 +4352,7 @@ function authSignup() {
       ${t !== 'business' ? `<div class="row" style="gap:10px"><label class="field grow">Gender <span class="muted small" style="font-weight:400">(optional)</span><select id="au-gender" class="select" data-bind="auth.f.gender"><option value="">Prefer not to say</option><option value="female" ${f.gender === 'female' ? 'selected' : ''}>Female</option><option value="male" ${f.gender === 'male' ? 'selected' : ''}>Male</option></select></label><label class="field" style="width:120px">Birth year <span class="muted small" style="font-weight:400">(optional)</span><input id="au-by" class="input num" inputmode="numeric" maxlength="4" data-bind="auth.f.by" value="${esc(f.by || '')}" placeholder="e.g. 1992"></label></div>` : ''}
       ${t === 'customer' ? `<label class="check"><input type="checkbox" id="au-also-p" data-bind="auth.f.alsoProv" ${f.alsoProv ? 'checked' : ''}><span>I also want to <b>work as a provider</b> (apply after sign-up)</span></label>` : t === 'provider' ? `<label class="check"><input type="checkbox" id="au-also-c" data-bind="auth.f.alsoCust" ${f.alsoCust ? 'checked' : ''}><span>I also want to <b>book services as a customer</b></span></label>` : ''}
       ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
+      ${mktSignup(f)}
       <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms.</span></label>`;
     cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>Send verification codes</button>`;
   } else if (a.step === 2) {
@@ -4313,7 +4562,7 @@ function render() {
   // Shared data loaded from the live room may predate accounts: make sure every demo account exists
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
-  if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = [];
+  if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {};
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
@@ -4465,6 +4714,20 @@ const A = {
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
   bcMode: m => { S.admin.bc.mode = m; S.admin.bcConfirm = false; },
+  bcType: t => { S.admin.bc.type = t; S.admin.bcConfirm = false; },
+  msgTab: t => { S.admin.msgTab = t; },
+  mktToggle: arg => { const [key, ch] = arg.split('|'); const m = mktOf(key) || {}; mktSet(key, ch, !m[ch]); },
+  noticeOpen: id => { S.noticeOpen = S.noticeOpen === id ? null : id; if (id !== 'preview') S.noticeSeen[id] = true; if (S.role === 'customer' && S.cust.screen !== 'alerts') { S.cust.screen = 'alerts'; S.noticeOpen = id; } if (S.role === 'provider' && S.prov.screen !== 'alerts' && S.prov.screen !== 'account') { S.prov.screen = 'alerts'; S.noticeOpen = id; } },
+  ntAud: k => { const f = S.admin.nt, i = f.aud.indexOf(k); if (i >= 0) f.aud.splice(i, 1); else f.aud.push(k); },
+  ntPost: () => { const f = S.admin.nt, title = String(f.title || '').trim(), body = String(f.body || '').trim(); if (!title || !body || !f.aud.length) return;
+    const n = { id: 'nt' + Date.now().toString(36), title, body, aud: f.aud.slice(), level: f.level, pin: !!f.pin, from: f.from || '', until: f.until || '', at: now(), by: (meAcct() && meAcct().loginId) || 'admin' };
+    S.notices.unshift(n);
+    if (f.push && noticeLive(n)) { audienceAll().filter(r => n.aud.includes(r.kind === 'staff' ? 'provider' : r.kind === 'owner' ? 'business' : r.kind)).forEach(r => S.alerts.unshift({ id: 'al' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), to: r.alertTo, title: 'Notice · ' + title, body, bid: null, kind: 'notice', at: now(), read: true })); }
+    S.admin.nt = { title: '', body: '', aud: ['customer', 'provider', 'business'], level: 'info', pin: false, from: '', until: '', push: false };
+    toast('admin', 'Notice posted', title + ' · ' + noticeState(n)); },
+  ntPin: id => { const n = S.notices.find(x => x.id === id); if (n) n.pin = !n.pin; },
+  ntEnd: id => { const n = S.notices.find(x => x.id === id); if (n) { n.ended = true; n.endedAt = now(); } },
+  ntDel: id => { S.notices = S.notices.filter(x => x.id !== id); },
   bcKind: k => { const f = S.admin.bc, i = f.kinds.indexOf(k); if (i >= 0) f.kinds.splice(i, 1); else f.kinds.push(k); },
   bcAll: () => { Object.assign(S.admin.bc, { kinds: ['customer', 'provider', 'staff', 'owner'], gender: 'any', ageMin: '', ageMax: '', cat: 'any', biz: 'any', area: '' }); },
   bcPick: k => { const f = S.admin.bc, i = f.pick.indexOf(k); if (i >= 0) f.pick.splice(i, 1); else f.pick.push(k); },
@@ -4475,11 +4738,14 @@ const A = {
   bcShowList: () => { S.admin.bcList = !S.admin.bcList; },
   bcSend: () => { S.admin.bcConfirm = true; },
   bcSendNo: () => { S.admin.bcConfirm = false; },
-  bcSendGo: () => { const f = S.admin.bc, rec = audienceOf(f), body = String(f.body || '').trim(), title = String(f.title || '').trim() || 'Message from Ticktap'; if (!rec.length || !body) return;
-    let a = 0, sm = 0, em = 0;
-    rec.forEach(r => { if (f.ch.app) { pushAlert(r.alertTo, title, body, null, 'info'); a++; } if (f.ch.sms && r.phone) { sendSms(r.phone, 'Ticktap: ' + body, 'broadcast'); sm++; } if (f.ch.email && r.email) em++; });
+  bcSendGo: () => { const f = S.admin.bc, all = audienceOf(f), body = String(f.body || '').trim(), title = String(f.title || '').trim() || 'Message from Ticktap'; if (!all.length || !body) return;
+    const promo = (f.type || 'promo') === 'promo', okCh = (r, ch) => !promo || !!(r.mkt && r.mkt[ch]);
+    const rec = all.filter(r => (f.ch.app && okCh(r, 'app')) || (f.ch.sms && r.phone && okCh(r, 'sms')) || (f.ch.email && r.email && okCh(r, 'email')));
+    if (!rec.length) { toast('admin', 'Nobody to send to', 'None of these members agreed to promos on the chosen channels.'); S.admin.bcConfirm = false; return; }
+    let a = 0, sm = 0, em = 0; const emails = [];
+    rec.forEach(r => { if (f.ch.app && okCh(r, 'app')) { pushAlert(r.alertTo, title, body, null, 'info'); a++; } if (f.ch.sms && r.phone && okCh(r, 'sms')) { sendSms(r.phone, 'Ticktap: ' + body + (promo ? ' Stop: Ticktap app > Account > Promos & news' : ''), 'broadcast'); sm++; } if (f.ch.email && r.email && okCh(r, 'email')) { em++; emails.push(r.email); } });
     const ch = ['app', 'sms', 'email'].filter(k => f.ch[k]).map(k => ({ app: 'In-app ' + a, sms: 'SMS ' + sm, email: 'Email ' + em })[k]);
-    S.broadcasts.unshift({ id: 'bc' + Date.now().toString(36), at: now(), title, body, audience: bcAudienceText(f), ch, n: rec.length, keys: rec.map(r => r.key), email: f.ch.email ? rec.filter(r => r.email).map(r => r.email) : [] });
+    S.broadcasts.unshift({ id: 'bc' + Date.now().toString(36), at: now(), type: promo ? 'promo' : 'service', title, body, audience: bcAudienceText(f), ch, n: rec.length, skipped: all.length - rec.length, keys: rec.map(r => r.key), email: emails });
     S.admin.bcConfirm = false; f.title = ''; f.body = ''; toast('admin', 'Message sent', rec.length + ' recipient(s) · ' + ch.join(' · ')); },
   qapPrint: a => { const [y, q] = a.split('-').map(Number); qapPrint(y, q); },
   qapExcel: a => { const [y, q] = a.split('-').map(Number); qapExcel(y, q); },
@@ -4598,6 +4864,16 @@ const A = {
     toast('customer', 'Thanks for your review', `It now shows on ${p.name.split(' ')[0]}'s profile.`);
     S.cust.screen = 'home';
   },
+  staffCall: arg => { const i = arg.indexOf(':'); staffCallStart(arg.slice(0, i), arg.slice(i + 1) || null); },
+  staffCancel: () => staffHang('cancelled'),
+  staffHangup: () => staffHang('hangup'),
+  staffClose: () => { endStaffLocal(); STAFF.view = null; },
+  staffMute: () => { const c = STAFF.call || STAFF.adm; if (!c || !c.stream) return; c.muted = !c.muted; c.stream.getAudioTracks().forEach(t => t.enabled = !c.muted); },
+  staffAnswer: id => { staffAnswer(id); },
+  staffLater: id => { S.admin.callHide = S.admin.callHide || {}; S.admin.callHide[id] = true; },
+  staffAdmEnd: () => staffHang('hangup', true),
+  hcHandled: id => { const r = helpCall(id); if (r) { r.handled = true; r.handledAt = now(); } },
+  hcOpen: bid => { S.admin.tab = 'jobs'; S.admin.sel = bid; },
   sos: () => { const b = bk(S.cust.bid); sendSms(S.settings.adminNumbers, `[SOS] Customer pressed SOS on ${b.id}. Call +63 917 555 0142 now.`, 'late'); logB(b, 'Customer pressed SOS'); toast('customer', 'SOS sent', 'Our safety team is calling you now.'); toast('admin', 'SOS · ' + b.id, 'Customer pressed SOS.'); },
   shareTrip: () => { const b = bk(S.cust.bid); if (!b) return; const p = prov(b.pid);
     const st = { paid: 'is getting ready', departed: 'is on the way', arrived: 'is with me now' }[b.status] || 'is booked';
@@ -4608,7 +4884,7 @@ const A = {
   custHelp: () => { S.cust.help = true; },
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); if (bk(a.bid).status === 'offered') A.openPay(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
-  readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); },
+  readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); noticesFor(to).forEach(n => { S.noticeSeen[n.id] = true; }); },
   startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null, ref: urlRef() }; },
   suSend: () => { const s = S.cust.signup; s.eCode = String(100000 + Math.floor(Math.random() * 899999)); s.pCode = String(100000 + Math.floor(Math.random() * 899999)); s.eOtp = ''; s.pOtp = ''; s.step = 2;
   },
@@ -4697,13 +4973,13 @@ const A = {
   auAddr: id => { S.auth.f.addr = id; S.customer.addr = id; },
   auCustomer: () => { const f = S.auth.f, c = S.customer; const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
     Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: true, phoneOk: true, idOk: false, signedIn: true });
-    S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
+    S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; if (f.mkt) mktSet('c:' + cid, 'all', true, 'Ticked “Promos & news” at sign-up'); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
     { const rp = provByRef(f.ref); if (rp) { S.customers[cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + cid); } }
     const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
     S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to Ticktap', 'Your account ' + a.loginId + ' is ready.');
     if (f.alsoProv) setTimeout(() => { A.becomeProv(); render(); }, 50); },
   auProvider: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36);
-    const a = { gender: f.gender || '', birthYear: +f.by > 1900 ? +f.by : 0, id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
+    const a = { mkt: !!f.mkt, gender: f.gender || '', birthYear: +f.by > 1900 ? +f.by : 0, id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
     if (f.alsoCust) newCustFor(a);
     S.accounts.push(a); S.session = { uid, at: Date.now(), mode: 'provider' }; S.auth = null; S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.ref = f.ref || ''; S.prov.apply.uid = uid;
     toast('provider', 'Account created', 'Now set up your provider profile.'); },
@@ -4711,7 +4987,7 @@ const A = {
     mkDoc("MAYOR'S PERMIT", 'permit'); mkDoc('BIR FORM 2303 · COR', 'bir'); mkDoc('DTI BUSINESS NAME', 'reg'); },
   auBusiness: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36), appId = 'BA-' + (1000 + Math.floor(Math.random() * 8999));
     S.bizApps.unshift({ id: appId, uid, name: f.bname.trim(), cat: f.bcat, area: f.barea.trim(), tin: f.btin, owner: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), docs: f.docs, at: Date.now(), status: 'pending' });
-    const a = { id: uid, loginId: f.loginId.trim(), role: 'business', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: { bizAppId: appId }, status: 'pending', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
+    const a = { mkt: !!f.mkt, id: uid, loginId: f.loginId.trim(), role: 'business', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: { bizAppId: appId }, status: 'pending', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
     S.accounts.push(a); recordConsent('business', appId, f.bname.trim(), f.name.trim() + ' · ' + f.email.trim()); S.session = { uid, at: Date.now() }; S.auth = null; S.role = 'business';
     pushAlert('admin', 'New business application', f.bname + ' · ' + appId, null); toast('auth', 'Application sent', 'Ticktap will review your documents.'); },
   authLogin: () => { const f = S.auth.f, a = acctByLogin(f.loginId);
@@ -4746,7 +5022,7 @@ const A = {
   bizStaffCancel: uid => { S.accounts = S.accounts.filter(a => !(a.id === uid && a.status === 'invited')); },
   admBizApprove: id => { const ap = S.bizApps.find(x => x.id === id); if (!ap) return; const nb = 'b' + (Math.max(...S.businesses.map(x => parseInt(x.id.slice(1)) || 0)) + 1);
     S.businesses.push({ id: nb, name: ap.name, cat: ap.cat, area: ap.area, lat: 14.5547 + (Math.random() - .5) * .04, lng: 121.0244 + (Math.random() - .5) * .04, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], dti: 'See documents', tin: ap.tin, permit: 'See documents', bank: 'To be added', cycle: 'weekly', ytd: 0, hue: 30 + S.businesses.length * 53, owner: ap.owner, phone: ap.phone, story: 'New on Ticktap.', services: [{ name: catName(ap.cat) + ' service', mins: 60, price: 600, on: true }], staff: [], invited: [], avail: { days: [1, 1, 1, 1, 1, 1, 1], from: 600, to: 1260 } });
-    ap.status = 'approved'; ap.bizId = nb; ap.decidedAt = Date.now(); const a = acct(ap.uid); if (a) { a.status = 'active'; a.link = { bizId: nb }; }
+    ap.status = 'approved'; ap.bizId = nb; ap.decidedAt = Date.now(); const a = acct(ap.uid); if (a) { a.status = 'active'; a.link = { bizId: nb }; if (a.mkt) mktSet('b:' + nb, 'all', true, 'Ticked “Promos & news” at sign-up'); }
     const c = (S.consents || []).find(x => x.who === ap.id); if (c && !consentOf('business', nb)) S.consents.unshift(Object.assign({}, c, { id: 'tc' + Date.now().toString(36), who: nb, method: 'Accepted when applying (' + ap.id + ')' }));
     pushAlert('business:' + nb, 'Business approved', ap.name + ' is now on Ticktap. Register your staff from Staff.', null, 'good'); toast('admin', 'Business approved', ap.name); },
   admBizDecline: id => { const ap = S.bizApps.find(x => x.id === id); if (!ap) return; ap.status = 'declined'; ap.decidedAt = Date.now(); toast('admin', 'Business application declined', ap.name); },
@@ -4905,7 +5181,7 @@ const A = {
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Ticktap.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
     prov(nid).avail = a.avail ? JSON.parse(JSON.stringify(a.avail)) : defAvail();
-    { const ua = a.uid && acct(a.uid); if (ua) { const keepCid = ua.link && ua.link.cid; ua.status = 'active'; ua.provState = 'active'; if (ua.gender) prov(nid).gender = ua.gender; if (ua.birthYear) prov(nid).birthYear = ua.birthYear; ua.link = Object.assign({ pid: nid, bizId: prov(nid).biz || null }, keepCid ? { cid: keepCid } : {}); if (ua.role !== 'customer') ua.role = prov(nid).biz ? 'staff' : 'provider'; pushAlert('provider:' + nid, 'You are approved as a provider', keepCid ? 'Switch to Provider mode from your Account page.' : 'You can go on stand-by now.', null, 'good'); prov(nid).phone = ua.phone || prov(nid).phone; } }
+    { const ua = a.uid && acct(a.uid); if (ua) { const keepCid = ua.link && ua.link.cid; ua.status = 'active'; ua.provState = 'active'; if (ua.mkt) mktSet('p:' + nid, 'all', true, 'Ticked “Promos & news” at sign-up'); if (ua.gender) prov(nid).gender = ua.gender; if (ua.birthYear) prov(nid).birthYear = ua.birthYear; ua.link = Object.assign({ pid: nid, bizId: prov(nid).biz || null }, keepCid ? { cid: keepCid } : {}); if (ua.role !== 'customer') ua.role = prov(nid).biz ? 'staff' : 'provider'; pushAlert('provider:' + nid, 'You are approved as a provider', keepCid ? 'Switch to Provider mode from your Account page.' : 'You can go on stand-by now.', null, 'good'); prov(nid).phone = ua.phone || prov(nid).phone; } }
     { const src = a.tcId && (S.consents || []).find(c => c.who === a.tcId); if (src && !consentOf('provider', nid)) S.consents.unshift(Object.assign({}, src, { id: 'tc' + Date.now().toString(36), who: nid, name: prov(nid).name, method: 'Accepted when applying (' + a.id + ')' })); }
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by Ticktap.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
@@ -4986,12 +5262,12 @@ let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => {
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts'];
+const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
 const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
-window.__balikSync = SYNC; window.__balikState = () => S; window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
+window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
 function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
@@ -5104,7 +5380,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 99;
+const BUILD = 100;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
