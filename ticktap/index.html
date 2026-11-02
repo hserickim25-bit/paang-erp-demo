@@ -467,6 +467,7 @@ ol.steps{margin:0;padding:0}
 .rv-h{display:flex;align-items:center;gap:8px;min-width:0}.rv-h .stars{font-size:12px;flex-shrink:0}.rv-ago{margin-left:auto;flex-shrink:0}
 .rv-t{margin:0;line-height:1.4}.rv-tags{display:flex;flex-wrap:wrap;gap:4px}.rv-tags .pill{height:22px;font-size:11px}
 .rv-more{margin-top:6px;border:0;border-top:1px solid var(--line);background:none;padding:10px 0 2px;color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
+.pay-link{align-self:flex-start;margin-top:4px;border:0;background:none;padding:2px 0;color:var(--accent);font-weight:800;font-size:15px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1377,7 +1378,7 @@ function custRequest() {
       <span class="eyebrow" style="color:var(--good)">${esc(first)} accepted</span>
       <span style="font-size:15px">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span>
       <div class="row" style="align-items:baseline;gap:10px"><span class="num" style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
-      ${b.when === 'later' ? `<span class="small" style="color:var(--warn)">Pay by <b>${fmtWhen(b.offerExpires)}</b> (1 hour before). Unpaid bookings are cancelled automatically.</span>` : `<span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span>`}</div>
+      ${b.when === 'later' ? `<span class="small" style="color:var(--warn)">Pay by <b>${fmtWhen(b.offerExpires)}</b> (1 hour before). Unpaid bookings are cancelled automatically.</span>` : `<span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span>`}<button class="pay-link" data-act="openPay" data-arg="${b.id}">Pay now · ${peso(b.gross)} ›</button></div>
       ${b.reminders && b.reminders.length ? remindersCard(b) : ''}`;
   else hero = `<div class="card" style="align-items:center;text-align:center;gap:10px;padding:22px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>
       <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? (b.autoCancelled ? 'Cancelled · not paid 1 hour before' : 'The arrival time expired') : b.cancelledBy === 'customer' ? 'You cancelled this booking' : 'Request cancelled'}</h2>
@@ -4820,7 +4821,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 92;
+const BUILD = 93;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
