@@ -6267,12 +6267,13 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 105;
+const BUILD = 106;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
   const txt = live ? `Live · room ${SYNC.room === 'demo' ? esc(SYNC.room) : '⚠ ' + esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : prev ? 'Demo preview · this device only' : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
-  return `<button class="liveline ${live ? 'ok' : prev ? 'prev' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>`;
+  const why = bad ? `<span class="tiny" style="display:block;color:var(--bad);margin:4px 2px 0;word-break:break-word">${SYNC.online === false ? 'No connection to the server right now (weak signal or the app was in the background). It reconnects by itself.' : esc(SYNC.err || 'The server did not answer.')}${SYNC.tries ? ' · retry ' + SYNC.tries : ''} <button class="btn ghost xs" data-act="syncRetry" style="margin-left:4px">Reconnect</button></span>` : '';
+  return `<button class="liveline ${live ? 'ok' : prev ? 'prev' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>${why}`;
 }
 // presence uses the server clock, so phones whose clocks differ still see each other
 const srvNow = () => Date.now() + (SYNC.skew || 0);
@@ -6301,6 +6302,7 @@ async function firebaseAdapter(cfg, room) {
   if (!window.firebase) { await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-app-compat.js`); await loadScript(`https://www.gstatic.com/firebasejs/${V}/firebase-database-compat.js`); }
   const app = firebase.apps.length ? firebase.app() : firebase.initializeApp(cfg);
   const ref = app.database().ref('rooms/' + room);
+  ref.on('value', () => { }, () => { });   // one download shared by get() and the live listener
   ref.child('presence/' + DEVICE).onDisconnect().remove();
   app.database().ref('.info/serverTimeOffset').on('value', s => { SYNC.skew = Number(s.val()) || 0; });
   SYNC.dbHost = (cfg.databaseURL || '').replace(/^https?:\/\//, '').split('.')[0];
@@ -6308,7 +6310,7 @@ async function firebaseAdapter(cfg, room) {
   const withTimeout = (p, ms, what) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error(what + ' timed out after ' + ms / 1000 + ' s')), ms))]);
   return {
     kind: 'firebase',
-    get: () => withTimeout(ref.get(), 15000, 'Reading the live room').then(s => s.val()),
+    get: () => withTimeout(ref.get(), 45000, 'Reading the live room (slow connection)').then(s => s.val()),
     onChange: f => ref.on('value', s => { SYNC.lastIn = Date.now(); f(s.val()); }, e => { SYNC.err = 'Live updates stopped: ' + (e && e.message || e); render(); }),
     update: paths => ref.update(paths),
     reset: () => ref.remove()
@@ -6414,7 +6416,8 @@ async function startSync() {
     const beat = () => SYNC.adapter.update({ ['presence/' + DEVICE]: { t: SYNC.mode === 'live' && window.firebase && firebase.database ? firebase.database.ServerValue.TIMESTAMP : Date.now(), who: presenceWho(), b: BUILD } }).catch(() => { });
     beat(); setInterval(beat, 10000);
     pushNow(); render();
-  } catch (e) { SYNC.status = 'Offline: ' + (e && e.message || e); SYNC.err = String(e && e.message || e); SYNC.mode = SYNC.mode === 'live' ? 'error' : SYNC.mode; SYNC.adapter = null; render(); }
+  } catch (e) { SYNC.status = 'Offline: ' + (e && e.message || e); SYNC.err = String(e && e.message || e); SYNC.mode = SYNC.mode === 'live' ? 'error' : SYNC.mode; SYNC.adapter = null; render();
+    SYNC.tries = (SYNC.tries || 0) + 1; if (SYNC.mode === 'error' && SYNC.tries < 6) setTimeout(() => { SYNC.err = null; startSync(); }, Math.min(30000, 4000 * SYNC.tries)); }
 }
 function custRecordFromLocal() { const c = S.customer; return { cid: c.cid || 'me', name: c.name, email: c.email, phone: c.phone, addr: c.addr, idOk: !!c.idOk, suspended: false, createdAt: now() }; }
 const myCust = () => S.customers[S.customer.cid || 'me'] || {};
