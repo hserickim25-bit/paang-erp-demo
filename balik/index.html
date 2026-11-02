@@ -3525,6 +3525,9 @@ function toastsFor(pane, web = false) {
 function wide() { return window.innerWidth >= 980; }
 // Phone mode = the real full-screen app: any narrow window, and touch phones/foldables/small tablets in either orientation.
 const COARSE = () => { try { return matchMedia('(pointer:coarse)').matches; } catch (e) { return false; } };
+// Opening the link always lands on the customer app, signed in as the demo customer (add ?keep=1 to stay where you were)
+// Not for the installed app or alert taps (they carry ?room=), so testers' phones keep their own sign-in.
+var LANDING = !/[?&](keep=1|verify=|v=|room=)/.test(location.search) && !(() => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } })(), LANDING_HOME = false;
 function isPhone() { return window.innerWidth < 700 || (COARSE() && Math.min(window.innerWidth, window.innerHeight) < 900); }
 const shareLink = () => { try { const u = new URL(location.href); u.hash = ''; u.searchParams.set('room', SYNC.room); return u.toString(); } catch (e) { return ''; } };
 function liveSection() {
@@ -3597,11 +3600,8 @@ function shell() {
   else if (r === 'business') stage = (S.businesses.length > 1 ? `<div class="aspick" style="margin-bottom:12px"><span class="duo-label">Testing as</span>${S.businesses.map(b => `<button data-act="bizAs" data-arg="${b.id}" aria-pressed="${S.biz.id === b.id}">${bizLogo(b, 22, 6, 12, false)} ${esc(b.name)}</button>`).join('')}</div>` : '') + bizPane();
   else stage = adminPane();
   const docOv = S.role === 'admin' && admUser() ? admDocOv() : '';
-  return `<header class="topbar"><div class="topbar-in">
-      <button class="brand" data-act="goHome" aria-label="Ticktap · home"><span class="brand-logo">${brandPic(LOGO_T, LOGO_D, 'Ticktap')}</span><small>test build</small></button>
-      <nav class="seg" aria-label="View">${role('customer', 'Customer')}${role('provider', 'Provider')}${role('business', 'Business')}${role('admin', 'Admin')}</nav>
-      <div class="clock">${ic('clock', 16)}<span class="num" data-clock>${fmtD(now())} ${fmtT(now())}</span><button class="mini" data-act="theme" aria-label="Toggle theme">${ic(isDark() ? 'sun' : 'moon', 14)}</button><button class="mini" data-act="demo">${ic('gear', 13)} Live · ${esc(SYNC.room)}</button></div>
-    </div></header><div class="stage">${stage}</div>${demoSheet()}${modal()}${docOv}`;
+  const fabD = `<button class="fab" data-act="demo" aria-label="Demo controls: switch app" style="width:48px;height:48px;padding:0;justify-content:center;border-radius:50%;opacity:.95">${ic('gear', 22)}<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`;
+  return `<div class="stage">${stage}</div>${fabD}${demoSheet()}${modal()}${docOv}`;
 }
 function isDark() { const t = document.documentElement.getAttribute('data-theme'); return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches; }
 
@@ -5444,6 +5444,10 @@ function render() {
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
   if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
+  if (LANDING && S.accounts.length && typeof VERIFY_ID !== 'undefined' && !VERIFY_ID) { LANDING = false; LANDING_HOME = true;
+    const a = acctByLogin('maria'); S.role = 'customer'; S.demoOpen = false; S.modal = null; S.auth = null; S.prov.apply = null; S.cust.signup = null; S.cust.chat = null; S.toasts = [];
+    if (a && a.status === 'active') { S.session = { uid: a.id, at: Date.now(), mode: 'customer' }; applySession(); }
+    S.role = 'customer'; S.cust.screen = 'home'; S.cust.bid = null; S.cust.cat = null; }
   if (S.session && !meAcct() && S.accounts.length) S.session = null;
   // Keep the field the user is typing in: re-insert the same DOM node so the caret, selection and IME state survive.
   const ae = document.activeElement;
@@ -6263,7 +6267,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 104;
+const BUILD = 105;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -6463,7 +6467,7 @@ function tick(force = false) {
   }
 }
 function landOnBooking() {
-  if (LANDED || !S.customer.signedIn || !['customer', 'both'].includes(S.role)) return;
+  if (LANDED || LANDING_HOME || !S.customer.signedIn || !['customer', 'both'].includes(S.role)) return;
   const mine = S.bookings.filter(b => b.cid === (S.customer.cid || 'me'));
   const b = mine.find(x => x.status === 'offered') || mine.find(x => ['requested', 'business_queue', 'paid', 'departed', 'arrived'].includes(x.status));
   if (!b) return; LANDED = true;
