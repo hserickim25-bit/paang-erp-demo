@@ -458,6 +458,7 @@ ol.steps{margin:0;padding:0}
 .chg-pill{flex-shrink:0;display:inline-flex;align-items:center;height:30px;padding:0 14px;border-radius:999px;font-size:13px;font-weight:700;color:#12355B;background:linear-gradient(180deg,#FFFFFF 0%,#E3ECF8 100%);border:1.5px solid #9DB4D6;box-shadow:0 1px 2px rgba(18,53,91,.12),inset 0 1px 0 rgba(255,255,255,.9)}
 :root[data-theme="dark"] .chg-pill{color:#DCE7F7;background:linear-gradient(180deg,#2A3A55 0%,#1B2840 100%);border-color:#4D6690;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chg-pill{color:#DCE7F7;background:linear-gradient(180deg,#2A3A55 0%,#1B2840 100%);border-color:#4D6690;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}}
+.rb-card{padding:12px 16px}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1207,9 +1208,9 @@ function custList() {
 }
 
 function ratingBlock(o) {
-  return `<div class="card"><div class="row" style="gap:18px;align-items:center">
-    <div class="col" style="align-items:center;width:84px"><span class="num" style="font-size:34px;font-weight:600">${o.rating.toFixed(1)}</span>${starsH(o.rating)}<span class="tiny muted">${o.count} reviews</span></div>
-    <div class="col grow" style="gap:5px">${o.dist.map((v, i) => `<div class="row" style="gap:8px"><span class="tiny muted" style="width:8px">${5 - i}</span><div class="progress grow"><span style="width:${v}%;background:#E8A400"></span></div></div>`).join('')}</div></div></div>`;
+  return `<div class="card rb-card"><div class="row" style="gap:16px;align-items:center">
+    <div class="col" style="align-items:center;width:78px;gap:0"><span class="num" style="font-size:28px;font-weight:600;line-height:1.1">${o.rating.toFixed(1)}</span>${starsH(o.rating)}<span class="tiny muted">${o.count} reviews</span></div>
+    <div class="col grow" style="gap:2px">${o.dist.map((v, i) => `<div class="row" style="gap:8px;min-height:0;line-height:1.1"><span class="tiny muted" style="width:8px;font-size:11px">${5 - i}</span><div class="progress grow" style="height:6px"><span style="width:${v}%;background:#E8A400"></span></div></div>`).join('')}</div></div></div>`;
 }
 function reviewsBlock(o) {
   const all = o.reviews.filter(r => !r.hidden);
@@ -1238,10 +1239,10 @@ function custProfile() {
       ${bgBlock(p)}
       ${loyCard(p.biz ? 'b:' + p.biz : 'p:' + p.id, S.customer.cid || 'me')}
       ${promoOn(p) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc(p.promo.title || 'Discount event')}</b><span class="small">${p.promo.mode === 'items' ? 'Discounts on selected services' : '−' + p.promo.pct + '% on all services'} · until ${promoUntil(p)}</span><span class="tiny">Prices below already include the discount.</span></div>` : ''}
-      ${ratingBlock(p)}
-      ${reviewsBlock(p)}
       <div class="col" style="gap:8px"><h3 style="font-size:15px">Services</h3>
       <div class="list">${p.services.filter(s => s.on && String(s.name || '').trim()).map(s => { const i = p.services.indexOf(s), on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min${discPct(p, s) ? ` · <b style="color:var(--bad)">−${discPct(p, s)}%</b>` : ''}</span></div>${priceH(p, s)}<button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}">${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div></div>
+      ${ratingBlock(p)}
+      ${reviewsBlock(p)}
     </div>`;
   const blocked = p.status === 'red';
   const f = `<div class="row between"><div class="col"><span class="small muted">${sel.length ? sel.length + ' service' + (sel.length > 1 ? 's' : '') : 'Add a service'}</span><b class="num" style="font-size:18px">${peso(total)}</b></div>
@@ -4794,7 +4795,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 90;
+const BUILD = 91;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
