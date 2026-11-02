@@ -468,6 +468,7 @@ ol.steps{margin:0;padding:0}
 .rv-t{margin:0;line-height:1.4}.rv-tags{display:flex;flex-wrap:wrap;gap:4px}.rv-tags .pill{height:22px;font-size:11px}
 .rv-more{margin-top:6px;border:0;border-top:1px solid var(--line);background:none;padding:10px 0 2px;color:var(--accent);font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:4px;cursor:pointer}
 .pay-link{align-self:flex-start;margin-top:4px;border:0;background:none;padding:2px 0;color:var(--accent);font-weight:800;font-size:15px;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.mode-row{background:linear-gradient(90deg,var(--accent-soft),transparent)}
 /* traffic light */
 .tlight{position:relative;margin:12px 0 0 14px;border:3px solid #FFB800;width:66px;padding:9px 0;border-radius:14px;background:#1B1F27;display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
 .tlight i{width:40px;height:40px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#C3C8CF,#8E959F 70%);box-shadow:inset 0 2px 4px rgba(0,0,0,.35);display:block;transition:background .2s,box-shadow .2s}
@@ -1497,6 +1498,7 @@ function custAccount() {
       <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div><span class="pill good">Verified</span></div>
       <div class="li">${ic('phone', 20)}<div class="col grow"><b>Mobile</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">Verified</span></div>
       <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
+      ${modeRowCust()}
       ${guideRow('customer')}
       ${locRow('c')}${installRow()}${termsRow('customer', S.customer.cid || 'me')}
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
@@ -2337,6 +2339,18 @@ function guideOverlay(role) {
   return `<div class="gd-ov" role="dialog" aria-label="${g.title}"><header class="appbar"><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 22)}</button><h2>${L.head}</h2></header>
     <div class="gd-scroll"><h1 class="gd-title">${g.title}</h1>${guideBody(role)}<button class="btn primary block" data-act="closeModal" style="margin-top:8px">${L.ok}</button></div></div>`;
 }
+function modeRowCust() {
+  const a = meAcct(); if (!a) return '';
+  const st = provState(a);
+  if (st === 'active') return `<button class="li mode-row" data-act="modeSwitch" data-arg="provider">${ic('bag', 20)}<div class="col grow"><b>Switch to Provider mode</b><span class="small muted">Take requests and manage your jobs</span></div><span class="pill good">Approved</span>${ic('chev', 16)}</button>`;
+  if (st === 'pending') return `<div class="li mode-row">${ic('bag', 20)}<div class="col grow"><b>Provider application</b><span class="small muted">Under review · we will alert you when approved</span></div><span class="pill warn">Pending</span></div>`;
+  return `<button class="li mode-row" data-act="becomeProv">${ic('bag', 20)}<div class="col grow"><b>${st === 'declined' ? 'Apply again as a provider' : 'Become a provider'}</b><span class="small muted">Earn from your skills · ID, face check and approval needed</span></div>${st === 'declined' ? '<span class="pill bad">Not approved</span>' : ''}${ic('chev', 16)}</button>`;
+}
+function modeRowProv() {
+  const a = meAcct(); if (!a) return '';
+  if (custOk(a)) return `<button class="li mode-row" data-act="modeSwitch" data-arg="customer">${ic('user', 20)}<div class="col grow"><b>Switch to Customer mode</b><span class="small muted">Book services from other pros</span></div>${ic('chev', 16)}</button>`;
+  return `<button class="li mode-row" data-act="becomeCust">${ic('user', 20)}<div class="col grow"><b>Also book as a customer</b><span class="small muted">Same login · add your home address</span></div>${ic('chev', 16)}</button>`;
+}
 const guideRow = role => `<button class="li" data-act="guideOpen" data-arg="${role}">${ic('doc', 20)}<div class="col grow"><b>Paano Gamitin ang Ticktap</b><span class="small muted">Hakbang-hakbang, mula sign-up hanggang matapos ang trabaho</span></div>${ic('chev', 16)}</button>`;
 function guideTip(role) {
   const seen = S.guideSeen || {}; if (seen[role]) return '';
@@ -2378,6 +2392,7 @@ function provAccount() {
     ${bgEditor(me, i)}
     <div class="card"><span class="eyebrow">Your household goal</span><label class="field">Monthly goal (₱)<input id="p-goal" class="input num" type="number" min="0" step="1000" data-bind="providers.${i}.goal" value="${me.goal}"></label><span class="small muted">We show your progress on the Jobs screen.</span></div>
     <div class="list">
+      ${modeRowProv()}
       ${guideRow('provider')}
       <button class="li" data-act="idOpen">${ic('shield', 20)}<div class="col grow"><b>My Ticktap ID</b><span class="small muted">Lanyard ID with QR check for condo and village gates</span></div><span class="pill ${idStatus(me).ok || !me.idCard ? 'accent' : 'bad'}">${me.idCard ? (idStatus(me).ok ? 'Print' : 'Not valid') : 'New'}</span>${ic('chev', 16)}</button>
       ${locRow('p')}${installRow()}${termsRow('provider', S.prov.id)}
@@ -2866,7 +2881,7 @@ function admBizApps() {
 function admAccounts() {
   const acc = S.accounts || [];
   return `<div class="panel"><div class="panel-h"><h3>Accounts · ${acc.length}</h3><span class="small muted">Login IDs by member type · passwords are stored only as salted hashes</span></div><div class="tablewrap"><table><thead><tr><th>Login ID</th><th>Type</th><th>Name</th><th>Contact</th><th>Status</th><th>Last login</th><th></th></tr></thead><tbody>
-    ${acc.slice().reverse().slice(0, 60).map(a => `<tr style="${a.suspended ? 'opacity:.55' : ''}"><td class="mono">${esc(a.loginId)}</td><td><span class="pill">${ROLE_NAME[a.role] || a.role}</span>${a.role === 'staff' && a.link && biz(a.link.bizId) ? `<br><span class="tiny muted">${esc(biz(a.link.bizId).name)}</span>` : ''}</td><td>${esc(a.name)}</td><td class="small">${esc(a.email || '')}${a.email && a.phone ? '<br>' : ''}${esc(a.phone || '')}</td>
+    ${acc.slice().reverse().slice(0, 60).map(a => `<tr style="${a.suspended ? 'opacity:.55' : ''}"><td class="mono">${esc(a.loginId)}</td><td><span class="pill">${ROLE_NAME[a.role] || a.role}</span>${custOk(a) && (provOk(a) || ['pending', 'applying'].includes(provState(a))) ? `<span class="pill accent" style="margin-left:4px">${provOk(a) ? 'Customer + Provider' : 'Provider pending'}</span>` : ''}${a.role === 'staff' && a.link && biz(a.link.bizId) ? `<br><span class="tiny muted">${esc(biz(a.link.bizId).name)}</span>` : ''}</td><td>${esc(a.name)}</td><td class="small">${esc(a.email || '')}${a.email && a.phone ? '<br>' : ''}${esc(a.phone || '')}</td>
       <td>${a.suspended ? '<span class="pill bad">On hold</span>' : a.status === 'active' ? '<span class="pill good">Active</span>' : `<span class="pill warn">${esc(a.status)}</span>`}</td><td class="small">${a.lastLogin ? fmtD(a.lastLogin) + ' ' + fmtT(a.lastLogin) : '—'}</td><td><button class="btn ghost xs" data-act="admAcctSusp" data-arg="${a.id}">${a.suspended ? 'Reactivate' : 'Hold'}</button></td></tr>`).join('')}
   </tbody></table></div></div>`;
 }
@@ -3176,7 +3191,9 @@ function shell() {
     const fabA = `<button class="fab" data-act="demo" aria-label="Test tools" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`;
     if (needsAuth()) return `<div class="appshell">${authPane()}</div>${fabA}${demoSheet()}${modal()}`;
     const ma = meAcct();
-    if (ma && (ma.status !== 'active') && S.role !== 'admin') return `<div class="appshell">${S.prov.apply && ma.status === 'applying' ? provPane() : pendingPane(ma)}</div>${fabA}${demoSheet()}${modal()}`;
+    if (ma && S.role === 'provider' && !S.prov.apply && !provOk(ma) && custOk(ma) && ma.status === 'active') { S.role = 'customer'; if (S.session) S.session.mode = 'customer'; }
+    if (ma && S.role === 'customer' && !custOk(ma) && provOk(ma)) { S.role = 'provider'; if (S.session) S.session.mode = 'provider'; }
+    if (ma && (ma.status !== 'active') && S.role !== 'admin' && !(S.role === 'customer' && custOk(ma) && ma.status !== 'closed')) return `<div class="appshell">${S.prov.apply && ma.status === 'applying' ? provPane() : pendingPane(ma)}</div>${fabA}${demoSheet()}${modal()}`;
     const r = S.role === 'both' ? 'customer' : S.role;
     const onSplash = r === 'customer' && !S.customer.signedIn && !S.cust.signup;
     const pane = r === 'customer' ? custPane() : r === 'provider' ? provPane() : `<div class="webwrap">${r === 'business' ? bizPane() : adminPane()}</div>`;
@@ -3394,6 +3411,8 @@ function addTestPros() {
       const ph = DEMO_ABOUT.photos[p.id]; if (ph && !(p.bgPhotos || []).length) p.bgPhotos = ph.map(x => 'smp:' + x); });
   }
   // demo reviews (once per room): enough reviews per provider to try "More reviews"
+  // demo dual account (once per room): Liza is a provider and also a customer
+  if (!S.settings.demoDual2026 && Array.isArray(S.accounts)) { const la = S.accounts.find(x => x.id === 'u-p1'); if (la) { S.settings.demoDual2026 = true; if (!(la.link && la.link.cid)) newCustFor(la); } }
   if (!S.settings.demoReviews2026) {
     S.settings.demoReviews2026 = true;
     const who = ['Jasmine T.', 'Carlo M.', 'Bea R.', 'Mark D.', 'Joy C.', 'Paolo S.', 'Kim L.', 'Rica V.', 'Nina G.', 'Ellen P.', 'Tonette A.', 'Gino F.'];
@@ -3802,13 +3821,33 @@ function seedAccounts() {
 function startSession(a) {
   S.session = { uid: a.id, at: Date.now() }; a.lastLogin = Date.now(); S.auth = null; applySession();
 }
+/* ---------- one account, two sides (customer and provider) ----------
+   link.cid = customer side, link.pid = provider side (set only after Ticktap approval).
+   provState: none | applying | pending | declined | active. mode = the side in use now. */
+const custOk = a => !!(a && a.link && a.link.cid && a.status !== 'closed');
+function provState(a) {
+  if (!a) return 'none';
+  if (a.link && a.link.pid && prov(a.link.pid) && prov(a.link.pid).expelled == null) return 'active';
+  if (a.provState) return a.provState;
+  if (a.role === 'provider' || a.role === 'staff') return { applying: 'applying', pending: 'pending', declined: 'declined' }[a.status] || 'none';
+  return 'none';
+}
+const provOk = a => provState(a) === 'active' && a.status !== 'closed';
+const dualOk = a => custOk(a) && provOk(a);
+function newCustFor(a) {   // give an approved provider (or applicant) a customer side
+  const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
+  S.customers[cid] = { cid, name: a.name, email: a.email || '', phone: a.phone || '', addr: 'home', idOk: true, suspended: false, createdAt: now(), fromProvider: (a.link && a.link.pid) || a.id };
+  a.link = Object.assign({}, a.link, { cid }); recordConsent('customer', cid, a.name, (a.email || '') + ' · ' + (a.phone || ''));
+  return cid;
+}
 function applySession() {
   const a = meAcct(); if (!a) return;
-  if (a.role === 'customer') {
+  const want = (S.session && S.session.mode) || a.lastMode || (a.role === 'customer' ? 'customer' : a.role === 'business' ? 'business' : 'provider');
+  if (a.role !== 'business' && want === 'customer' && custOk(a)) {
     const r = (S.customers || {})[a.link.cid] || {}; const c = S.customer;
     Object.assign(c, { cid: a.link.cid, name: r.name || a.name, email: r.email || a.email, phone: r.phone || a.phone, addr: r.addr || c.addr || 'home', idOk: !!r.idOk, extraAddrs: r.addrs || c.extraAddrs || [] });
-    c.signedIn = true; S.role = 'customer'; S.cust.signup = null;
-  } else if (a.role === 'provider' || a.role === 'staff') { S.role = 'provider'; if (a.link && a.link.pid && prov(a.link.pid)) S.prov.id = a.link.pid; }
+    c.signedIn = true; S.role = 'customer'; S.cust.signup = null; a.lastMode = 'customer'; if (provOk(a) && prov(a.link.pid)) S.prov.id = a.link.pid;
+  } else if (a.role === 'provider' || a.role === 'staff' || provOk(a)) { a.lastMode = 'provider'; S.role = 'provider'; if (a.link && a.link.pid && prov(a.link.pid)) S.prov.id = a.link.pid; }
   else if (a.role === 'business') { S.role = 'business'; if (a.link && a.link.bizId && biz(a.link.bizId)) S.biz.id = a.link.bizId; }
 }
 function needsAuth() { return isPhone() && !meAcct() && S.role !== 'admin'; }
@@ -3860,6 +3899,7 @@ function authSignup() {
       <label class="field">Full name<input id="au-name" class="input" autocomplete="name" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
       <label class="field">Email<input id="au-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@example.com"></label>
       <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="au-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="auth.f.phone" value="${esc(f.phone || '')}" placeholder="917 555 0142"></div></label>
+      ${t === 'customer' ? `<label class="check"><input type="checkbox" id="au-also-p" data-bind="auth.f.alsoProv" ${f.alsoProv ? 'checked' : ''}><span>I also want to <b>work as a provider</b> (apply after sign-up)</span></label>` : t === 'provider' ? `<label class="check"><input type="checkbox" id="au-also-c" data-bind="auth.f.alsoCust" ${f.alsoCust ? 'checked' : ''}><span>I also want to <b>book services as a customer</b></span></label>` : ''}
       ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
       <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms.</span></label>`;
     cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>Send verification codes</button>`;
@@ -3942,6 +3982,7 @@ function authActivate() {
 }
 function pendingPane(a) {
   const isBiz = a.role === 'business';
+  const custBtn = !isBiz && custOk(a) ? `<button class="btn primary block" data-act="modeSwitch" data-arg="customer">${ic('user', 18)} Book services as a customer meanwhile</button>` : '';
   if (a.status === 'closed') return `<div class="screen" data-pane="auth">${bar('Account closed')}<div class="scroll" data-scroll="pending">
     <div class="card" style="align-items:center;text-align:center;gap:10px;padding:24px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>
       <h2 style="font-size:20px">This account was closed by Ticktap</h2>
@@ -3967,6 +4008,7 @@ function pendingPane(a) {
       <p class="small muted">${a.status === 'applying' ? 'Add your photo, ID, face check, work hours and payout details.' : declined ? 'Please contact Ticktap support for details.' : info ? 'Ticktap sent you a message about what to add. Check Alerts or contact support.' : isBiz ? 'Ticktap is checking your business documents. We usually finish within 2 working days.<br><span class="tiny">Test build: approve it in Admin › Approvals (⚙ › Admin).</span>' : 'Ticktap is checking your ID, face check and experience. We usually finish within 2 working days.<br><span class="tiny">Test build: approve it in Admin › Approvals (⚙ › Admin).</span>'}</p>
       ${a.status === 'applying' ? '<button class="btn primary" data-act="startApply">Continue</button>' : ''}</div>
     <div class="card tight"><span class="small">Logged in as <b>${esc(a.loginId)}</b> · ${esc(a.name)}</span></div>
+    ${custBtn}
     <button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out</button>
   </div>${toastsFor('auth')}</div>`;
 }
@@ -4037,6 +4079,7 @@ function actPop() {
   }
   if (r === 'customer') {
     if (!S.customer.signedIn || S.cust.pay || S.cust.signup) return '';
+    { const ma = meAcct(); if (ma && provOk(ma)) { const me = prov(ma.link.pid); const rq = me && S.bookings.find(x => x.pid === me.id && x.status === 'requested' && x.respondBy > now() && !popSnoozed('req:' + x.id)); if (rq) return popReq(rq, me).replace('New request</span>', 'New request · provider</span>'); } }
     const cid = S.customer.cid || 'me';
     const b = S.bookings.find(x => x.cid === cid && x.status === 'offered' && x.offerExpires > now() && !popSnoozed('offer:' + x.id));
     if (b && !(S.cust.screen === 'request' && S.cust.bid === b.id)) return popOffer(b);
@@ -4218,6 +4261,12 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  modeSwitch: m => { const a = meAcct(); if (!a) return; if (m === 'customer' && !custOk(a)) return; if (m === 'provider' && !provOk(a)) return;
+    S.session = Object.assign({}, S.session, { mode: m }); S.prov.apply = null; applySession(); S.role = m; if (m === 'customer') S.cust.screen = 'home'; else S.prov.screen = 'jobs';
+    toast(m, m === 'customer' ? 'Customer mode' : 'Provider mode', m === 'customer' ? 'Book home services. Your provider jobs still alert you.' : 'Take requests and manage your jobs.'); },
+  becomeProv: () => { const a = meAcct(); if (!a || !custOk(a)) return; const st = provState(a); if (st === 'pending' || st === 'active') return;
+    S.prov.applyFor = a.id; S.session = Object.assign({}, S.session, { mode: 'provider' }); S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.uid = a.id; S.prov.apply.forCust = true; },
+  becomeCust: () => { const a = meAcct(); if (!a || custOk(a) || a.role === 'business') return; newCustFor(a); A.modeSwitch('customer'); S.cust.addrSheet = true; toast('customer', 'Customer side added', 'Set the address where pros should come.'); },
   revMore: k => { S.cust.revMore = Object.assign({}, S.cust.revMore, { [k]: ((S.cust.revMore || {})[k] || 3) + 5 }); },
   bgToggle: id => { S.cust.bgOpen = S.cust.bgOpen === id ? null : id; },
   bgDel: k => { const p = prov(S.prov.id); if (p && Array.isArray(p.bgPhotos)) p.bgPhotos.splice(+k, 1); },
@@ -4242,7 +4291,7 @@ const A = {
   openBiz: id => { S.cust.bizId = id; S.cust.screenSrc = 'biz'; S.cust.cart = []; S.cust.back = S.cust.screen; S.cust.screen = 'bizprofile'; setTimeout(() => resetScroll('c-biz')); },
   back: () => { const c = S.cust; c.screen = c.screen === 'book' ? (c.screenSrc === 'biz' ? 'bizprofile' : 'profile') : (c.back && !['profile', 'bizprofile', 'book'].includes(c.back) ? c.back : 'home'); },
   toggleSvc: i => { i = Number(i); const c = S.cust.cart; const k = c.indexOf(i); k >= 0 ? c.splice(k, 1) : c.push(i); },
-  goBook: () => { S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
+  goBook: () => { const ma = meAcct(); if (ma && ma.link && ma.link.pid && ma.link.pid === S.cust.pid) { toast('customer', 'This is your own profile', 'You cannot book yourself.'); return; } S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
   setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
   custCancelAsk: id => { S.cust.cancelAsk = id || null; },
@@ -4421,10 +4470,12 @@ const A = {
     S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
     { const rp = provByRef(f.ref); if (rp) { S.customers[cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + cid); } }
     const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
-    S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to Ticktap', 'Your account ' + a.loginId + ' is ready.'); },
+    S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to Ticktap', 'Your account ' + a.loginId + ' is ready.');
+    if (f.alsoProv) setTimeout(() => { A.becomeProv(); render(); }, 50); },
   auProvider: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36);
     const a = { id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
-    S.accounts.push(a); S.session = { uid, at: Date.now() }; S.auth = null; S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.ref = f.ref || ''; S.prov.apply.uid = uid;
+    if (f.alsoCust) newCustFor(a);
+    S.accounts.push(a); S.session = { uid, at: Date.now(), mode: 'provider' }; S.auth = null; S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.ref = f.ref || ''; S.prov.apply.uid = uid;
     toast('provider', 'Account created', 'Now set up your provider profile.'); },
   auDemoDocs: () => { const f = S.auth.f; f.docs = f.docs || {}; const mkDoc = (title, k) => { const cv = document.createElement('canvas'); cv.width = 900; cv.height = 1200; const g = cv.getContext('2d'); g.fillStyle = '#fbfaf4'; g.fillRect(0, 0, 900, 1200); g.strokeStyle = '#12355B'; g.lineWidth = 6; g.strokeRect(30, 30, 840, 1140); g.fillStyle = '#12355B'; g.font = 'bold 40px Arial'; g.fillText('REPUBLIC OF THE PHILIPPINES', 120, 130); g.font = 'bold 46px Arial'; g.fillText(title, 90, 260); g.font = '30px Arial'; g.fillStyle = '#333'; ['Registered name: ' + (f.bname || 'Sample Business'), 'Address: ' + (f.barea || 'Makati City'), 'TIN: ' + (f.btin || '000-000-000-000'), 'Valid until: Dec 31, 2026', 'SAMPLE · FOR TESTING ONLY'].forEach((t, i) => g.fillText(t, 90, 380 + i * 70)); const u = cv.toDataURL('image/jpeg', .7); f.docs[k] = { name: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '.jpg', type: 'image/jpeg', size: Math.round(u.length * .75), data: u }; };
     mkDoc("MAYOR'S PERMIT", 'permit'); mkDoc('BIR FORM 2303 · COR', 'bir'); mkDoc('DTI BUSINESS NAME', 'reg'); },
@@ -4489,9 +4540,9 @@ const A = {
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
   resendApply: () => { const a = meAcct(); if (!a) return; a.status = 'applying'; a.link = {}; A.startApply(); if (S.prov.apply) S.prov.apply.name = a.name || ''; },
-  startApply: () => { const _ma = meAcct(); S.prov.apply = { uid: _ma && _ma.role === 'provider' ? _ma.id : null, step: 1, avail: defAvail(), ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
+  startApply: () => { const _ma = meAcct(); S.prov.apply = { uid: _ma && (_ma.role === 'provider' || S.prov.applyFor === _ma.id) ? _ma.id : null, forCust: !!(_ma && S.prov.applyFor === _ma.id), step: 1, avail: defAvail(), ref: urlRef(), photo: null, name: '', cat: 'hair', years: 8, last: 2021, past: '', why: '', id: false, selfie: false, tin: '', area: '', type: 'individual', cert: '', payout: 'GCash', ok: false }; },
   apNext: () => { S.prov.apply.step++; },
-  apBack: () => { const a = S.prov.apply; if (a.step > 1) a.step--; else S.prov.apply = null; },
+  apBack: () => { const a = S.prov.apply; if (a.step > 1) a.step--; else { S.prov.apply = null; if (a.forCust) { S.prov.applyFor = null; if (S.session) S.session.mode = 'customer'; S.role = 'customer'; } } },
   apToggle: k => { S.prov.apply[k] = true; },
   apDemoId: () => { const a = S.prov.apply; a.id = true; a.idDoc = a.idDoc || PHOTOS.sample; a.selfie = true; a.faceImg = a.faceImg || a.photo || PHOTOS.sample; a.faceScore = 97; },
   faceStart: () => { S.prov.face = { stage: 'cam' }; },
@@ -4503,8 +4554,10 @@ const A = {
   apSample: () => { S.prov.apply.photo = PHOTOS.sample; },
   zoom: (id, el) => { const inCust = el && el.closest('[data-pane="customer"]'); if (inCust && prov(id)) { S.cust.zoom = id; return; } const a = S.applications.find(x => x.id === id); const p = prov(id); S.modal = { kind: 'photo', src: a ? (a.photo || PHOTOS[a.photoKey]) : photoOf(p), name: a ? a.name : p.name }; },
   closeZoom: () => { S.cust.zoom = null; },
-  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; const _newId = uniqueId('A-', x => S.applications.some(a => a.id === x)); setTimeout(() => { if (_acc) { const ap = S.applications.find(x => x.id === _newId) || S.applications[0]; _acc.status = 'pending'; _acc.link = { appId: ap.id }; ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; ap.faceScore = a.faceScore || null; ap.loginId = _acc.loginId; ap.email = _acc.email; ap.phone = _acc.phone; lsSet('balik-myapp-' + _acc.id, JSON.stringify(ap)); render(); schedulePush(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: _newId, tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
-    S.prov.apply = null; S.prov.screen = 'account'; toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
+  apSubmit: () => { const a = S.prov.apply; const _acc = a.uid ? acct(a.uid) : null; const _newId = uniqueId('A-', x => S.applications.some(a => a.id === x)); setTimeout(() => { if (_acc) { const ap = S.applications.find(x => x.id === _newId) || S.applications[0]; if (_acc.role === 'customer' || custOk(_acc) && _acc.status === 'active') { _acc.provState = 'pending'; _acc.link = Object.assign({}, _acc.link, { appId: ap.id }); } else { _acc.status = 'pending'; _acc.link = Object.assign({ appId: ap.id }, _acc.link && _acc.link.cid ? { cid: _acc.link.cid } : {}); } ap.uid = _acc.id; ap.faceImg = a.faceImg || null; ap.idDoc = a.idDoc || null; ap.faceScore = a.faceScore || null; ap.loginId = _acc.loginId; ap.email = _acc.email; ap.phone = _acc.phone; lsSet('balik-myapp-' + _acc.id, JSON.stringify(ap)); render(); schedulePush(); } }, 0); const _tcId = 'app-' + Date.now().toString(36); recordConsent('provider', _tcId, a.name || 'Applicant', a.tin ? 'TIN ' + a.tin : ''); a.tcId = _tcId; S.applications.unshift({ id: _newId, tcId: (S.prov.apply && S.prov.apply.tcId) || null, avail: (S.prov.apply && S.prov.apply.avail) ? JSON.parse(JSON.stringify(S.prov.apply.avail)) : defAvail(), ref: (S.prov.apply && S.prov.apply.ref) || '', name: a.name, cat: a.cat, years: Number(a.years) || 0, past: a.past + (a.last ? ' (until ' + a.last + ')' : ''), why: a.why, area: a.area, idOk: a.id, selfie: a.selfie, tin: a.tin, cert: a.cert || null, at: now(), status: 'pending', photo: a.photo });
+    const _wasCust = a.forCust; S.prov.apply = null; S.prov.applyFor = null; S.prov.screen = 'account';
+    if (_wasCust) { if (S.session) S.session.mode = 'customer'; S.role = 'customer'; S.cust.screen = 'account'; toast('customer', 'Provider application sent', 'We review it within 2 working days. You can keep booking as a customer.'); }
+    toast('provider', 'Application sent', 'We review new providers within 2 working days. Demo: approve it in Admin › Providers.'); toast('admin', 'New provider application', a.name + ' · ' + catName(a.cat)); },
   // business
   bizTab: t => { S.biz.tab = t; },
   loyNew: k => { const o = ownerByKey(k); if (o.loyalty && !o.loyalty.draft) o.loyaltyLog = (o.loyaltyLog || []).concat([o.loyalty]).slice(-10); o.loyalty = { draft: true, on: false, title: '', scope: 'any', items: [], need: 10, createdAt: now() }; },
@@ -4622,11 +4675,11 @@ const A = {
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Ticktap.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
     { const rp = provByRef(a.ref); if (rp && rp.id !== nid) addCredit(rp, CR().rules.referral, 'Referral · new provider ' + a.name.replace(/".*?"\s*/, ''), null, 'referral', 'refp:' + a.id); }
     prov(nid).avail = a.avail ? JSON.parse(JSON.stringify(a.avail)) : defAvail();
-    { const ua = a.uid && acct(a.uid); if (ua) { ua.status = 'active'; ua.link = { pid: nid, bizId: prov(nid).biz || null }; ua.role = prov(nid).biz ? 'staff' : 'provider'; prov(nid).phone = ua.phone || prov(nid).phone; } }
+    { const ua = a.uid && acct(a.uid); if (ua) { const keepCid = ua.link && ua.link.cid; ua.status = 'active'; ua.provState = 'active'; ua.link = Object.assign({ pid: nid, bizId: prov(nid).biz || null }, keepCid ? { cid: keepCid } : {}); if (ua.role !== 'customer') ua.role = prov(nid).biz ? 'staff' : 'provider'; pushAlert('provider:' + nid, 'You are approved as a provider', keepCid ? 'Switch to Provider mode from your Account page.' : 'You can go on stand-by now.', null, 'good'); prov(nid).phone = ua.phone || prov(nid).phone; } }
     { const src = a.tcId && (S.consents || []).find(c => c.who === a.tcId); if (src && !consentOf('provider', nid)) S.consents.unshift(Object.assign({}, src, { id: 'tc' + Date.now().toString(36), who: nid, name: prov(nid).name, method: 'Accepted when applying (' + a.id + ')' })); }
     if (sb) { const np = prov(nid); np.type = 'staff'; np.biz = sb.id; np.lat = sb.lat + (Math.random() - .5) * .01; np.lng = sb.lng + (Math.random() - .5) * .01; np.area = sb.area; np.services = sb.services.filter(x => x.on).map(x => ({ ...x })); np.returning = false; sb.staff.push(nid); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' joined your team', 'Approved by Ticktap.'); }
     toast('admin', 'Approved ' + a.name, sb ? 'Added to ' + sb.name + '.' : 'They can switch to stand-by now.'); },
-  reject: id => { const a = S.applications.find(x => x.id === id); a.status = 'declined'; if (a.staffOf) { const sb = biz(a.staffOf); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' was not approved', 'Contact Ticktap support for details.'); } },
+  reject: id => { const a = S.applications.find(x => x.id === id); a.status = 'declined'; { const ua = a.uid && acct(a.uid); if (ua && ua.provState) ua.provState = 'declined'; } if (a.staffOf) { const sb = biz(a.staffOf); sb.invited = sb.invited.filter(v => v.appId !== a.id); toast('business', a.name + ' was not approved', 'Contact Ticktap support for details.'); } },
   weekCloseNow: () => { const wk = weekKeyOf(now()); if (CR().lastClosed === wk) { toast('admin', 'Already updated', 'This week was already closed.'); return; } const n = closeWeekAll(wk); toast('admin', 'Sunday update done', n + ' provider(s) updated.'); },
   weekClose: () => { let n = 0; S.providers.forEach(p => { if (weekTotal(p) < S.settings.weeklyTarget || daysMet(p) < S.settings.minDays) { p.points++; n++; p.history.push({ at: now(), text: 'Weekly stand-by below target' }); pushAlert('provider:' + p.id, 'Weekly stand-by below target', `${weekTotal(p).toFixed(1)} of ${S.settings.weeklyTarget} h · −1 reward credit counted for Sunday.`, null, 'bad'); } }); toast('admin', 'Weekly check done', n + ' provider(s) received a point.'); }
 };
@@ -4821,7 +4874,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 93;
+const BUILD = 94;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -4892,6 +4945,7 @@ async function pushToken() {
   await navigator.serviceWorker.ready;
   return firebase.messaging().getToken({ vapidKey: pushKey(), serviceWorkerRegistration: reg });
 }
+function pushTargetsAll() { const a = meAcct(), out = []; const t = pushTarget(); if (t) out.push(t); if (a && custOk(a)) out.push('customer:' + a.link.cid); if (a && provOk(a)) out.push('provider:' + a.link.pid); return [...new Set(out)]; }
 async function pushSave(t, tok) {
   const db = firebase.app().database(), base = 'rooms/' + SYNC.room + '/push/';
   const prev = lsGet('tt-push-last:' + SYNC.room);
@@ -4909,6 +4963,7 @@ async function pushEnable() {
     const tok = await pushToken();
     if (!tok) throw new Error('This browser did not return a push token.');
     await pushSave(t, tok);
+    for (const x of pushTargetsAll()) if (x !== t) { const db = firebase.app().database(); await db.ref('rooms/' + SYNC.room + '/push/' + encK(x) + '/' + DEVICE).set({ token: tok, at: Date.now(), ua: navigator.userAgent.slice(0, 120) }).catch(() => { }); lsSet(pushLsKey(x), DEVICE); }
     toast(S.role, 'Lock-screen alerts on', 'This phone will alert you even when the screen is locked.');
     try { chime('note', true); } catch (e) { }
   } catch (e) { PUSH.err = String(e && e.message || e); }
@@ -4921,7 +4976,7 @@ async function pushDisable() {
 }
 // keep the token fresh (browsers rotate them) once the live room is ready
 async function pushRefresh() {
-  try { const t = pushTarget(); if (!t || pushState() !== 'on') return; const tok = await pushToken(); if (tok) await pushSave(t, tok); } catch (e) { }
+  try { const t = pushTarget(); if (!t || pushState() !== 'on') return; const tok = await pushToken(); if (tok) { await pushSave(t, tok); const db = firebase.app().database(); for (const x of pushTargetsAll()) if (x !== t) await db.ref('rooms/' + SYNC.room + '/push/' + encK(x) + '/' + DEVICE).set({ token: tok, at: Date.now(), ua: navigator.userAgent.slice(0, 120) }).catch(() => { }); } } catch (e) { }
 }
 function pushCard(compact) {
   const st = pushState(); if (st === 'on' && compact) return '';
