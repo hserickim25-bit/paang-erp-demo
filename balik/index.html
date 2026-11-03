@@ -294,6 +294,9 @@ button.li:hover{background:var(--surface-2)}
 .tl.m i.on.r{box-shadow:0 0 8px 2px rgba(255,45,45,.95),0 0 20px 5px rgba(255,45,45,.55)}.tl.m i.on.y{box-shadow:0 0 8px 2px rgba(255,214,10,.95),0 0 20px 5px rgba(255,190,0,.55)}.tl.m i.on.g{box-shadow:0 0 8px 2px rgba(34,240,138,.95),0 0 20px 5px rgba(0,220,110,.55)}
 .status-line{gap:8px}.status-line.big{font-size:14px}
 .status-line.green{color:var(--good)} .status-line.yellow{color:var(--warn)} .status-line.red{color:var(--bad)}
+.ret.mine{color:#fff;background:var(--accent)}
+.soon{gap:10px;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}.soon.on{border-color:var(--good);box-shadow:0 0 0 3px var(--good-soft)}.soon-ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}.soon.on .soon-ic{background:var(--good-soft);color:var(--good)}.soon-t{font-size:17px;line-height:1.3}
+.ownbiz{gap:8px;background:var(--accent-soft);border-color:transparent}.ob-t{font-size:16px;line-height:1.3}.ob-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ob-stats>div{display:flex;flex-direction:column;gap:2px;background:var(--surface);border-radius:10px;padding:8px 10px}.ob-stats b{font-size:20px}
 .ret{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:6px}
 
 /* categories */
@@ -968,6 +971,21 @@ const biz = id => S.businesses.find(b => b.id === id);
 const bk = id => S.bookings.find(b => b.id === id);
 const addr = () => allAddrs().find(a => a.id === S.customer.addr) || ADDRS[0];
 const distTo = o => haversine(addr(), o);
+/* ---------- service coverage: where approved pros are near, bookings open; elsewhere customers join a waitlist ---------- */
+const coverKm = () => Number(S.settings.coverKm) || 25;
+const cityOf = a => { if (a && a.city) return a.city; let best = CITIES[0], bd = Infinity; CITIES.forEach(c => { const d = haversine(a, { lat: c[1], lng: c[2] }); if (d < bd) { bd = d; best = c; } }); return best[0]; };
+const nearPros = a => S.providers.filter(p => p.active !== false && haversine(a, p) <= coverKm()).length + S.businesses.filter(b => !b.expelled && haversine(a, b) <= coverKm()).length;
+const covered = () => nearPros(addr()) > 0;
+const wlList = () => (S.waitlist || []).filter(w => !w.left);
+const wlMine = () => wlList().find(w => w.cid === (S.customer.cid || 'me') && w.city === cityOf(addr()));
+const myProId = () => { const c = S.customers && S.customers[S.customer.cid]; return c && c.refBy || null; };
+function seedWaitlist() {   // demo demand in cities Ticktap does not cover yet
+  const plan = [['Cebu City', 46], ['Davao City', 31], ['Iloilo City', 14], ['Baguio', 12], ['Cagayan de Oro', 11], ['Angeles / Clark', 9], ['Lapu-Lapu (Mactan)', 8], ['Bohol (Panglao)', 5], ['Puerto Princesa', 4]];
+  const cats = ['massage', 'nails', 'hair', 'skin', 'pet'], out = []; let k = 0;
+  plan.forEach(([city, n]) => { const c = CITIES.find(x => x[0] === city); for (let i = 0; i < n; i++) { k++; const h = (k * 2654435761) >>> 0;
+    out.push({ id: 'W-' + (1000 + k), at: now() - (h % (30 * 24)) * HOUR, cid: null, name: 'Waitlist member', city, lat: c[1], lng: c[2], cats: [cats[h % 5], cats[(h >>> 3) % 5]].filter((v, j, a) => a.indexOf(v) === j), demo: true }); } });
+  return out;
+}
 /* ---------- reward credits (replaces penalty points) ---------- */
 const CR = () => S.settings.credit;
 const clampCr = v => Math.max(CR().min, Math.min(CR().max, v));
@@ -1168,7 +1186,8 @@ function listEntries(cat, filter, q) {
   if (filter === 'now') out = out.filter(e => e.kind === 'b' ? bizGreen(e.o) > 0 : e.o.status === 'green');
   if (filter === 'top') out = out.filter(e => e.o.rating >= 4.8);
   const rank = e => e.kind === 'b' ? (bizGreen(e.o) ? 0 : 1) : ({ green: 0, yellow: 1, red: 2 })[e.o.status];
-  return out.sort((a, b) => rank(a) - rank(b) || a.d - b.d);
+  const mine = myProId(), own = e => e.kind === 'p' && e.o.id === mine ? 0 : 1;   // the pro who invited this customer comes first
+  return out.sort((a, b) => own(a) - own(b) || rank(a) - rank(b) || a.d - b.d);
 }
 function bizLogo(b, size = 68, radius = 16, font = 34, badge = true) {
   return `<span class="bizlogo" style="width:${size}px;height:${size}px;border-radius:${radius}px;font-size:${font}px" aria-label="${esc(b.name)} logo">${b.logo ? `<img src="${b.logo}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : 'B'}${badge ? `<span class="bizbadge">${ic('building', 11, 2.2)}</span>` : ''}</span>`;
@@ -1251,7 +1270,7 @@ function entryCard(e, home = false) {
   const b = o.biz ? biz(o.biz) : null;
   return `<button class="pcard" data-act="openProvider" data-arg="${o.id}">
     ${(() => { const ph = photoOf(o) ? `<span class="listph" data-act="zoom" data-arg="${o.id}"><img src="${photoOf(o)}" alt="" loading="lazy"><span class="zbadge">${ic('search', 11, 2.6)}</span></span>` : avatar(o.name, o.hue, 52); return home && pEvent(o) ? `<span class="ph-col">${ph}${evBadge('ev-home', 'Event running')}</span>` : ph; })()}
-    <span class="meta"><span class="row" style="gap:6px"><span class="name ellipsis">${esc(o.name)}</span>${o.returning ? '<span class="ret">Returning pro</span>' : ''}</span>
+    <span class="meta"><span class="row" style="gap:6px"><span class="name ellipsis">${esc(o.name)}</span>${myProId() === o.id ? '<span class="ret mine">Your pro</span>' : o.returning ? '<span class="ret">Returning pro</span>' : ''}</span>
       <span class="small muted ellipsis">${b ? esc(b.name) + ' · staff' : catName(o.cat) + ' · ' + o.years + ' yrs experience'}</span>
       <span class="small">${starsH(o.rating)} <b>${o.rating}</b> <span class="muted">(${o.count})</span></span>
       ${statusLine(o)}${promoBadge(o)}</span>
@@ -1302,8 +1321,8 @@ function custHome() {
         <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile">${ic(k.icon, 24)}</span>${k.name}</button>`).join('')}</div>
       <button class="mission-btn" data-act="missionOpen" aria-label="Why Ticktap: open the story"><img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348"></button>
-      <div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
-      ${near.map(e => entryCard(e, true)).join('')}
+      ${covered() ? `<div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
+      ${near.map(e => entryCard(e, true)).join('')}` : comingSoon()}
     </div>`;
 }
 const c_q = () => S.cust.q;
@@ -1315,6 +1334,27 @@ function activeCard(b) {
   return `<button class="card" data-act="openBooking" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)" data-scr="${scr}">
     <div class="row between"><span class="eyebrow" style="color:var(--accent)">Active booking</span>${statusPill(b.status)}</div>
     <div class="row">${p ? avatar(p.name, p.hue, 36) : avatar(bz.name, bz.hue, 36)}<div class="col grow"><b>${esc(b.services.map(s => s.name).join(', '))}</b><span class="small muted">${esc(line || '')}</span></div>${ic('chev', 18)}</div></button>`;
+}
+
+function comingSoon() {
+  const a = addr(), city = cityOf(a), mine = wlMine(), inCity = wlList().filter(w => w.city === city), wl = S.cust.wl || (S.cust.wl = { cats: [] });
+  const inviteBtn = `<button class="btn secondary sm" data-act="wlInvite">${ic('share', 16)} Invite a pro you know</button>`;
+  if (mine) {
+    const pos = inCity.sort((x, y) => x.at - y.at).findIndex(w => w.id === mine.id) + 1;
+    return `<div class="card soon on" data-soon="joined"><span class="soon-ic">${ic('check', 22)}</span>
+      <span class="eyebrow" style="color:var(--good)">You're on the waitlist</span>
+      <b class="soon-t">We'll tell you when Ticktap opens near ${esc(a.short)}</b>
+      <span class="small muted">You are #${pos} of ${inCity.length} waiting in ${esc(city)}. We recruit pros where the waitlist is longest, and you get an in-app notice the moment bookings open.</span>
+      <div class="row" style="gap:8px;flex-wrap:wrap">${inviteBtn}<button class="btn ghost sm" data-act="addrSheet">Change address</button><button class="btn ghost sm" data-act="wlLeave">Leave waitlist</button></div></div>`;
+  }
+  return `<div class="card soon" data-soon="open"><span class="soon-ic">${ic('pin', 22)}</span>
+    <span class="eyebrow">Coming soon to ${esc(city)}</span>
+    <b class="soon-t">This area is being prepared</b>
+    <span class="small muted">No approved pros within ${coverKm()} km of ${esc(a.short)} yet. Join the waitlist and we'll open bookings here as soon as verified pros join.${inCity.length ? ` <b>${inCity.length}</b> ${inCity.length === 1 ? 'person is' : 'people are'} already waiting in ${esc(city)}.` : ''}</span>
+    <span class="small"><b>What would you book?</b></span>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${CATS.map(k => `<button class="chip" data-act="wlCat" data-arg="${k.id}" aria-pressed="${wl.cats.includes(k.id)}">${k.name}</button>`).join('')}</div>
+    <button class="btn primary block" data-act="wlJoin">Join the waitlist</button>
+    <div class="row" style="gap:8px;flex-wrap:wrap">${inviteBtn}<button class="btn ghost sm" data-act="addrSheet">Change address</button></div></div>`;
 }
 
 function custList() {
@@ -1334,7 +1374,7 @@ function custList() {
         <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
       <span class="small muted">${all.length} results${pages > 1 ? ` · showing ${(pg - 1) * PER + 1}–${Math.min(pg * PER, all.length)}` : ''} · sorted by availability, then distance</span>
-      ${items.map(e => entryCard(e)).join('') || '<div class="empty">No one matches. Try another filter.</div>'}
+      ${!covered() ? comingSoon() : items.map(e => entryCard(e)).join('') || '<div class="empty">No one matches. Try another filter.</div>'}
       ${pager}
     </div>`;
 }
@@ -1788,9 +1828,25 @@ function provJobs() {
       <div class="row" style="align-items:baseline;gap:8px"><span class="num" data-fit style="font-size:30px;font-weight:600">${peso(goalBase)}</span><span class="small" style="opacity:.7">of ${peso(me.goal)}</span></div>
       <div class="progress" style="background:rgba(255,255,255,.18)"><span style="width:${Math.min(100, goalBase / me.goal * 100)}%;background:var(--good-dot)"></span></div>
       <span class="small" style="opacity:.75">${staff ? 'Job value you delivered for ' + esc(biz(me.biz).name) : 'Take-home after platform fee and tax withheld'} · ${today.length} job${today.length === 1 ? '' : 's'} today</span></div>
+    ${staff ? '' : ownBizCard(me, goalBase)}
     <button class="card" data-act="provTab" data-arg="status" style="text-align:left"><div class="row between"><b>Stand-by this week</b><span class="num small">${wk.toFixed(1)} / ${S.settings.weeklyTarget} h</span></div><div class="progress good"><span style="width:${Math.min(100, wk / S.settings.weeklyTarget * 100)}%"></span></div><span class="small muted">${me.credits} reward credits · platform fee ${tierRate(me)}%</span></button>
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Recent jobs</h3><div class="list">${myLedger(me).slice(0, 4).map(b => `<div class="li"><div class="col grow"><b class="small">${esc(b.services[0].name)}</b><span class="tiny muted">${fmtD(b.endedAt)} · ${esc(b.customer)} · ${b.review ? starsH(b.review.stars) : ''}</span></div><b class="num small">${peso(staff ? b.gross : b.ledger.net, 2)}</b></div>`).join('') || '<div class="empty">No jobs yet.</div>'}</div></div>
   </div>`;
+}
+/* "Your own business": Ticktap is the shop, the pro is the owner. Shows what the monthly goal needs and the customers the pro brought in. */
+function ownBizCard(me, earned) {
+  const fee = tierRate(me) / 100, mine = myLedger(me), avg = mine.length ? mine.reduce((a, b) => a + b.ledger.net, 0) / mine.length : (me.services.filter(x => x.on !== false).reduce((a, x, _, l) => a + x.price / l.length, 0) || 500) * (1 - fee);
+  const left = Math.max(0, me.goal - earned), jobs = Math.ceil(left / Math.max(1, avg));
+  const myCust = Object.values(S.customers || {}).filter(c => c.refBy === me.id).length;
+  const by = {}; S.bookings.filter(b => b.pid === me.id && ['ended', 'reviewed'].includes(b.status)).forEach(b => { const k = b.cid || b.customer; by[k] = (by[k] || 0) + 1; });
+  const repeat = Object.values(by).filter(n => n > 1).length;
+  return `<div class="card ownbiz" data-own="1">
+    <span class="eyebrow">Your business on Ticktap</span>
+    <b class="ob-t">You are the owner. Ticktap is your shop.</b>
+    <span class="small">${left ? `<b>${jobs} more job${jobs === 1 ? '' : 's'}</b> (about ${peso(avg)} take-home each) reach your ${peso(me.goal)} goal this month.` : `You reached your ${peso(me.goal)} goal this month. Raise it in Account.`}</span>
+    <div class="ob-stats"><div><b class="num">${myCust}</b><span class="tiny muted">my customers<br>joined with my link</span></div><div><b class="num">${repeat}</b><span class="tiny muted">repeat<br>customers</span></div><div><b class="num">${tierRate(me)}%</b><span class="tiny muted">fee now<br>${me.credits} credits</span></div></div>
+    <span class="tiny muted">Customers who join with your link see you first and rebook you in one tap. Each one also adds ${sgn(CR().rules.referral)} reward credit.</span>
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary sm" data-act="copyRef">${ic('share', 16)} Invite my customers</button><button class="btn ghost sm" data-act="guideOpen" data-arg="provider">How to grow</button></div></div>`;
 }
 function provRequest() {
   const b = bk(S.prov.bid), me = prov(S.prov.id);
@@ -2149,8 +2205,13 @@ function guideFil(role) {
     ]
   };
   const PR = {
-    title: 'Paano Gamitin ang Ticktap · Provider', lead: 'Mula sa iyong application hanggang mabayaran ka sa bawat trabaho.',
+    title: 'Paano Gamitin ang Ticktap · Provider', lead: 'Ang Ticktap ang iyong tindahan, ikaw ang may-ari. Mula sa application hanggang sa sariling mga customer at kitang gusto mo.',
     stages: [
+      ['Sariling negosyo mo', [
+        ['bag', 'Ikaw ang may-ari', 'Ikaw ang nagtatakda ng presyo at oras. Ang Ticktap ang nagdadala ng booking, bayad at kaligtasan; ang kita ay galing sa sarili mong serbisyo.'],
+        ['users', 'Buuin ang sariling customers', 'I-share ang iyong link (Jobs › Invite my customers). Ang customer na sumali gamit ito ay makikita ka muna at makaka-rebook sa isang tap. +1 reward credit bawat isa.'],
+        ['wallet', 'Itakda ang kitang gusto mo', 'Ilagay ang buwanang goal sa Account. Ipinapakita ng Jobs kung ilang trabaho pa ang kailangan para maabot ito.'],
+        ['heart', 'Ang bumabalik na customer ang negosyo mo', 'Dumating sa oras, maging magalang at malinis. Mas maraming review at credits, mas mababang fee at mas maraming booking.']]],
       ['Mag-apply (isang beses)', [
         ['user', 'Gumawa ng account', 'Mag-sign up bilang Provider gamit ang login ID, password at mobile number.'],
         ['doc', 'Sagutan ang application', 'Uri ng serbisyo mo, profile photo, government ID, live na litrato ng mukha, mga certificate (TESDA at iba pa), TIN at payout account. Tanggapin ang Terms.'],
@@ -2269,8 +2330,13 @@ function guideEn(role) {
     ]
   };
   const PR = {
-    title: 'How to use Ticktap · Provider', lead: 'From your application to getting paid for each job.',
+    title: 'How to use Ticktap · Provider', lead: 'Ticktap is your shop and you are the owner. From your application to your own customers and the income you want.',
     stages: [
+      ['Your own business', [
+        ['bag', 'You are the owner', 'You set your prices and hours. Ticktap brings bookings, payment and safety; your income comes from your own service.'],
+        ['users', 'Build your own customers', 'Share your link (Jobs › Invite my customers). Customers who join with it see you first and rebook you in one tap. Each adds +1 reward credit.'],
+        ['wallet', 'Set the income you want', 'Enter a monthly goal in Account. The Jobs screen shows how many more jobs reach it.'],
+        ['heart', 'Repeat customers are your business', 'Arrive on time, be kind and clean. More reviews and credits mean a lower fee and more bookings.']]],
       ['Apply (once)', [
         ['user', 'Create your account', 'Sign up as a Provider with a login ID, password and mobile number.'],
         ['doc', 'Fill in the application', 'Your service type, profile photo, government ID, a live face photo, certificates (TESDA and so on), TIN and payout account. Accept the Terms.'],
@@ -2357,8 +2423,13 @@ function guideKo(role) {
     ]
   };
   const PR = {
-    title: 'Ticktap 이용 방법 · 제공자', lead: '지원부터 작업마다 대금을 받기까지 안내합니다.',
+    title: 'Ticktap 이용 방법 · 제공자', lead: 'Ticktap은 당신의 가게이고 당신이 사장입니다. 지원부터 나만의 고객과 원하는 소득까지 안내합니다.',
     stages: [
+      ['나의 사업', [
+        ['bag', '내가 사장입니다', '가격과 시간은 내가 정합니다. Ticktap은 예약·결제·안전을 맡고, 소득은 나의 서비스에서 나옵니다.'],
+        ['users', '나만의 고객 만들기', '내 링크를 공유하세요(Jobs › Invite my customers). 이 링크로 가입한 고객에게는 내가 맨 위에 보이고 한 번에 재예약할 수 있습니다. 1명마다 크레딧 +1.'],
+        ['wallet', '원하는 소득 정하기', 'Account에서 월 목표를 입력하면 Jobs 화면에 목표까지 남은 작업 수가 표시됩니다.'],
+        ['heart', '단골이 곧 사업입니다', '시간 약속, 친절, 청결. 리뷰와 크레딧이 쌓이면 수수료는 낮아지고 예약은 늘어납니다.']]],
       ['지원 (최초 1회)', [
         ['user', '계정 만들기', 'Provider로 가입합니다. 로그인 ID, 비밀번호, 휴대폰 번호가 필요합니다.'],
         ['doc', '지원서 작성', '서비스 종류, 프로필 사진, 신분증, 실시간 얼굴 사진, 자격증(TESDA 등), TIN, 지급 계좌를 입력하고 약관에 동의합니다.'],
@@ -2582,6 +2653,7 @@ function provApply() {
   let body = '', cta = '';
   if (a.step === 1) {
     body = `<h2 style="font-size:22px">Welcome back to work</h2><p class="small muted">Step 1 of 4 · Your experience counts. Certificates are optional.</p>
+      <div class="card tight ownbiz" data-own="apply"><b class="small">Run your own business with Ticktap</b><span class="tiny">You set your prices and hours. Ticktap brings bookings, payment and safety. Invite your own customers with your link: they see you first, and your income grows with every repeat booking.</span></div>
       <div class="photo-up ${a.photo ? 'has' : ''}">
         <span class="pu-img">${a.photo ? `<img src="${a.photo}" alt="Your profile photo">` : ic('camera', 30)}</span>
         <div class="col" style="gap:6px"><b>Profile photo <span style="color:var(--bad)">*</span></b><span class="small muted">Required. Face clearly visible, good light, plain background. Customers see it before booking, and we match it to your ID.</span>
@@ -2832,13 +2904,13 @@ function adminPane() {
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
     ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guide', 'How to use', 'doc')}
-    ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
+    ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
     ${grp('mgmt', '4 · Management', `${nav('me', 'My work page', 'user')}${nav('employees', 'Employees', 'users')}${nav('attendance', 'Attendance', 'clock')}${nav('payroll', 'Payroll & BIR', 'wallet', (S.payrolls || []).filter(r => r.status === 'approved').length, 'accent')}${nav('hrdocs', 'HR documents', 'doc', (S.hrReq || []).filter(r => r.status === 'pending').length, 'accent')}${nav('expenses', 'Expenses', 'receipt')}${nav('revenue', 'Revenue', 'chart')}${nav('ledger', 'Ledger', 'list')}${nav('access', 'Admin access & levels', 'shield')}`)}</aside><main class="main">${mOut}</main>${staffCallWin()}${toastsFor('admin', true)}</div>`;
@@ -3086,6 +3158,32 @@ function admPointsSummary() {
     ${sel ? `<div class="panel-b" style="border-top:1px solid var(--line)"><div class="row between"><b>${esc(sel.name)} · ${ptBal(sel.cid)} points</b><button class="btn ghost xs" data-act="admPtsOpen" data-arg="">Close</button></div>
       <div class="row" style="gap:6px;flex-wrap:wrap"><input class="input num" type="number" style="max-width:120px;height:36px" data-bind="admin.ptsAdj" value="${esc(S.admin.ptsAdj || '')}" placeholder="+/- points"><button class="btn secondary xs" data-act="admPtsAdj" data-arg="${esc(sel.cid)}">Adjust</button></div>
       <div class="list">${(sel.ptLog || []).slice(0, 30).map(e => `<div class="li"><span class="small grow">${fmtD(e.at)} · ${esc(e.kind)}${e.bid ? ' · ' + e.bid : ''}${e.note ? ' · ' + esc(e.note) : ''}</span><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${e.pts > 0 ? '+' : ''}${e.pts}</b></div>`).join('') || '<div class="empty">No point history.</div>'}</div></div>` : ''}</div>`;
+}
+/* ---------- waitlist demand: where customers wait for Ticktap, so we recruit pros there first ---------- */
+function wlCities() {
+  const by = {};
+  wlList().forEach(w => { const g = by[w.city] || (by[w.city] = { city: w.city, n: 0, wk: 0, cats: {}, lat: w.lat, lng: w.lng, open: 0, real: 0 }); g.n++; if (now() - w.at < 7 * DAY) g.wk++; if (!w.notifiedAt) g.open++; if (!w.demo) g.real++; (w.cats || []).forEach(c => g.cats[c] = (g.cats[c] || 0) + 1); });
+  return Object.values(by).map(g => { const c = CITIES.find(x => x[0] === g.city); const at = c ? { lat: c[1], lng: c[2] } : g; return Object.assign(g, { pros: nearPros(at) }); }).sort((a, b) => b.n - a.n);
+}
+function wlOverview() {
+  const rows = wlCities(); if (!rows.length) return '';
+  const tot = rows.reduce((a, r) => a + r.n, 0);
+  return `<div class="panel" role="button" tabindex="0" data-act="adminTab" data-arg="waitlist" style="cursor:pointer"><div class="panel-b row" style="gap:14px;flex-wrap:wrap;align-items:center">
+    <span class="row" style="gap:8px">${ic('pin', 18)}<b>Waitlist: ${tot} customers in ${rows.length} ${rows.length === 1 ? 'city' : 'cities'} without pros yet</b></span>
+    <span class="small muted grow">Top: ${rows.slice(0, 3).map(r => esc(r.city) + ' ' + r.n).join(' · ')}</span><span class="btn secondary sm">Open demand ›</span></div></div>`;
+}
+function admWaitlist() {
+  const rows = wlCities(), tot = rows.reduce((a, r) => a + r.n, 0), wk = rows.reduce((a, r) => a + r.wk, 0), T = S.settings.wlTargets || {};
+  const catTop = r => Object.entries(r.cats).filter(([k]) => CATS.some(c => c.id === k)).sort((a, b) => b[1] - a[1]).slice(0, 3).map(([k, v]) => `<span class="pill">${esc(catName(k))} ${v}</span>`).join(' ');
+  const st = c => T[c] === 'recruiting' ? '<span class="pill warn">Recruiting pros</span>' : T[c] === 'open' ? '<span class="pill good">Open</span>' : '<span class="pill">Waiting</span>';
+  return `<div class="page-h"><div><h1>Waitlist demand</h1><p>Customers who signed up where no approved pro is within ${coverKm()} km. Recruit pros where the list is longest, then notify the waitlist when bookings open.</p></div></div>
+  <div class="kpis"><div class="kpi accent"><span class="l">Waiting customers</span><span class="v">${tot.toLocaleString('en-US')}</span></div><div class="kpi"><span class="l">Cities</span><span class="v">${rows.length}</span></div><div class="kpi"><span class="l">New in 7 days</span><span class="v">${wk}</span></div><div class="kpi"><span class="l">Top city</span><span class="v" data-fit>${rows[0] ? esc(rows[0].city) : '—'}</span></div></div>
+  <div class="panel"><div class="panel-h"><h3>Demand by city</h3><span class="small muted">Coverage radius <input class="input num" type="number" min="5" max="60" step="5" data-bind="settings.coverKm" value="${coverKm()}" style="width:70px;height:30px;display:inline-block"> km</span></div>
+    <div class="tablewrap"><table><thead><tr><th>#</th><th>City</th><th class="num">Waiting</th><th class="num">New 7 days</th><th>Most wanted</th><th class="num">Pros within ${coverKm()} km</th><th>Status</th><th></th></tr></thead><tbody>
+    ${rows.map((r, i) => `<tr data-wl="${esc(r.city)}"><td>${i + 1}</td><td><b>${esc(r.city)}</b></td><td class="num"><b>${r.n}</b></td><td class="num">${r.wk}</td><td>${catTop(r) || '—'}</td><td class="num">${r.pros}</td><td>${st(r.city)}</td>
+      <td><div class="row" style="gap:6px;justify-content:flex-end;white-space:nowrap"><button class="btn ghost xs" data-act="admWlTarget" data-arg="${esc(r.city)}">${T[r.city] === 'recruiting' ? 'Mark open' : T[r.city] === 'open' ? 'Reset' : 'Start recruiting'}</button><button class="btn secondary xs" data-act="admWlNotify" data-arg="${esc(r.city)}" ${r.open && r.pros ? '' : 'disabled'} title="${r.pros ? '' : 'Approve a pro in this city first'}">Notify ${r.open}</button></div></td></tr>`).join('') || '<tr><td colspan="8" class="muted">No one is waiting. Every customer address has pros nearby.</td></tr>'}
+    </tbody></table></div></div>
+  <div class="panel"><div class="panel-b"><span class="small"><b>How to use this page.</b> Start recruiting in the top cities (Facebook groups, TESDA schools, spas). When a pro there is approved, the city counts pros, bookings open automatically for customers nearby, and Notify sends the waitlist an in-app notice.</span></div></div>`;
 }
 function admCustomers() {
   const flags = S.admin.custFlags || {};
@@ -3421,7 +3519,7 @@ function admOverview() {
   const active = S.bookings.filter(b => ['paid', 'departed', 'arrived'].includes(b.status)).length;
   const perProv = S.providers.map(p => ({ p, v: month.filter(b => b.pid === p.id).reduce((a, b) => a + b.gross, 0) })).sort((a, b) => b.v - a.v);
   const max = Math.max(1, ...perProv.map(x => x.v));
-  return `<div class="page-h"><div><h1>Overview</h1><p>${new Date(n).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · Metro Manila</p></div></div>${appBanner}
+  return `<div class="page-h"><div><h1>Overview</h1><p>${new Date(n).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} · Philippines</p></div></div>${appBanner}${wlOverview()}
     <div class="kpis">
       <div class="kpi accent"><span class="l">Returning pros earning this month</span><span class="v">${retEarning} of ${ret.length}</span></div>
       <div class="kpi"><span class="l">Paid to providers · month</span><span class="v">${peso(income)}</span></div>
@@ -4120,12 +4218,12 @@ const mid = d => dayTs(d) + 12 * HOUR;
 /* ---------- admin levels and areas ---------- */
 const MG_AREAS = [
   ['Monitor now', [['overview', 'Overview'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
-  ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['broadcast', 'Messages & notice board']]],
+  ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
   ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
   ['4 · Management', [['employees', 'Employees'], ['attendance', 'Attendance'], ['payroll', 'Payroll & BIR · 1601-C, 2316, alphalist'], ['hrdocs', 'HR documents · ID, COE'], ['expenses', 'Expenses'], ['revenue', 'Revenue'], ['ledger', 'Ledger · P&L and cash book'], ['access', 'Admin access & levels']]]
 ];
-const PERM_DEF = { overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
+const PERM_DEF = { overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, waitlist: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
 const PERM_TXT = { 1: 'Level 1 only', 2: 'Levels 1–2', 3: 'All levels' };
 function permOf(a) { if (a === 'finance') a = 'ap'; if (a === 'me' || a === 'guide') return 3; if (a === 'access') return 1; const p = (S.settings.perm || {})[a]; return [1, 2, 3].includes(+p) ? +p : (PERM_DEF[a] || 3); }
 const emps = () => S.employees || [];
@@ -5280,7 +5378,7 @@ function authWelcome() {
     <div class="logo-plain" style="align-self:center;width:min(260px,66vw)">${brandPic(LOGO_T, LOGO_D, 'Ticktap')}</div>
     <div class="col" style="gap:2px;text-align:center"><h2 style="font-size:21px">Welcome to Ticktap</h2><span class="small muted">Choose how you want to join</span></div>
     ${card('customer', 'user', 'Customer', 'Book verified pros for home beauty, massage and pet care')}
-    ${card('provider', 'bag', 'Individual provider', 'Earn with your skills · ID, TIN and face check')}
+    ${card('provider', 'bag', 'Individual provider', 'Run your own business with your skills · ID, TIN and face check')}
     ${card('business', 'building', 'Business', 'Register your salon or spa · permit and BIR documents')}
     <button class="btn primary block" data-act="authGo" data-arg="login">Log in</button>
     <button class="btn ghost block" data-act="authGo" data-arg="activate">Staff of a business? Activate your account</button>
@@ -5538,6 +5636,7 @@ function render() {
   // Shared data loaded from the live room may predate accounts: make sure every demo account exists
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
+  if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
   if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (ADMIN_URL) { ADMIN_URL = false; S.role = 'admin'; S.demoOpen = false; S.modal = null; }
@@ -5695,6 +5794,16 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
+  wlCat: k => { const w = S.cust.wl || (S.cust.wl = { cats: [] }); w.cats = w.cats.includes(k) ? w.cats.filter(x => x !== k) : w.cats.concat(k); },
+  wlJoin: () => { const a = addr(), city = cityOf(a), w = S.cust.wl || { cats: [] }; if (wlMine()) return;
+    S.waitlist.unshift({ id: uniqueId('W-', x => S.waitlist.some(y => y.id === x)), at: now(), cid: S.customer.cid || 'me', name: S.customer.name, email: S.customer.email || '', phone: S.customer.phone || '', city, area: a.short, lat: a.lat, lng: a.lng, cats: w.cats.slice() });
+    S.cust.wl = { cats: [] }; toast('customer', 'You are on the waitlist', 'We will tell you when pros open bookings in ' + city + '.'); },
+  wlLeave: () => { const m = wlMine(); if (m) { m.left = now(); toast('customer', 'Removed from the waitlist', m.city); } },
+  wlInvite: () => { let u = 'https://ticktap.ph/'; try { const x = new URL(location.href); x.search = ''; x.hash = ''; u = x.toString(); } catch (e) { }
+    const txt = 'Join Ticktap as a pro and get customers in ' + cityOf(addr()) + ': ' + u; try { navigator.clipboard.writeText(txt); } catch (e) { } toast('customer', 'Invite link copied', 'Send it to a therapist, stylist or groomer you trust.'); },
+  admWlNotify: city => { const ws = wlList().filter(w => w.city === city && !w.notifiedAt); ws.forEach(w => { w.notifiedAt = now(); if (w.cid && w.cid === (S.customer.cid || 'me')) pushAlert('customer', 'Ticktap is open near you', 'Pros now take bookings in ' + city + '. Open the app to book.'); });
+    toast('admin', 'Waitlist notified', ws.length + ' in ' + city); },
+  admWlTarget: city => { const t = S.settings.wlTargets || (S.settings.wlTargets = {}); t[city] = t[city] === 'recruiting' ? 'open' : t[city] === 'open' ? '' : 'recruiting'; },
   missionOpen: () => { peekEnd(true); S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
   missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
   missionBook: () => { S.modal = null; S.role = 'customer'; S.cust.screen = 'list'; S.cust.cat = null; },
@@ -5805,7 +5914,7 @@ const A = {
       if (!n.city) { let best = null, bd = 1e9; CITIES.forEach(c => { const d = Math.hypot(c[1] - n.gps.lat, c[2] - n.gps.lng); if (d < bd) { bd = d; best = c[0]; } }); n.city = best; }
       toast('customer', 'Location found', 'Pros will be measured from where you are now.'); render(); }, () => { toast('customer', 'Location blocked', 'Allow location access, or choose the city.'); render(); }, { enableHighAccuracy: true, timeout: 15000 }); },
   saveAddr: where => { const n = S.cust.newAddr; if (!n || !n.city || n.line.trim().length < 4) return; const c = CITIES.find(x => x[0] === n.city);
-    const a = { id: 'x' + Date.now().toString(36), kind: n.kind, label: n.label.trim() || n.kind, line: n.line.trim() + ', ' + n.city, short: n.city, lat: n.gps ? n.gps.lat : c[1], lng: n.gps ? n.gps.lng : c[2], from: n.from, to: n.to, approx: !n.gps };
+    const a = { id: 'x' + Date.now().toString(36), kind: n.kind, label: n.label.trim() || n.kind, line: n.line.trim() + ', ' + n.city, short: n.city, city: n.city, lat: n.gps ? n.gps.lat : c[1], lng: n.gps ? n.gps.lng : c[2], from: n.from, to: n.to, approx: !n.gps };
     (S.customer.extraAddrs || (S.customer.extraAddrs = [])).push(a); S.cust.newAddr = null;
     if (where === 'su') S.cust.signup.addr = a.id; else if (where === 'au') { S.auth.f.addr = a.id; S.customer.addr = a.id; } else { S.customer.addr = a.id; S.cust.addrSheet = false; }
     const rec = S.customers && S.customers[S.customer.cid]; if (rec) rec.addrs = S.customer.extraAddrs.slice();
@@ -6281,7 +6390,7 @@ window.addEventListener('blur', () => peekEnd(false));
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
+const SHARED_LIST = ['waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -6399,7 +6508,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 114;
+const BUILD = 115;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
