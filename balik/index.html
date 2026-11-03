@@ -638,6 +638,10 @@ td.num,th.num{text-align:right}
 .mission-img{display:block;width:100%;height:auto;aspect-ratio:1049/348;max-width:100%;border-radius:16px}
 .mission-btn{display:block;width:100%;padding:0;border:0;background:transparent;border-radius:16px;cursor:pointer;transition:transform .15s}.mission-btn:active{transform:scale(.985)}
 .ms-bg{padding:12px;z-index:90}
+.ms-peek{position:fixed;inset:0;z-index:95;pointer-events:none;animation:peekIn .14s ease-out}.ms-peek.out{opacity:0;transition:opacity .15s}
+.ms-peek .ms-bg{animation:none}.ms-peek .ms{animation:peekPop .18s ease-out}
+.ms-peek-hint{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:96;background:rgba(13,40,70,.92);color:#fff;font-size:12px;font-weight:600;padding:7px 14px;border-radius:999px;white-space:nowrap}
+@keyframes peekIn{from{opacity:0}to{opacity:1}}@keyframes peekPop{from{transform:scale(.96)}to{transform:none}}
 .ms{width:min(980px,100%);max-height:94dvh;display:flex;flex-direction:column;background:#F8F9FA;color:#1b2430;border-radius:22px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)}
 .ms-top{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 14px;background:#fff;border-bottom:1px solid #eef0f3}
 .ms-logo{height:30px;width:auto;border-radius:8px}.ms-loc{font-size:11px;color:#8a94a3;font-weight:600}
@@ -5527,6 +5531,7 @@ function fitText(root) {
 let fitT = 0; window.addEventListener('resize', () => { clearTimeout(fitT); fitT = setTimeout(() => fitText(), 80); });
 try { document.fonts && document.fonts.ready.then(() => fitText()); } catch (e) { }
 function render() {
+  if (PEEK) { PEEK.pending = true; return; }   // banner peek on screen: keep the touched banner in place until the finger lifts
   normalizeCredits();
   try { maybeRatePrompt(); } catch (e) { }
   if (!S.consents || !S.consents.length) S.consents = seedConsents();
@@ -5690,7 +5695,7 @@ const A = {
   skip: m => { skip += Number(m) * MIN; if (SYNC.adapter && SYNC.ready) SYNC.adapter.update({ 'meta/offset': simOffset() }).catch(() => { }); tick(true); },
   theme: () => { document.documentElement.setAttribute('data-theme', isDark() ? 'light' : 'dark'); },
   closeModal: () => { S.modal = null; },
-  missionOpen: () => { S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
+  missionOpen: () => { peekEnd(true); S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
   missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
   missionBook: () => { S.modal = null; S.role = 'customer'; S.cust.screen = 'list'; S.cust.cat = null; },
   missionCat: c => { S.modal = null; A.openCat(c); },
@@ -6246,6 +6251,32 @@ document.addEventListener('change', e => {
 });
 let lastW = wide(), lastP = isPhone(); window.addEventListener('resize', () => { if (wide() !== lastW || isPhone() !== lastP) { lastW = wide(); lastP = isPhone(); render(); } });
 
+/* Home banner peek (touch screens): the story pop-up shows while a finger rests on the banner — even mid-scroll —
+   and goes away when the finger lifts. A quick tap still opens it for good (the normal click → missionOpen). */
+var PEEK = null;
+function peekEnd(keepModal) {
+  if (!PEEK) return; const p = PEEK; PEEK = null;
+  clearTimeout(p.tapTimer); p.el.classList.add('out'); setTimeout(() => p.el.remove(), keepModal ? 0 : 160);
+  if (p.pending && !keepModal) render();
+}
+document.addEventListener('touchstart', e => {
+  const btn = e.target.closest && e.target.closest('.mission-btn'); if (!btn || PEEK || S.modal || e.touches.length > 1) return;
+  const t = e.touches[0], el = document.createElement('div');
+  el.className = 'ms-peek'; el.setAttribute('aria-hidden', 'true');
+  el.innerHTML = missionModal() + '<div class="ms-peek-hint">Release to close · Tap the banner to open</div>';
+  document.body.appendChild(el);
+  PEEK = { el, btn, x: t.clientX, y: t.clientY, at: Date.now(), moved: false, pending: false, tapTimer: 0 };
+  const end = ev => {
+    btn.removeEventListener('touchmove', move); btn.removeEventListener('touchend', end); btn.removeEventListener('touchcancel', end);
+    if (!PEEK) return;
+    const tap = ev.type === 'touchend' && !PEEK.moved && Date.now() - PEEK.at < 350;
+    if (tap) PEEK.tapTimer = setTimeout(() => peekEnd(false), 450);   // the click that follows opens it for good; if none comes, close
+    else peekEnd(false);
+  };
+  const move = ev => { const m = ev.touches[0]; if (PEEK && m && Math.hypot(m.clientX - PEEK.x, m.clientY - PEEK.y) > 10) PEEK.moved = true; };
+  btn.addEventListener('touchmove', move, { passive: true }); btn.addEventListener('touchend', end); btn.addEventListener('touchcancel', end);
+}, { passive: true });
+window.addEventListener('blur', () => peekEnd(false));
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -6368,7 +6399,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 111;
+const BUILD = 112;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
