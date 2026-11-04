@@ -750,6 +750,12 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 @media (max-width:900px){.hp-grid{grid-template-columns:1fr}}
 .hp-head{gap:8px;text-align:left;width:100%;border:0;background:none;padding:0;color:inherit;font:inherit}
 .hp-head .pill{white-space:nowrap}
+/* payment method choice and the provider's next action */
+.pm-opt{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:inherit;width:100%;font:inherit}
+.pm-opt[aria-checked="true"]{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pm-badge{width:44px;height:32px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:12px;letter-spacing:.02em;flex-shrink:0}
+.pm-dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line)}
+.job-next .btn{height:56px;font-size:17px}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1243,6 +1249,7 @@ const pillFor = st => ({
 const statusPill = st => { const [c, t] = pillFor(st); return `<span class="pill ${c}">${t}</span>`; };
 
 /* =============== CUSTOMER APP =============== */
+const PAY_M = [['GCash', '0917 ••• 0142', '#007DFE', '#fff', 'G'], ['Maya', 'Linked account', '#0B0B0B', '#3EF58A', 'maya'], ['Card', 'Visa ending 4417', '#1A1F71', '#fff', 'VISA']];
 /* Search: every word typed must match a word in the name, service, category or area. Exact parts match first; a
    typo still matches (1 letter off for words of 3–5 letters, 2 for 6+), e.g. "Camela" finds Carmela. */
 const srchNorm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -1832,7 +1839,7 @@ function custOverlays() {
       ${c.pay.stage === 'confirm' ? `<div class="row between"><h3 style="font-size:17px">Confirm payment</h3><button class="iconbtn" data-act="closePay" aria-label="Close">${ic('x', 20)}</button></div>
         <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row between"><span>${esc(b.services.map(s => s.name).join(' + '))}</span><b class="num">${peso(b.gross)}</b></div><div class="row between small muted"><span>Arrival</span><span>${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min after payment'}</span></div></div>
         ${payExtras(b)}
-        <div class="row" style="gap:10px;padding:12px;border:1.5px solid var(--accent);border-radius:12px"><span class="avatar" style="width:36px;height:36px;border-radius:9px;background:#0A63F6;color:#fff;font-size:13px">${S.customer.pay === 'Card' ? 'VISA' : S.customer.pay[0]}</span><div class="col grow"><b>${esc(S.customer.pay)}</b><span class="small muted">${S.customer.pay === 'GCash' ? '0917 ••• 0142' : S.customer.pay === 'Maya' ? 'Linked account' : 'Visa ending 4417'}</span></div>${ic('check', 18)}</div>
+        <div class="col" style="gap:6px" role="radiogroup" aria-label="Payment method"><span class="eyebrow">Pay with</span>${PAY_M.map(([m, sub, bg, fg, tag]) => `<button class="pm-opt" role="radio" aria-checked="${S.customer.pay === m}" data-act="setPay" data-arg="${m}"><span class="pm-badge" style="background:${bg};color:${fg}">${tag}</span><span class="col grow" style="text-align:left"><b>${m}</b><span class="small muted">${sub}</span></span>${S.customer.pay === m ? ic('check', 18) : '<span class="pm-dot"></span>'}</button>`).join('')}</div>
         <button class="btn primary block" data-act="doPay">${payCalc(b).cash > 0 ? 'Pay ' + peso(payCalc(b).cash) : 'Confirm · nothing to pay'}</button><p class="tiny muted" style="text-align:center">Held by Ticktap until the service ends. Processed by a BSP-registered payment partner.</p><p class="tiny muted" style="text-align:center">${policyText()}</p>`
       : c.pay.stage === 'processing' ? `<div class="col" style="align-items:center;gap:12px;padding:30px 0"><div class="spin"></div><b>Processing ${peso(b.gross)}…</b></div>`
       : `<div class="col" style="align-items:center;gap:10px;padding:24px 0"><span class="avatar" style="width:56px;height:56px;background:var(--good-soft);color:var(--good)">${ic('check', 28)}</span><b style="font-size:17px">Paid</b><span class="small muted">The provider has been told to depart.</span></div>`}
@@ -1977,8 +1984,10 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack', `<button class="btn ghost xs" data-act="provHelp" data-arg="${b.id}">Help</button>`)}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
-    ${['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button><button class="btn block" style="background:var(--bad-dot);color:#fff" data-act="staffCall" data-arg="provider:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button>` : ''}
-    ${canTalk(b) ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
+    ${f ? `<div class="job-next" data-next="${b.status}">${f}</div>` : ''}
+    ${b.status === 'departed' ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
+    ${canTalk(b) && b.status !== 'paid' ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
+    ${['departed', 'arrived'].includes(b.status) ? `<button class="btn block" style="background:var(--bad-dot);color:#fff" data-act="staffCall" data-arg="provider:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button>` : ''}
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${b.reminders && b.reminders.length && b.status === 'paid' ? remindersCard(b) : ''}
     ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
@@ -1993,7 +2002,7 @@ function provJob() {
       <div class="divider"></div><div class="row between"><b>${led.payee === 'business' ? 'Paid to ' + esc(led.payeeName) : 'You receive'}</b><b class="num">${peso(led.net, 2)}</b></div></div>` : ''}
     <p class="tiny muted">Every time stamp on this job is saved to your record and used to set your platform fee rate.</p>
   </div>`;
-  return [h, f];
+  return [h, ''];   // the next action sits right under the status card, not in a footer
 }
 function provStatus() {
   const me = prov(S.prov.id), st = statusOf(me), w = weekHours(me), t = todayIdx();
@@ -6887,7 +6896,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 127;
+const BUILD = 128;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
