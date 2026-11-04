@@ -1243,10 +1243,30 @@ const pillFor = st => ({
 const statusPill = st => { const [c, t] = pillFor(st); return `<span class="pill ${c}">${t}</span>`; };
 
 /* =============== CUSTOMER APP =============== */
+/* Search: every word typed must match a word in the name, service, category or area. Exact parts match first; a
+   typo still matches (1 letter off for words of 3–5 letters, 2 for 6+), e.g. "Camela" finds Carmela. */
+const srchNorm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+function srchEdit(a, b, max) {   // edit distance with swaps (Damerau OSA), stops early past max
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let p2 = null, p = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) { const c = [i]; let lo = i;
+    for (let j = 1; j <= b.length; j++) { let v = Math.min(p[j] + 1, c[j - 1] + 1, p[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)); if (p2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, p2[j - 2] + 1); c.push(v); lo = Math.min(lo, v); }
+    if (lo > max) return max + 1; p2 = p; p = c; }
+  return p[b.length];
+}
+function srchMatch(o, q) {   // 2 = exact, 1 = close (typo), 0 = no match
+  const hay = srchNorm([o.name, o.area, catName(o.cat), (o.services || []).map(x => x.name).join(' ')].join(' ')), words = srchNorm(q).split(/\s+/).filter(Boolean);
+  if (!words.length) return 2; const toks = hay.split(/[^a-z0-9]+/).filter(Boolean); let exact = true;
+  for (const w of words) {
+    if (hay.includes(w)) continue; exact = false; if (w.length < 3) return 0; const max = w.length >= 6 ? 2 : 1;
+    if (!toks.some(t => srchEdit(w, t, max) <= max || (t.length > w.length && [w.length - 1, w.length, w.length + 1].some(n => srchEdit(w, t.slice(0, n), max - (w.length >= 6 ? 1 : 0)) <= max - (w.length >= 6 ? 1 : 0))))) return 0;
+  }
+  return exact ? 2 : 1;
+}
 function listEntries(cat, filter, q) {
   let out = S.providers.filter(p => p.active !== false && (!cat || p.cat === cat)).map(p => ({ kind: 'p', o: p, d: distTo(p) }));
   S.businesses.filter(b => !b.expelled && (!cat || b.cat === cat)).forEach(b => out.push({ kind: 'b', o: b, d: distTo(b) }));
-  if (q) { const s = q.toLowerCase(); out = out.filter(e => e.o.name.toLowerCase().includes(s) || e.o.services.some(x => x.name.toLowerCase().includes(s)) || catName(e.o.cat).toLowerCase().includes(s)); }
+  if (q && q.trim()) { out.forEach(e => { e.m = srchMatch(e.o, q); }); out = out.filter(e => e.m); if (out.some(e => e.m === 2)) out = out.filter(e => e.m === 2); else out.forEach(e => { e.close = true; }); }
   if (filter === 'ind') out = out.filter(e => e.kind === 'p' && e.o.type === 'individual');
   if (filter === 'biz') out = out.filter(e => e.kind === 'b' || e.o.type === 'staff');
   if (filter === 'now') out = out.filter(e => e.kind === 'b' ? bizGreen(e.o) > 0 : e.o.status === 'green');
@@ -1439,8 +1459,9 @@ function custList() {
       ${c.cat ? '' : `<label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
-      <span class="small muted">${all.length} results${pages > 1 ? ` · showing ${(pg - 1) * PER + 1}–${Math.min(pg * PER, all.length)}` : ''} · sorted by availability, then distance</span>
-      ${!covered() ? comingSoon() : items.map(e => entryCard(e)).join('') || '<div class="empty">No one matches. Try another filter.</div>'}
+      ${c.q && all.length && all[0].close ? `<span class="small" style="color:var(--accent)">No exact match for “${esc(c.q)}” · showing close matches</span>` : ''}
+      <span class="small muted">${all.length} result${all.length === 1 ? '' : 's'}${pages > 1 ? ` · showing ${(pg - 1) * PER + 1}–${Math.min(pg * PER, all.length)}` : ''} · sorted by availability, then distance</span>
+      ${!covered() ? comingSoon() : items.map(e => entryCard(e)).join('') || `<div class="empty">${c.q ? 'No one matches “' + esc(c.q) + '”. Check the spelling, or search a service such as haircut or massage.' : 'No one matches. Try another filter.'}</div>`}
       ${pager}
     </div>`;
 }
@@ -6866,7 +6887,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 126;
+const BUILD = 127;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
