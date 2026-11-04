@@ -1648,7 +1648,8 @@ function mapSvg(b, p) {
   </svg></div>`;
 }
 function custTrack() {
-  const b = bk(S.cust.bid), p = prov(b.pid), first = p.name.split(' ')[0];
+  const b = bk(S.cust.bid) || custActive(); if (!b || !prov(b.pid)) { S.cust.screen = 'home'; return custHome(); }
+  S.cust.bid = b.id; const p = prov(b.pid), first = p.name.split(' ')[0];
   const order = ['paid', 'departed', 'arrived', 'ended'];
   const idx = order.indexOf(b.status);
   const st = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
@@ -4586,7 +4587,7 @@ function ytdOf(eid, y, before) {
   }));
   return o;
 }
-function payCalc(e, R, opt = {}) {
+function prCalc(e, R, opt = {}) {
   const rt = rates(e), M = opt.att || attMap(), today = ymd(now()), mo = e.payType !== 'daily';
   const k = { expected: 0, present: 0, absent: 0, paidLeave: 0, unpaidLeave: 0, noRec: 0, projected: 0, late: 0, ut: 0, ot: 0, otRest: 0, otSpec: 0, otHol: 0, hRest: 0, hSpec: 0, hHol: 0, nd: 0, holPaid: 0, holWd: 0 };
   let full = R.h !== 'F';
@@ -4630,7 +4631,7 @@ function payCalc(e, R, opt = {}) {
   return { eid: e.id, name: e.name, no: e.no, pos: e.pos, tin: e.tin || '', mwe: !!e.mwe, payType: e.payType, rate: +e.rate, k, basic: r2(basic), absDed: r2(absDed), lateDed: r2(lateDed), earned: r2(earned), prem: r2(prem), otPay: r2(otPay), ndPay: r2(ndPay), gross: r2(gross), msc: s.msc, sss: r2(eeS), phic: r2(eeP), hdmf: r2(eeH), erSss: r2(s.er / div * live), ec: r2(s.ec / div * live), erPhic: r2(p.er / div * live), erHdmf: r2(h.er / div * live), taxable: r2(taxable), tax: r2(tax), annual, allow: r2(allow), loan: r2(loan), net: r2(net) };
 }
 const runOf = per => (S.payrolls || []).find(r => r.per === per && r.kind !== '13th');
-function runLines(per, opt) { const R = perRange(per), M = attMap(); return emps().filter(e => !e.exPay && e.hired <= R.to && (!e.sepDate || e.sepDate >= R.from)).map(e => payCalc(e, R, Object.assign({ att: M }, opt || {}))); }
+function runLines(per, opt) { const R = perRange(per), M = attMap(); return emps().filter(e => !e.exPay && e.hired <= R.to && (!e.sepDate || e.sepDate >= R.from)).map(e => prCalc(e, R, Object.assign({ att: M }, opt || {}))); }
 const linesOfMonth = ym => runsAll().filter(r => r.kind !== '13th' && r.per.startsWith(ym)).flatMap(r => r.lines);
 function th13Of(e, y) { const yt = ytdOf(e.id, y); return { earned: yt.earned, due: r2(yt.earned / 12), paid: r2(yt.th13) }; }
 function finalPay(e) {
@@ -4638,7 +4639,7 @@ function finalPay(e) {
   const y = +e.sepDate.slice(0, 4);
   const last = runsAll().filter(r => r.kind !== '13th' && r.lines.some(l => l.eid === e.id)).map(r => perRange(r.per)).sort((a, b) => a.to < b.to ? 1 : -1)[0];
   const from = last ? ymd(dayTs(last.to) + DAY + 3 * HOUR) : e.hired;
-  const unpaid = from <= e.sepDate ? payCalc(e, { per: 'F', y, m: +e.sepDate.slice(5, 7), h: 'F', semi: true, from, to: e.sepDate, label: 'Final period' }, { noAnnual: true }) : null;
+  const unpaid = from <= e.sepDate ? prCalc(e, { per: 'F', y, m: +e.sepDate.slice(5, 7), h: 'F', semi: true, from, to: e.sepDate, label: 'Final period' }, { noAnnual: true }) : null;
   const yt = ytdOf(e.id, y);
   const earnedY = yt.earned + (unpaid ? unpaid.earned : 0);
   const th13 = r2(Math.max(0, earnedY / 12 - yt.th13));
@@ -4723,7 +4724,7 @@ function seedHR() {
   S.payrolls = []; const M = attMap();
   for (let m = 1; m <= 10; m++) ['A', 'B'].forEach(h => {
     const per = '2026-' + pad2(m) + '-' + h, R = perRange(per);
-    const lines = S.employees.filter(e => e.hired <= R.to && (!e.sepDate || e.sepDate >= R.from)).map(e => payCalc(e, R, { att: M, assume: m < 10 }));
+    const lines = S.employees.filter(e => e.hired <= R.to && (!e.sepDate || e.sepDate >= R.from)).map(e => prCalc(e, R, { att: M, assume: m < 10 }));
     if (!lines.length) return;
     const paidAt = dayTs(h === 'A' ? R.ym + '-15' : R.to) + 15 * HOUR;
     S.payrolls.push({ id: 'PR-' + per, per, kind: 'regular', status: 'paid', lines, at: paidAt - 2 * DAY, by: 'Patricia L. Gomez', approvedBy: 'Daniel S. Reyes', paidAt, ref: 'BPI-PAY-' + per.replace(/-/g, '') });
@@ -4877,7 +4878,7 @@ function admAttendance() {
   ${ms.map(s => `<tr><td class="small"><b>${esc(s.name)}</b></td><td class="num">${s.expected}</td><td class="num">${s.present}</td><td class="num">${s.absent - s.noRec || '—'}</td><td class="num">${s.paidLeave || '—'}</td><td class="num">${s.unpaidLeave || '—'}</td><td class="num">${s.late || '—'}</td><td class="num">${s.ut || '—'}</td><td class="num">${s.ot || '—'}</td><td class="num">${s.noRec ? `<span style="color:var(--bad)">${s.noRec}</span>` : '—'}</td></tr>`).join('')}
   </tbody></table></div></div>`;
 }
-function attSum(e, ym, M) { const last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), to = ymd(Math.min(dayTs(ym + '-' + pad2(last)), dayTs(ymd(now())))) ; const c = payCalc(e, { per: 'S', y: +ym.slice(0, 4), m: +ym.slice(5, 7), h: 'F', semi: false, from: ym + '-01', to: to < ym + '-01' ? ym + '-01' : to }, { att: M || attMap(), noAnnual: true }); return Object.assign({ name: e.name, eid: e.id }, c.k, { ot: c.k.ot + c.k.otRest + c.k.otSpec + c.k.otHol }); }
+function attSum(e, ym, M) { const last = new Date(+ym.slice(0, 4), +ym.slice(5, 7), 0).getDate(), to = ymd(Math.min(dayTs(ym + '-' + pad2(last)), dayTs(ymd(now())))) ; const c = prCalc(e, { per: 'S', y: +ym.slice(0, 4), m: +ym.slice(5, 7), h: 'F', semi: false, from: ym + '-01', to: to < ym + '-01' ? ym + '-01' : to }, { att: M || attMap(), noAnnual: true }); return Object.assign({ name: e.name, eid: e.id }, c.k, { ot: c.k.ot + c.k.otRest + c.k.otSpec + c.k.otHol }); }
 
 function admPayroll() {
   const per = S.admin.prPer || curPer(), R = perRange(per), run = runOf(per), lines = run ? run.lines : runLines(per), ym = R.ym, y = R.y;
@@ -6230,7 +6231,7 @@ const A = {
   openBooking: id => { const b = bk(id); S.cust.bid = id; S.cust.screen = ['paid', 'departed', 'arrived', 'ended'].includes(b.status) ? 'track' : b.status === 'reviewed' ? 'track' : 'request'; },
   toBookings: () => { S.cust.screen = 'bookings'; },
   cancelReq: id => { const b = bk(id); b.status = 'cancelled'; logB(b, 'Customer cancelled the request'); if (b.pid) pushAlert('provider:' + b.pid, 'Request cancelled', b.id + ' was cancelled by the customer.', b.id); },
-  openPay: id => { S.cust.pay = { bid: id, stage: 'confirm' }; },
+  openPay: id => { S.cust.bid = id; S.cust.pay = { bid: id, stage: 'confirm' }; },
   closePay: () => { S.cust.pay = null; },
   custGo: sc => { S.cust.screen = sc; },
   custBackAccount: () => { S.cust.screen = 'account'; },
@@ -6250,7 +6251,7 @@ const A = {
       toast('provider', 'Payment received', `Depart now · arrive by ${fmtT(b.promisedAt)}.`);
       sendSms(p.phone, `Ticktap: Customer paid for ${b.id}. Arrive by ${fmtT(b.promisedAt)}.`);
       c.pay.stage = 'done'; render();
-      setTimeout(() => { c.pay = null; c.screen = 'track'; render(); }, 900);
+      setTimeout(() => { c.pay = null; c.bid = b.id; c.screen = 'track'; render(); }, 900);
     }, 1100);
   },
   declineOffer: id => { const b = bk(id); b.status = 'cancelled'; logB(b, 'Customer declined the arrival time'); pushAlert('provider:' + b.pid, 'Customer declined your time', b.id, b.id, 'bad'); toast('provider', 'Customer declined your arrival time', 'You stay on stand-by.'); S.cust.cat = prov(b.pid).cat; S.cust.screen = 'list'; },
@@ -6865,7 +6866,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 125;
+const BUILD = 126;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
