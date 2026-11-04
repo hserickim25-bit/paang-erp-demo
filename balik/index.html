@@ -294,6 +294,7 @@ button.li:hover{background:var(--surface-2)}
 .tl.m i.on.r{box-shadow:0 0 8px 2px rgba(255,45,45,.95),0 0 20px 5px rgba(255,45,45,.55)}.tl.m i.on.y{box-shadow:0 0 8px 2px rgba(255,214,10,.95),0 0 20px 5px rgba(255,190,0,.55)}.tl.m i.on.g{box-shadow:0 0 8px 2px rgba(34,240,138,.95),0 0 20px 5px rgba(0,220,110,.55)}
 .status-line{gap:8px}.status-line.big{font-size:14px}
 .status-line.green{color:var(--good)} .status-line.yellow{color:var(--warn)} .status-line.red{color:var(--bad)}
+.cg-note{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.4;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:8px 10px}.cg-note .ic{flex-shrink:0;margin-top:1px}.cg-note.hot{color:var(--bad);background:var(--bad-soft);font-weight:600}
 .sns-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}@media(min-width:520px){.sns-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .sns{height:40px;border-radius:10px;border:0;font:inherit;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:#fff;letter-spacing:.01em}
 .sns-facebook{background:#1877F2}.sns-instagram{background:linear-gradient(45deg,#F58529,#DD2A7B 45%,#8134AF 75%,#515BD4)}.sns-tiktok{background:#010101;text-shadow:-1px -1px 0 #25F4EE,1px 1px 0 #FE2C55}.sns-other{background:#F4C430;color:#111}
@@ -787,6 +788,50 @@ function availEditor(path, av, idp) {
 const peso = (n, d = 0) => { const v = Number(n || 0), r = Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: d }); return (v < 0 && +r.replace(/,/g, '') ? '−' : '') + '₱' + r; };
 const pct = n => Math.round(n) + '%';
 const mmss = ms => { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+/* ---------- contact guard: phone numbers, emails and social accounts are never exchanged inside Ticktap ---------- */
+const CG_MAX_DIGITS = 6;   // most digits one message or text field may hold (times, prices, unit numbers still fit)
+const CG_WORDS = { zero: 0, oh: 0, one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, sero: 0, isa: 1, dalawa: 2, tatlo: 3, apat: 4, lima: 5, anim: 6, pito: 7, walo: 8, siyam: 9 };
+const CG_TXT = { phone: 'Phone numbers', email: 'Email addresses', social: 'Social media or messaging accounts', digits: 'Long numbers' };
+function cgDigits(t) {   // normalise tricks: full-width digits, number words, O/l used as 0/1 next to digits
+  let s = String(t || '').normalize('NFKC').toLowerCase();
+  s = s.replace(/\b(zero|oh|one|two|three|four|five|six|seven|eight|nine|sero|isa|dalawa|tatlo|apat|lima|anim|pito|walo|siyam)\b/g, w => CG_WORDS[w]);
+  for (let i = 0; i < 2; i++) s = s.replace(/(\d)[ol](?=[\s.\-]*\d|$|\D)/g, (m, d, x) => d + (m[1] === 'o' ? '0' : '1')).replace(/(^|\D)[o](?=\d)/g, '$10');
+  return s;
+}
+function cgCheck(t) {
+  const raw = String(t || ''); if (!raw.trim()) return { ok: true, digits: 0 };
+  const s = cgDigits(raw), digits = (s.match(/\d/g) || []).length;
+  const joined = s.replace(/(\d)[\s.\-()\/_*#,+]+(?=\d)/g, '$1');
+  if ((joined.match(/\d{7,}/) || []).length || /(\+?63|\b0)\s*9\d{2}/.test(joined) && digits >= 7) return { ok: false, kind: 'phone', digits };
+  if (/[a-z0-9._%+-]+\s*(@|\(at\)|\[at\]|\sat\s)\s*[a-z0-9-]+\s*(\.|\sdot\s)\s*[a-z]{2,}/.test(s)) return { ok: false, kind: 'email', digits };
+  if (/\b(viber|whats\s?app|telegram|wechat|line\s?id|signal\s?app|fb\.com|facebook\.com|instagram\.com|tiktok\.com|t\.me|wa\.me|m\.me)\b/.test(s) || /(^|\s)@[a-z0-9_.]{3,}/.test(s) || /\b(ig|fb|insta|tg)\s*[:=]\s*\S{3,}/.test(s)) return { ok: false, kind: 'social', digits };
+  if (digits >= 10) return { ok: false, kind: 'phone', digits };
+  if (digits > CG_MAX_DIGITS) return { ok: false, kind: 'digits', digits };
+  return { ok: true, digits };
+}
+const cgMsg = kind => `${CG_TXT[kind] || 'Contact details'} can't be shared in Ticktap. Keep calls and messages in the app: it protects both of you, and bookings made outside Ticktap are not covered.`;
+function cgNote(path, always) {   // warning under a guarded field
+  const w = S.cgWarn; const hot = w && w.path === path && now() - w.at < 9000;
+  if (!hot && !always) return '';
+  return `<div class="cg-note ${hot ? 'hot' : ''}" role="${hot ? 'alert' : 'note'}">${ic('shield', 15)}<span>${hot ? cgMsg(w.kind) : 'Phone numbers, emails and social accounts cannot be shared here. Up to ' + CG_MAX_DIGITS + ' digits per message.'}</span></div>`;
+}
+/* photo check: reads text in pictures customers will see (OCR, loaded only when needed) */
+const OCR_CDN = 'https://cdn.jsdelivr.net/npm/';
+let OCR_W = null;
+function ocrWorker() {
+  if (OCR_W) return OCR_W;
+  OCR_W = new Promise((ok, no) => { if (window.Tesseract) return ok(window.Tesseract); const s = document.createElement('script'); s.src = OCR_CDN + 'tesseract.js@5.1.1/dist/tesseract.min.js'; s.onload = () => ok(window.Tesseract); s.onerror = no; document.head.appendChild(s); })
+    .then(T => T.createWorker('eng', 1, { workerPath: OCR_CDN + 'tesseract.js@5.1.1/dist/worker.min.js', corePath: OCR_CDN + 'tesseract.js-core@5.1.1', langPath: OCR_CDN + '@tesseract.js-data/eng@1.0.0/4.0.0_best_int', logger: () => { } }));
+  OCR_W.catch(() => { OCR_W = null; });
+  return OCR_W;
+}
+async function photoCheck(url) {
+  try {
+    const w = await Promise.race([ocrWorker(), new Promise((_, no) => setTimeout(() => no(new Error('timeout')), 25000))]);
+    const { data } = await w.recognize(url); const r = cgCheck(data.text || '');
+    return { ok: r.ok || r.kind === 'digits', kind: r.kind, checked: true };
+  } catch (e) { return { ok: true, checked: false }; }   // checker unavailable (offline): accept; production re-checks on the server
+}
 const clip = t => { try { const p = navigator.clipboard && navigator.clipboard.writeText(t); if (p && p.catch) p.catch(() => { }); } catch (e) { } };   // copy without unhandled rejections
 const haversine = (a, b) => {
   const R = 6371, r = x => x * Math.PI / 180;
@@ -1630,7 +1675,7 @@ function custReview() {
       <div class="row" style="justify-content:center;gap:4px" role="group" aria-label="Rating">${[1, 2, 3, 4, 5].map(n => `<button data-act="setStars" data-arg="${n}" aria-label="${n} stars" style="border:0;background:transparent;font-size:40px;line-height:1;padding:2px;color:${n <= r.stars ? '#E8A400' : 'var(--line-2)'}">★</button>`).join('')}</div>
       <span class="small" style="text-align:center;font-weight:600">${words[r.stars]}</span>
       <div class="row" style="flex-wrap:wrap;gap:8px;justify-content:center">${TAGS.map(t => `<button class="chip" data-act="toggleTag" data-arg="${t}" aria-pressed="${r.tags.includes(t)}">${t}</button>`).join('')}</div>
-      <label class="field">Your review<textarea id="c-rev-text" class="textarea" data-bind="cust.review.text" placeholder="What did you like? What could be better?">${esc(r.text)}</textarea></label>
+      <label class="field">Your review<textarea id="c-rev-text" class="textarea" data-guard="1" data-bind="cust.review.text" placeholder="What did you like? What could be better?">${esc(r.text)}</textarea></label>${cgNote('cust.review.text')}
     </div>`;
   const f = `<button class="btn primary block" data-act="submitReview">Submit review</button><button class="btn ghost sm" data-act="toBookings">Later</button>`;
   return [h, f];
@@ -2625,18 +2670,18 @@ function bgEditor(me, i) {
   if (me.intro == null) me.intro = introOf(me);
   const n = String(me.intro || '').length;
   return `<div class="card" style="gap:10px"><div class="row between"><b>About me</b><span class="tiny muted">Shown on your profile</span></div>
-    <label class="field">Introduce yourself (up to ${BG_MAX} characters)<textarea id="p-intro" class="textarea" maxlength="${BG_MAX}" data-bind="providers.${i}.intro" placeholder="e.g. Hilot and deep-tissue specialist, 9 years in hotel spas." oninput="var c=document.getElementById('p-intro-n');if(c)c.textContent=this.value.length+'/${BG_MAX}'">${esc(me.intro || '')}</textarea><span id="p-intro-n" class="tiny muted" style="text-align:right">${n}/${BG_MAX}</span></label>
+    <label class="field">Introduce yourself (up to ${BG_MAX} characters)<textarea id="p-intro" class="textarea" maxlength="${BG_MAX}" data-guard="1" data-bind="providers.${i}.intro" placeholder="e.g. Hilot and deep-tissue specialist, 9 years in hotel spas." oninput="var c=document.getElementById('p-intro-n');if(c)c.textContent=this.value.length+'/${BG_MAX}'">${esc(me.intro || '')}</textarea><span id="p-intro-n" class="tiny muted" style="text-align:right">${n}/${BG_MAX}</span></label>${cgNote('providers.' + i + '.intro')}
     <div class="row" style="gap:10px"><label class="field grow">Gender<select id="p-gender" class="select" data-bind="providers.${i}.gender"><option value="">Prefer not to say</option><option value="female" ${me.gender === 'female' ? 'selected' : ''}>Female</option><option value="male" ${me.gender === 'male' ? 'selected' : ''}>Male</option></select></label><label class="field" style="width:120px">Birth year<input id="p-by" class="input num" inputmode="numeric" maxlength="4" data-bind="providers.${i}.birthYear" data-type="num" value="${esc(me.birthYear || '')}" placeholder="1990"></label></div>
     <span class="tiny muted">Gender and birth year are private and used only for Ticktap notices.</span>
     <span class="tiny muted">Customers see the first ${BG_SHOW} characters. "Read more" shows the rest and your photos.</span>
     <div class="bg-ed">${me.bgPhotos.map((u, k) => `<div class="bg-ed-ph"><img src="${phSrc(u)}" alt="Your photo ${k + 1}"><button class="iconbtn" data-act="bgDel" data-arg="${k}" aria-label="Remove photo ${k + 1}">${ic('x', 14)}</button></div>`).join('')}
-      ${me.bgPhotos.length < BG_PHOTOS ? `<label class="bg-ed-add">${ic('camera', 20)}<span class="tiny">Add photo<br>${me.bgPhotos.length}/${BG_PHOTOS}</span><input type="file" accept="image/*" class="sr" data-file="providers.${i}.bgPhotos" data-compress="wide" id="p-bgph"></label>` : ''}</div>
+      ${me.bgPhotos.length < BG_PHOTOS ? `<label class="bg-ed-add">${ic('camera', 20)}<span class="tiny">Add photo<br>${me.bgPhotos.length}/${BG_PHOTOS}</span><input type="file" accept="image/*" class="sr" data-file="providers.${i}.bgPhotos" data-ocr="1" data-compress="wide" id="p-bgph"></label>` : ''}</div>
     <span class="tiny muted">Up to ${BG_PHOTOS} photos of your work, tools or certificates.</span></div>`;
 }
 function provAccount() {
   const me = prov(S.prov.id), i = S.providers.indexOf(me);
   return `${provHeader('Account')}<div class="scroll" data-scroll="p-acc">
-    <div class="card" style="align-items:center;text-align:center">${avatar(me.name, me.hue, 96)}<label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} Change photo<input type="file" accept="image/*" class="sr" data-file="providers.${i}.photo" data-compress="1" id="p-photo"></label><b style="font-size:18px">${esc(me.name)}</b><span class="small muted">${catName(me.cat)} · ${me.years} yrs · ${esc(me.area)}</span>${me.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
+    <div class="card" style="align-items:center;text-align:center">${avatar(me.name, me.hue, 96)}<label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} Change photo<input type="file" accept="image/*" class="sr" data-file="providers.${i}.photo" data-ocr="1" data-compress="1" id="p-photo"></label><b style="font-size:18px">${esc(me.name)}</b><span class="small muted">${catName(me.cat)} · ${me.years} yrs · ${esc(me.area)}</span>${me.returning ? '<span class="ret">Returning pro</span>' : ''}</div>
     ${bgEditor(me, i)}
     <div class="card"><span class="eyebrow">Your household goal</span><label class="field">Monthly goal (₱)<input id="p-goal" class="input num" type="number" min="0" step="1000" data-bind="providers.${i}.goal" value="${me.goal}"></label><span class="small muted">We show your progress on the Jobs screen.</span></div>
     <div class="list">
@@ -2666,7 +2711,7 @@ function provApply() {
       <div class="photo-up ${a.photo ? 'has' : ''}">
         <span class="pu-img">${a.photo ? `<img src="${a.photo}" alt="Your profile photo">` : ic('camera', 30)}</span>
         <div class="col" style="gap:6px"><b>Profile photo <span style="color:var(--bad)">*</span></b><span class="small muted">Required. Face clearly visible, good light, plain background. Customers see it before booking, and we match it to your ID.</span>
-          <div class="row" style="gap:6px;flex-wrap:wrap"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${a.photo ? 'Retake / change' : 'Take or upload photo'}<input type="file" accept="image/*" capture="user" class="sr" data-file="prov.apply.photo" data-compress="1" id="ap-photo"></label><button class="btn ghost xs" data-act="apSample">Use sample photo (demo)</button></div></div></div>
+          <div class="row" style="gap:6px;flex-wrap:wrap"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${a.photo ? 'Retake / change' : 'Take or upload photo'}<input type="file" accept="image/*" capture="user" class="sr" data-file="prov.apply.photo" data-ocr="1" data-compress="1" id="ap-photo"></label><button class="btn ghost xs" data-act="apSample">Use sample photo (demo)</button></div></div></div>
       <label class="field">Full name<input id="ap-name" class="input" data-bind="prov.apply.name" value="${esc(a.name)}"></label>
       <label class="field">What do you do?<select id="ap-cat" class="select" data-bind="prov.apply.cat">${CATS.map(c => `<option value="${c.id}" ${a.cat === c.id ? 'selected' : ''}>${c.name}</option>`).join('')}</select></label>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="field">Years of experience<input id="ap-years" class="input num" type="number" min="0" data-bind="prov.apply.years" value="${a.years}"></label><label class="field">Last worked<input id="ap-last" class="input num" type="number" min="1980" max="2026" data-bind="prov.apply.last" value="${a.last}"></label></div>
@@ -2797,7 +2842,7 @@ function bizStaff(b) {
         <label class="field">Years of experience<input id="bs-years" class="input num" type="number" min="0" data-bind="providers.${ei}.years" value="${ed.years}"></label>
         <label class="field">Status today<select id="bs-status" class="select" data-bind="providers.${ei}.status"><option value="green" ${ed.status === 'green' ? 'selected' : ''}>Stand by (green)</option><option value="yellow" ${ed.status === 'yellow' ? 'selected' : ''}>Away (yellow)</option><option value="red" ${ed.status === 'red' ? 'selected' : ''}>Off today (red)</option></select></label>
       </div>
-      <label class="field">Background shown to customers<textarea id="bs-story" class="textarea" data-bind="providers.${ei}.story">${esc(ed.story)}</textarea></label>
+      <label class="field">Background shown to customers<textarea id="bs-story" class="textarea" data-guard="1" data-bind="providers.${ei}.story">${esc(ed.story)}</textarea></label>${cgNote('providers.' + ei + '.story')}
       <span class="small muted">Changes save automatically. ID, TIN and photo can only be changed by the therapist, then re-checked by Ticktap.</span></div></div>` : ''}
     ${bizStaffFees(b)}
     ${bizStaffAccounts(b)}`;
@@ -2871,18 +2916,18 @@ function bizProfile(b) {
     <div class="page-h"><div><h1>Business profile</h1><p>Customers see your name, rating, description, menu and the distance from your address. Changes save automatically.</p></div><span class="pill good">${ic('check', 14)} Saved</span></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Details</h3></div><div class="panel-b">
       <div class="formgrid">${f('Business name', 'name', 'maxlength="60"')}${f('Owner / authorized person', 'owner')}${f('Contact mobile', 'phone', 'inputmode="tel"')}${f('Address', 'area')}</div>
-      <label class="field">Description shown to customers<textarea id="bp-story" class="textarea" data-bind="businesses.${bi}.story">${esc(b.story)}</textarea></label>
+      <label class="field">Description shown to customers<textarea id="bp-story" class="textarea" data-guard="1" data-bind="businesses.${bi}.story">${esc(b.story)}</textarea></label>${cgNote('businesses.' + bi + '.story')}
       <div class="divider"></div><span class="eyebrow">Registration & payout</span>
       <div class="formgrid">${f('DTI / SEC registration', 'dti')}${f('Business TIN', 'tin')}${f("Mayor's permit", 'permit')}${f('Settlement account', 'bank')}</div>
       <span class="small muted">Registration numbers are re-checked by Ticktap when changed. Payouts go to the settlement account.</span>
     </div></div>
     <div class="narrow panel"><div class="panel-h"><h3>Logo and promotional photos</h3></div><div class="panel-b">
       <div class="row" style="gap:14px;align-items:center">${bizLogo(b, 84, 20, 40, false)}<div class="col" style="gap:6px"><b class="small">Business logo</b><span class="tiny muted">Square image, shown on your listing and to customers.</span>
-        <div class="row" style="gap:6px"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${b.logo ? 'Change logo' : 'Upload logo'}<input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.logo" data-compress="1" id="bp-logo"></label>${b.logo ? '<button class="btn ghost xs" data-act="bizRmLogo">Remove</button>' : ''}</div></div></div>
+        <div class="row" style="gap:6px"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${b.logo ? 'Change logo' : 'Upload logo'}<input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.logo" data-ocr="1" data-compress="1" id="bp-logo"></label>${b.logo ? '<button class="btn ghost xs" data-act="bizRmLogo">Remove</button>' : ''}</div></div></div>
       <div class="divider"></div>
       <b class="small">Promotional photos · ${(b.photos || []).length} of 3</b><span class="tiny muted">Your space, team or results. Customers see them at the top of your page.</span>
       <div class="bizphotos">${(b.photos || []).map((u, k) => `<span class="bp"><img src="${u}" alt="Photo ${k + 1}"><button class="iconbtn" data-act="bizRmPhoto" data-arg="${k}" aria-label="Remove photo ${k + 1}">${ic('x', 14)}</button></span>`).join('')}
-        ${(b.photos || []).length < 3 ? `<label class="bp add">${ic('plus', 22)}<span class="tiny">Add photo</span><input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.photos" data-compress="wide" id="bp-photo"></label>` : ''}</div>
+        ${(b.photos || []).length < 3 ? `<label class="bp add">${ic('plus', 22)}<span class="tiny">Add photo</span><input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.photos" data-ocr="1" data-compress="wide" id="bp-photo"></label>` : ''}</div>
     </div></div></div>`;
 }
 function bizServices(b) {
@@ -4077,14 +4122,26 @@ function chatSheet(role) {
     <div class="row between"><div class="col" style="gap:2px"><b style="font-size:17px">${esc(who)}</b><span class="tiny muted">${b.id} · in-app messages · closes when the service ends</span></div>
       <div class="row" style="gap:6px"><button class="iconbtn" data-act="callStart" data-arg="${role}:${b.id}" aria-label="Call ${esc(who)}">${ic('phone', 20)}</button><button class="iconbtn" data-act="chatClose" data-arg="${role}" aria-label="Close">${ic('x', 20)}</button></div></div>
     <div class="chatlog" data-scroll="chat-${k}">${(b.chat || []).length ? b.chat.map(m => `<div class="bub ${m.from === k ? 'me' : ''}"><span>${esc(m.text)}</span><i>${fmtT(m.at)}</i></div>`).join('') : `<div class="empty" style="margin:auto">Say hello to ${esc(who)}. Phone numbers stay private.</div>`}</div>
+    ${cgNote((role === 'customer' ? 'cust' : 'prov') + '.chatDraft', true)}
     <div class="row" style="gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px">${quick.map(q => `<button class="chip" style="flex-shrink:0" data-act="chatQuick" data-arg="${role}|${esc(q)}">${esc(q)}</button>`).join('')}</div>
-    <div class="row" style="gap:8px"><input id="chat-in-${k}" class="input grow" data-bind="${role === 'customer' ? 'cust' : 'prov'}.chatDraft" data-enter="chatSend" data-enter-arg="${role}" value="${esc(st.chatDraft || '')}" placeholder="Write a message" autocomplete="off"><button class="btn primary sm" data-act="chatSend" data-arg="${role}" ${(st.chatDraft || '').trim() ? '' : 'disabled'}>Send</button></div>
+    <div class="row" style="gap:8px"><input id="chat-in-${k}" class="input grow" data-bind="${role === 'customer' ? 'cust' : 'prov'}.chatDraft" data-guard="1" data-enter="chatSend" data-enter-arg="${role}" value="${esc(st.chatDraft || '')}" placeholder="Write a message" autocomplete="off"><button class="btn primary sm" data-act="chatSend" data-arg="${role}" ${(st.chatDraft || '').trim() ? '' : 'disabled'}>Send</button></div>
   </div></div>`;
+}
+function cgStrike(role, kind) {   // count blocked attempts per booking; the third one alerts Ticktap staff
+  const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat); if (!b) return;
+  const k = myRoleKey(role); b.cgTries = b.cgTries || {}; b.cgTries[k] = (b.cgTries[k] || 0) + 1;
+  if (b.cgTries[k] === 3) pushAlert('admin', 'Contact sharing blocked 3 times', (role === 'customer' ? 'Customer ' + (b.customer || '') : 'Provider ' + (prov(b.pid) || {}).name) + ' · ' + b.id + ' · ' + (CG_TXT[kind] || kind), b.id);
 }
 function sendChat(role, text) {
   const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat); text = String(text || '').trim().slice(0, 500);
   if (!b || !canTalk(b) || !text) return;
-  const k = myRoleKey(role); b.chat = b.chat || []; b.chat.push({ from: k, text, at: now() });
+  const k = myRoleKey(role), path = (role === 'customer' ? 'cust' : 'prov') + '.chatDraft';
+  // a number sent in pieces: short messages that are mostly digits, added up over the last 15 minutes
+  const dg = t => (cgDigits(t).match(/\d/g) || []).length, mostly = t => { const x = cgDigits(t).replace(/\s/g, ''); return x.length > 0 && dg(t) / x.length >= 0.5; };
+  const r = cgCheck(text), pieces = (b.chat || []).filter(m => m.from === k && now() - m.at < 15 * MIN && mostly(m.text)).reduce((a, m) => a + dg(m.text), 0);
+  const split = r.ok && mostly(text) && pieces + r.digits >= 7;
+  if (!r.ok || split) { S.cgWarn = { path, kind: split ? 'phone' : r.kind, at: now() }; cgStrike(role, split ? 'phone' : r.kind); return; }
+  b.chat = b.chat || []; b.chat.push({ from: k, text, at: now() });
   b.chatSeen = b.chatSeen || {}; b.chatSeen[k] = b.chat.length;
   if (role === 'customer') { pushAlert('provider:' + b.pid, 'Message from ' + otherName(b, 'provider'), text, b.id); if (S.role === 'both') toast('provider', 'Message from ' + otherName(b, 'provider'), text); }
   else { pushAlert('customer', 'Message from ' + otherName(b, 'customer'), text, b.id); if (S.role === 'both') toast('customer', 'Message from ' + otherName(b, 'customer'), text); }
@@ -5488,7 +5545,7 @@ function authActivate() {
   } else if (st === 3) {
     body = `<h2 style="font-size:22px">Your profile photo</h2><p class="small muted">Required. Customers see it on ${esc(b ? b.name : 'your business')}'s listing and before booking you.</p>
       <div class="photo-up ${f.photo ? 'has' : ''}"><span class="pu-img">${f.photo ? `<img src="${f.photo}" alt="Your photo">` : ic('camera', 30)}</span><div class="col" style="gap:6px"><b>Profile photo <span style="color:var(--bad)">*</span></b>
-        <div class="row" style="gap:6px;flex-wrap:wrap"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${f.photo ? 'Change' : 'Take or upload'}<input type="file" accept="image/*" capture="user" class="sr" data-file="auth.f.photo" data-compress="1" id="ac-photo"></label><button class="btn ghost xs" data-act="acSample">Use sample photo (demo)</button></div></div></div>`;
+        <div class="row" style="gap:6px;flex-wrap:wrap"><label class="btn secondary xs" style="cursor:pointer">${ic('camera', 14)} ${f.photo ? 'Change' : 'Take or upload'}<input type="file" accept="image/*" capture="user" class="sr" data-file="auth.f.photo" data-ocr="1" data-compress="1" id="ac-photo"></label><button class="btn ghost xs" data-act="acSample">Use sample photo (demo)</button></div></div></div>`;
     cta = `<button class="btn primary block" data-act="acNext" ${f.photo ? '' : 'disabled'}>Continue</button>`;
   } else {
     body = `<h2 style="font-size:22px">Create your password</h2><p class="small muted">Login ID: <b>${esc(acc ? acc.loginId : '')}</b></p>
@@ -6332,6 +6389,14 @@ const onBind = (e, live) => {
   if (el.dataset.promoitem) { const m = /^providers\.(\d+)\.promo\.items\.(.+)$/.exec(path); if (m) { const pr = S.providers[+m[1]].promo; pr.items = pr.items || {}; pr.items[decodeURIComponent(m[2])] = Math.max(0, Math.min(70, Number(el.value) || 0)); render(); return; } }
   const svcName = path.match(/^providers\.(\d+)\.services\.(\d+)\.name$/);
   const wasEmpty = svcName && !String(getPath(path) || '').trim();
+  if (el.dataset.guard && typeof v === 'string') {
+    const r = cgCheck(v);
+    if (!r.ok) {
+      el.value = String(getPath(path) || ''); S.cgWarn = { path, kind: r.kind, at: now() };
+      if (/chatDraft$/.test(path)) cgStrike(path.startsWith('cust') ? 'customer' : 'provider', r.kind);
+      render(); return;
+    }
+  }
   setPath(path, v);
   if (svcName && wasEmpty && String(v).trim()) S.providers[svcName[1]].services[svcName[2]].on = true;
   if (path === 'prov.id') { S.prov.screen = 'jobs'; S.prov.apply = null; }
@@ -6344,7 +6409,7 @@ document.addEventListener('compositionstart', () => { composing = true; });
 document.addEventListener('compositionend', e => { composing = false; if (e.target.dataset && e.target.dataset.bind) onBind(e, true); });
 document.addEventListener('change', e => { const el = e.target; if (el && el.dataset && el.dataset.actChange === 'calPick') { const m = new Date(S.cust.calMonth || now()); let y = m.getFullYear(), mo = m.getMonth(); if (el.dataset.which === 'y') y = Number(el.value); else mo = Number(el.value); S.cust.calMonth = new Date(y, mo, 1).getTime(); render(); } });
 document.addEventListener('keydown', e => { const el = e.target; if (e.key === 'Enter' && !e.isComposing && el && el.dataset && el.dataset.enter && A[el.dataset.enter]) { e.preventDefault(); A[el.dataset.enter](el.dataset.enterArg); render(); } });
-document.addEventListener('input', e => { if (e.isComposing || composing) { if (e.target.dataset && e.target.dataset.bind) setPath(e.target.dataset.bind, e.target.value); return; } if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
+document.addEventListener('input', e => { if (e.isComposing || composing) { if (e.target.dataset && e.target.dataset.bind && !(e.target.dataset.guard && !cgCheck(e.target.value).ok)) setPath(e.target.dataset.bind, e.target.value); return; } if (e.target.dataset && e.target.dataset.bind && e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onBind(e, true); });
 document.addEventListener('change', e => {
   const el = e.target;
   if (el.dataset && el.dataset.doc) {
@@ -6358,7 +6423,16 @@ document.addEventListener('change', e => {
   }
   if (el.dataset && el.dataset.file) {
     const f = el.files && el.files[0]; if (!f) return;
-    const put = url => { const cur = getPath(el.dataset.file); if (Array.isArray(cur)) cur.push(url); else setPath(el.dataset.file, url); render(); };
+    const put0 = url => { const cur = getPath(el.dataset.file); if (Array.isArray(cur)) cur.push(url); else setPath(el.dataset.file, url); render(); };
+    const put = url => {
+      if (!el.dataset.ocr) return put0(url);
+      const role = S.auth && S.auth.screen ? 'auth' : S.role === 'business' ? 'business' : S.role === 'customer' ? 'customer' : 'provider';
+      S.ocrBusy = el.dataset.file; toast(role, 'Checking photo', 'Looking for phone numbers or contact details in the picture…'); render();
+      photoCheck(url).then(r => { S.ocrBusy = null;
+        if (r.ok) { if (!r.checked) S.ocrUnchecked = (S.ocrUnchecked || 0) + 1; return put0(url); }
+        S.cgWarn = { path: el.dataset.file, kind: r.kind, at: now() };
+        toast(role, 'Photo not added', (CG_TXT[r.kind] || 'Contact details') + ' were found in the picture. Photos customers see cannot show contact details.'); render(); });
+    };
     const rd = new FileReader(); rd.onload = () => {
       if (!el.dataset.compress) return put(rd.result);
       if (el.dataset.compress === 'wide') { const img = new Image(); img.onload = () => { const m = 1200, sc = Math.min(1, m / Math.max(img.width, img.height)); const cv = document.createElement('canvas'); cv.width = Math.round(img.width * sc); cv.height = Math.round(img.height * sc); cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); const cur = getPath(el.dataset.file); if (Array.isArray(cur) && cur.length >= 3) return; put(cv.toDataURL('image/jpeg', .8)); }; img.src = rd.result; return; }
@@ -6407,7 +6481,7 @@ const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
 const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
-window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
+window.__balikGuard = cgCheck; window.__ocrTest = photoCheck; window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
 function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
@@ -6520,7 +6594,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 117;
+const BUILD = 118;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
