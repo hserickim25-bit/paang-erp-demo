@@ -741,6 +741,15 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .form2307{border:1.5px solid var(--fg);border-radius:6px;padding:14px;font-size:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
 .form2307 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}
 .form2307 .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+/* Help & disputes */
+.hp-sheet{gap:12px}
+.hp-msg{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:12px;background:var(--surface-2,var(--bg));border:1px solid var(--line);max-width:92%}
+.hp-msg.staff{align-self:flex-start;background:var(--accent-soft);border-color:transparent}
+.hp-msg.member{align-self:flex-end}
+.hp-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:14px;align-items:start}
+@media (max-width:900px){.hp-grid{grid-template-columns:1fr}}
+.hp-head{gap:8px;text-align:left;width:100%;border:0;background:none;padding:0;color:inherit;font:inherit}
+.hp-head .pill{white-space:nowrap}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1724,6 +1733,7 @@ function custAccount() {
       <button class="li" data-act="custGo" data-arg="points">${ic('sparkle', 20)}<div class="col grow"><b>Ticktap Points</b><span class="small muted">${ptBal(S.customer.cid || 'me')} points · earn 1 for every ${peso(PTS().per)}</span></div><b class="num" style="color:var(--accent)">${ptBal(S.customer.cid || 'me')}</b>${ic('chev', 16)}</button>
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
+      <button class="li" data-act="custHelp" data-arg="acct">${ic('chat', 20)}<div class="col grow"><b>Help & reports</b><span class="small muted">Report a problem · we reply within 48 hours${tkMine('customer').some(x => x.status === 'open' && x.needs === 'member') ? ' · <b style="color:var(--accent)">new reply</b>' : ''}</span></div>${ic('chev', 16)}</button>
       <button class="li" data-act="staffCall" data-arg="customer:">${ic('headset', 20)}<div class="col grow"><b>Connect to Ticktap staff</b><span class="small muted">In-app voice call with our support team</span></div>${ic('chev', 16)}</button>
     </div>
     ${mktCard('c:' + (S.customer.cid || 'me'))}
@@ -1806,9 +1816,7 @@ function custOverlays() {
       : `<div class="col" style="align-items:center;gap:10px;padding:24px 0"><span class="avatar" style="width:56px;height:56px;background:var(--good-soft);color:var(--good)">${ic('check', 28)}</span><b style="font-size:17px">Paid</b><span class="small muted">The provider has been told to depart.</span></div>`}
     </div></div>`;
   }
-  if (c.help) o += `<div class="overlay" data-act="closeSheets"><div class="sheet" data-stop="1"><div class="grab"></div><h3 style="font-size:17px">How can we help?</h3>
-    ${['Provider is late', 'Change the address', 'Something went wrong', 'Cancel this booking'].map(t => `<button class="opt" data-act="helpPick" data-arg="${t}">${ic('chev', 18)}<span class="grow">${t}</span></button>`).join('')}
-    <p class="tiny muted">Support line: <span class="num" style="user-select:all">+63 2 8888 2254</span></p></div></div>`;
+  if (c.help) o += helpSheet('customer');
   return o;
 }
 
@@ -1944,7 +1952,7 @@ function provJob() {
   if (['ended', 'reviewed'].includes(b.status)) { hero = `<div class="card"><div class="row"><span class="dot green" style="width:12px;height:12px"></span><b style="font-size:17px">Service ended · you're on green</b></div><span class="small muted">${b.autoEnded ? 'Ended automatically at the shown service time.' : 'Ended ' + fmtT(b.endedAt) + '.'} The customer was asked to rate you. Change your status if you need to:</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['green', 'Stand by'], ['yellow', 'Away 1 h'], ['red', 'Off today']].map(([k, l]) => `<button class="btn secondary xs" data-act="${k === 'yellow' ? 'setAway' : 'setStatus'}" data-arg="${k === 'yellow' ? 1 : k}" style="height:38px"><span class="dot ${k}"></span>${l}</button>`).join('')}</div></div>`; f = `<button class="btn secondary block" data-act="provTab" data-arg="jobs">Back to jobs</button>`; }
   const led = b.ledger;
-  const h = `${bar('Job ' + b.id, 'provBack')}<div class="scroll" data-scroll="p-job">
+  const h = `${bar('Job ' + b.id, 'provBack', `<button class="btn ghost xs" data-act="provHelp" data-arg="${b.id}">Help</button>`)}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
     ${['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button><button class="btn block" style="background:var(--bad-dot);color:#fff" data-act="staffCall" data-arg="provider:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button>` : ''}
@@ -2702,6 +2710,7 @@ function provAccount() {
       <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Reward credits & platform fee</b><span class="small muted">${me.credits} credits · ${tierRate(me)}% fee</span></div>${ic('chev', 16)}</button>
     </div>
     <div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${me.id}">Mark all read</button></div>${alertList('provider:' + me.id)}</div>
+    <button class="btn secondary block" data-act="provHelp" data-arg="">${ic('chat', 18)} Help & reports${tkMine('provider').some(x => x.status === 'open' && x.needs === 'member') ? ' · new reply' : ''}</button>
     <button class="btn secondary block" data-act="staffCall" data-arg="provider:">${ic('headset', 18)} Connect to Ticktap staff</button>
     ${mktCard('p:' + me.id)}
     ${meAcct() ? `<button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out (${esc(meAcct().loginId)})</button>` : `<button class="btn secondary block" data-act="startApply">${ic('user', 18)} Preview the new-provider application</button>`}
@@ -2766,6 +2775,7 @@ function provOverlays() {
   const cs = callScreen('provider') || staffCallScreen('provider'); if (cs) return cs;
   if (S.prov.chat) { const ch = chatSheet('provider'); if (ch) return ch; }
   if (S.prov.cam) return camSheet();
+  if (S.prov.help) return helpSheet('provider');
   const me = prov(S.prov.id);
   const late = S.bookings.find(b => b.pid === me.id && b.late && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && !b.late.dismissed);
   if (!late) return '';
@@ -2964,12 +2974,12 @@ function adminPane() {
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, help: admHelp, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
-    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
+    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('help', 'Help & disputes', 'chat', tkWaiting().length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
@@ -3271,6 +3281,30 @@ function admGuard() {
   </tbody></table></div></div>
   <div class="panel"><div class="panel-b"><span class="small"><b>Rules (Terms Section 10).</b> Provider: −3 reward credits per confirmed breach. Customer: written warning; a second confirmed breach within 90 days may be suspended for up to 30 days. Off-app deals or repeated breaches: forced withdrawal (Section 18). Messages themselves were never delivered, so nothing reached the other person.</span></div></div>`;
 }
+/* ---------- Help & disputes: member reports with a 48-hour reply target ---------- */
+function admHelp() {
+  const all = (S.tickets || []).slice().sort((a, b) => (b.urgent && b.needs === 'staff' && b.status === 'open') - (a.urgent && a.needs === 'staff' && a.status === 'open') || (a.status === 'open' && a.needs === 'staff' ? a.dueBy : 9e15) - (b.status === 'open' && b.needs === 'staff' ? b.dueBy : 9e15) || b.at - a.at);
+  const f = S.admin.tkF || 'staff', F = { staff: x => x.status === 'open' && x.needs === 'staff', member: x => x.status === 'open' && x.needs === 'member', resolved: x => x.status === 'resolved', all: () => true };
+  const rows = all.filter(F[f]), w = tkWaiting(), sel = (S.tickets || []).find(x => x.id === S.admin.tk) || rows[0];
+  const left = x => { const ms = x.dueBy - now(); return ms < 0 ? `<b style="color:var(--bad)">${Math.round(-ms / HOUR)} h over</b>` : `${Math.floor(ms / HOUR)} h left`; };
+  const b = sel && sel.bid ? bk(sel.bid) : null;
+  const rec = b ? `<div class="list">${[['Booking', `${b.id} · ${esc(b.services.map(s => s.name).join(' + '))} · ${peso(b.gross)}`], ['Customer / provider', `${esc(b.customer)} · ${esc((prov(b.pid) || {}).name || '—')}`], ['Status', esc(b.status) + (b.refunded ? ' · refunded' : '')], ['Times', [b.paidAt && 'paid ' + fmtT(b.paidAt), b.arrivedAt && 'arrived ' + fmtT(b.arrivedAt), b.endAt && 'end ' + fmtT(b.endAt)].filter(Boolean).join(' · ') || '—'], ['Messages & calls', ((b.chat || []).length) + ' messages · ' + ((b.calls || []).length) + ' calls']].map(([k, v]) => `<div class="li"><span class="small muted" style="width:130px">${k}</span><span class="small grow">${v}</span></div>`).join('')}</div><button class="btn secondary sm" data-act="hcOpen" data-arg="${b.id}">${ic('list', 16)} Open full booking record · refund</button>` : '<span class="small muted">Not about a booking.</span>';
+  const detail = sel ? `<div class="panel"><div class="panel-h"><h3>${sel.id} · ${esc(sel.topic)}</h3>${tkState(sel)}</div><div class="panel-b col" style="gap:12px">
+      <span class="small">${esc(sel.who)} · ${sel.role === 'customer' ? 'Customer' : 'Provider'} · sent ${fmtD(sel.at)} ${fmtT(sel.at)}${sel.urgent ? ' · <span class="pill bad" style="height:18px">Urgent</span>' : ''}${sel.late ? ' · <span class="pill warn" style="height:18px">Reported after 48 h</span>' : ''}${sel.status === 'open' && sel.needs === 'staff' ? ' · reply due ' + fmtWhen(sel.dueBy) + ' (' + left(sel) + ')' : ''}</span>
+      ${rec}
+      <div class="col" style="gap:6px">${sel.msgs.map(m => `<div class="hp-msg ${m.by}"><span class="tiny muted">${m.by === 'staff' ? esc(m.name) + ' (staff)' : esc(m.name)} · ${fmtD(m.at)} ${fmtT(m.at)}</span><span class="small">${esc(m.text)}</span></div>`).join('')}</div>
+      ${sel.status === 'resolved' ? `<span class="small"><b>Outcome:</b> ${esc(sel.outcome || '')} · ${fmtD(sel.resolvedAt)}</span><button class="btn ghost sm" data-act="admTkReopen" data-arg="${sel.id}">Reopen</button>`
+      : `<label class="field">Reply to ${esc(sel.who)}<textarea id="tk-reply" class="textarea" rows="3" data-bind="admin.tkReply" placeholder="What we checked and what happens next">${esc(S.admin.tkReply || '')}</textarea></label><button class="btn primary sm" data-act="admTkReply" data-arg="${sel.id}">${ic('send', 16)} Send reply</button>
+         <div class="row" style="gap:8px;align-items:flex-end"><label class="field grow">Outcome<input id="tk-out" class="input" data-bind="admin.tkOut" value="${esc(S.admin.tkOut || '')}" placeholder="e.g. Partial refund ₱200 · provider warned"></label><button class="btn secondary sm" data-act="admTkResolve" data-arg="${sel.id}">${ic('check', 16)} Resolve</button></div>`}
+    </div></div>` : '';
+  const pill = (k, l, n) => `<button class="chip" data-act="admTkFilter" data-arg="${k}" aria-pressed="${f === k}">${l}${n != null ? ' · ' + n : ''}</button>`;
+  return `<div class="page-h"><div><h1>Help & disputes</h1><p>Reports members send from <b>Help</b> on a booking or in their account. Reply in the app within 48 hours; urgent safety, damage and no-show reports first. Refunds are made from the booking record (Terms §7, §12).</p></div></div>
+  <div class="kpis"><div class="kpi accent"><span class="l">Waiting for us</span><span class="v">${w.length}</span></div><div class="kpi"><span class="l">Urgent</span><span class="v">${w.filter(x => x.urgent).length}</span></div><div class="kpi"><span class="l">Past 48 h</span><span class="v" style="${w.some(tkOver) ? 'color:var(--bad)' : ''}">${w.filter(tkOver).length}</span></div><div class="kpi"><span class="l">Resolved, 30 days</span><span class="v">${(S.tickets || []).filter(x => x.status === 'resolved' && now() - x.resolvedAt < 30 * DAY).length}</span></div></div>
+  <div class="row" style="gap:6px;flex-wrap:wrap">${pill('staff', 'Waiting for us', w.length)}${pill('member', 'Waiting for member', all.filter(F.member).length)}${pill('resolved', 'Resolved')}${pill('all', 'All')}</div>
+  <div class="hp-grid"><div class="panel"><div class="tablewrap"><table><thead><tr><th>Report</th><th>From</th><th>Booking</th><th>Reply due</th></tr></thead><tbody>
+    ${rows.map(x => `<tr data-act="admTkSel" data-arg="${x.id}" style="cursor:pointer;${sel && sel.id === x.id ? 'background:var(--accent-soft)' : ''}"><td><b class="small">${esc(x.topic)}</b><br><span class="tiny muted">${x.id}</span>${x.urgent ? ' <span class="pill bad" style="height:18px">Urgent</span>' : ''}</td><td class="small">${esc(x.who)}<br><span class="tiny muted">${x.role}</span></td><td class="mono small">${x.bid || '—'}</td><td class="small">${x.status === 'open' && x.needs === 'staff' ? left(x) : tkState(x)}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">Nothing here.</div></td></tr>'}
+  </tbody></table></div></div>${detail}</div>`;
+}
 /* ---------- Ops desk: every manual daily task in one place, for whoever is on shift (each item stays on its own page too) ---------- */
 function deskItems() {
   const t = now(), age = ms => ms < HOUR ? Math.max(1, Math.round(ms / MIN)) + ' min' : ms < DAY ? Math.round(ms / HOUR) + ' h' : Math.round(ms / DAY) + ' d';
@@ -3284,6 +3318,8 @@ function deskItems() {
   add({ id: 'late', level: 'now', tab: 'late', icon: 'alert', title: 'Late arrivals', n: late.length, detail: late.length ? oldest(late, b => b.late.at) : 'No one is late', how: 'Call the provider, tell the customer the new arrival time, and resolve the alert. Reassign or refund if they cannot come.' });
   const rf = S.bookings.filter(b => b.refund && !b.refund.sentAt);
   add({ id: 'refunds', level: 'now', tab: 'ap', icon: 'wallet', title: 'Refunds to send', n: rf.length, detail: rf.length ? peso(rf.reduce((a, b) => a + (b.refund.amount || 0), 0)) + ' · ' + oldest(rf, b => b.refund.at || b.cancelledAt || t) : 'None waiting', how: 'Send each refund to the original payment method: GCash or Maya within 24 hours, card within 5 days (Terms §7).' });
+  const tw = tkWaiting(), tOver = tw.filter(tkOver), tUrg = tw.filter(x => x.urgent);
+  add({ id: 'help', level: 'now', tab: 'help', icon: 'chat', title: 'Help reports to answer', n: tw.length, warn: tOver.length > 0, detail: tw.length ? [tUrg.length ? tUrg.length + ' urgent' : '', tOver.length ? tOver.length + ' past 48 h' : '', oldest(tw, x => x.msgs[x.msgs.length - 1].at)].filter(Boolean).join(' · ') : 'No reports waiting', how: 'Urgent (safety, damage, no-show) first. Read the booking record — times, check-in photo, messages, calls — reply in the app within 48 hours, then resolve (Terms §12).' });
   const cg = cgCases().filter(c => c.open && c.n >= 3);
   add({ id: 'guard', level: 'now', tab: 'guard', icon: 'shield', title: 'Contact-sharing cases', n: cg.length, detail: cg.length ? cg.map(c => c.b.id).slice(0, 3).join(', ') : 'Nothing to review', how: 'Read the case, then confirm (provider −3 credits, customer warning) or dismiss (Terms §10).' });
   // today
@@ -4381,6 +4417,45 @@ function callScreen(role) {
 }
 
 /*MGMT-BEGIN*/
+/* =============== Help & disputes: members report a problem in the app; staff reply within 48 hours (Terms §12). Tickets live in S.tickets (shared). =============== */
+const HELP_TOPICS = {
+  customer: [['Provider is late', 1], ['Service was not as described', 0], ['Charged the wrong amount', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Change the address', 0], ['Cancel this booking', 0], ['Refund', 0], ['Account or app problem', 0], ['Something else', 0]],
+  provider: [['Customer is not at the address', 1], ['Customer asked to pay outside the app', 0], ['Payout is missing or wrong', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Account or app problem', 0], ['Something else', 0]]
+};
+const HELP_SLA = 48 * HOUR;
+const tkKey = role => role === 'customer' ? 'c:' + (S.customer.cid || 'me') : 'p:' + S.prov.id;
+const tkMine = role => (S.tickets || []).filter(x => x.key === tkKey(role)).sort((a, b) => b.at - a.at);
+const tkWaiting = () => (S.tickets || []).filter(x => x.status === 'open' && x.needs === 'staff');
+const tkOver = x => x.status === 'open' && x.needs === 'staff' && now() > x.dueBy;
+const tkTo = x => x.key.startsWith('c:') ? 'customer:' + x.key.slice(2) : 'provider:' + x.key.slice(2);
+const tkState = x => x.status === 'resolved' ? '<span class="pill good">Resolved</span>' : x.needs === 'staff' ? (tkOver(x) ? '<span class="pill bad">Past 48 h</span>' : '<span class="pill warn">Waiting for Ticktap</span>') : '<span class="pill accent">Ticktap replied</span>';
+function seedTickets() {   // demo reports so the admin page and Ops desk show real cases
+  const t = now(), b = S.bookings.find(x => x.cid === 'me' && ['ended', 'reviewed'].includes(x.status)), p = S.providers[0];
+  const out = [];
+  if (b) out.push({ id: 'T-1042', at: t - 30 * HOUR, role: 'customer', key: 'c:me', who: S.customer.name || 'Customer', bid: b.id, topic: 'Service was not as described', urgent: false, status: 'open', needs: 'staff', dueBy: t + 18 * HOUR, msgs: [{ by: 'member', name: S.customer.name || 'Customer', at: t - 30 * HOUR, text: 'The provider finished 15 minutes before the booked time and skipped the foot part. Can you check?' }] });
+  if (p) out.push({ id: 'T-1037', at: t - 4 * DAY, role: 'provider', key: 'p:' + p.id, who: p.name, bid: null, topic: 'Payout is missing or wrong', urgent: false, status: 'resolved', needs: 'member', dueBy: t - 2 * DAY, resolvedAt: t - 3 * DAY, outcome: 'Payout sent by GCash, reference given', msgs: [{ by: 'member', name: p.name, at: t - 4 * DAY, text: 'My payout for Saturday has not arrived yet.' }, { by: 'staff', name: 'Ticktap support', at: t - 3 * DAY, text: 'Sorry for the delay. It was sent today by GCash, reference 7Q2K-55. It may take up to 1 hour to show.' }] });
+  return out;
+}
+function helpSheet(role) {
+  const h = role === 'customer' ? S.cust.help : S.prov.help; if (!h) return '';
+  const pre = role === 'customer' ? 'cust' : 'prov', b = h.bid ? bk(h.bid) : null, mine = tkMine(role);
+  const close = `<button class="iconbtn" data-act="helpClose" data-arg="${role}" aria-label="Close">${ic('x', 20)}</button>`;
+  const lateNote = b && ['ended', 'reviewed'].includes(b.status) && b.endAt && now() - b.endAt > HELP_SLA ? `<p class="tiny" style="color:var(--warn)">This booking ended more than 48 hours ago. You can still report it, but Terms §12 asks for reports within 48 hours.</p>` : '';
+  const form = h.topic ? `<div class="col" style="gap:8px"><div class="row between"><b class="small">${esc(h.topic)}</b><button class="btn ghost xs" data-act="helpTopic" data-arg="${role}|">Change</button></div>
+      <label class="field">What happened?<textarea id="hp-${pre}-text" class="textarea" rows="4" data-guard="1" data-bind="${pre}.help.text" placeholder="Times, what you expected, what happened. Do not include phone numbers.">${esc(h.text || '')}</textarea></label>${cgNote(pre + '.help.text')}
+      <button class="btn primary block" data-act="helpSend" data-arg="${role}">${ic('send', 18)} Send report</button>
+      <p class="tiny muted">Ticktap replies here within 48 hours, usually much sooner. We check the booking record: times, check-in photo, messages and call log.</p></div>`
+    : `<div class="col" style="gap:6px">${HELP_TOPICS[role].map(([t, u]) => `<button class="opt" data-act="helpTopic" data-arg="${role}|${t}">${ic(u ? 'alert' : 'chev', 18)}<span class="grow">${t}</span>${u ? '<span class="pill bad" style="height:18px">Urgent</span>' : ''}</button>`).join('')}</div>`;
+  const thread = x => `<div class="col" style="gap:6px;padding:8px 0 4px">${x.msgs.map(m => `<div class="hp-msg ${m.by}"><span class="tiny muted">${m.by === 'staff' ? 'Ticktap support' : 'You'} · ${fmtD(m.at)} ${fmtT(m.at)}</span><span class="small">${esc(m.text)}</span></div>`).join('')}
+      ${x.status === 'resolved' ? `<span class="tiny muted">Resolved ${fmtD(x.resolvedAt)}${x.outcome ? ' · ' + esc(x.outcome) : ''}</span>` : `<label class="field">Add a message<textarea id="hp-${pre}-reply" class="textarea" rows="2" data-guard="1" data-bind="${pre}.help.reply">${esc(h.reply || '')}</textarea></label>${cgNote(pre + '.help.reply')}<button class="btn secondary sm" data-act="helpReply" data-arg="${role}|${x.id}">Send</button>`}</div>`;
+  const list = mine.length ? `<div class="col" style="gap:6px"><span class="eyebrow">My reports</span>${mine.slice(0, 6).map(x => `<div class="card tight" data-tk="${x.id}"><button class="row hp-head" data-act="helpOpen" data-arg="${role}|${x.id}"><div class="col grow" style="min-width:0"><b class="small">${esc(x.topic)}</b><span class="tiny muted">${x.id}${x.bid ? ' · ' + x.bid : ''} · ${fmtD(x.at)}</span></div>${tkState(x)}</button>${h.open === x.id ? thread(x) : ''}</div>`).join('')}</div>` : '';
+  return `<div class="overlay" data-act="helpClose" data-arg="${role}"><div class="sheet hp-sheet" data-stop="1"><div class="grab"></div>
+    <div class="row between"><h3 style="font-size:17px">How can we help?</h3>${close}</div>
+    ${b ? `<span class="small muted">About booking <b>${b.id}</b> · ${esc(b.services.map(s => s.name).join(' + '))}</span>` : ''}${lateNote}
+    ${b && ['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="staffCall" data-arg="${role}:${b.id}">${ic('headset', 18)} Urgent? Talk to Ticktap staff now</button>` : ''}
+    ${form}${list}
+    <p class="tiny muted">Emergency: call 911. Support line: <span class="num" style="user-select:all">+63 2 8888 2254</span></p></div></div>`;
+}
 /* =============== 4 · Management: admin levels, employees, attendance, PH payroll & BIR, HR documents, expenses, revenue, ledger =============== */
 const pad2 = n => String(n).padStart(2, '0');
 const hm = s => { const m = /^(\d{1,2}):(\d{2})/.exec(s || ''); return m ? +m[1] * 60 + +m[2] : null; };
@@ -4393,13 +4468,13 @@ const mid = d => dayTs(d) + 12 * HOUR;
 
 /* ---------- admin levels and areas ---------- */
 const MG_AREAS = [
-  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
+  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['help', 'Help & disputes'], ['jobs', 'Requests & jobs']]],
   ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
   ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
   ['4 · Management', [['employees', 'Employees'], ['attendance', 'Attendance'], ['payroll', 'Payroll & BIR · 1601-C, 2316, alphalist'], ['hrdocs', 'HR documents · ID, COE'], ['expenses', 'Expenses'], ['revenue', 'Revenue'], ['ledger', 'Ledger · P&L and cash book'], ['access', 'Admin access & levels']]]
 ];
-const PERM_DEF = { desk: 3, overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
+const PERM_DEF = { desk: 3, overview: 3, approvals: 3, live: 3, late: 3, calls: 3, help: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
 const PERM_TXT = { 1: 'Level 1 only', 2: 'Levels 1–2', 3: 'All levels' };
 function permOf(a) { if (a === 'finance') a = 'ap'; if (a === 'me' || a === 'guide') return 3; if (a === 'access') return 1; const p = (S.settings.perm || {})[a]; return [1, 2, 3].includes(+p) ? +p : (PERM_DEF[a] || 3); }
 const emps = () => S.employees || [];
@@ -5816,7 +5891,7 @@ function render() {
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
   Object.values(S.customers || {}).forEach(r => { if (r && r.suspendedUntil && now() > r.suspendedUntil) { r.suspended = false; r.suspendedUntil = null; } });
-  if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!Array.isArray(S.opsLog)) S.opsLog = []; if (!Array.isArray(S.opsNotes)) S.opsNotes = []; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
+  if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!Array.isArray(S.opsLog)) S.opsLog = []; if (!Array.isArray(S.opsNotes)) S.opsNotes = []; if (!Array.isArray(S.tickets)) S.tickets = []; if (!S.settings.tkSeeded) { S.tickets = seedTickets().concat(S.tickets); S.settings.tkSeeded = true; } if (S.cust.help === true) S.cust.help = false; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
   if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (ADMIN_URL) { ADMIN_URL = false; S.role = 'admin'; S.demoOpen = false; S.modal = null; }
@@ -5857,7 +5932,7 @@ function save() {
   clearTimeout(saveT);
   saveT = setTimeout(() => {
     try {
-      const keep = Object.assign({}, S, { toasts: [], modal: null, demoOpen: false, pwShow: null, cust: Object.assign({}, S.cust, { pay: null, addrSheet: false, help: false }) });
+      const keep = Object.assign({}, S, { toasts: [], modal: null, demoOpen: false, pwShow: null, cust: Object.assign({}, S.cust, { pay: null, addrSheet: false, help: false }), prov: Object.assign({}, S.prov, { help: false }) });
       localStorage.setItem(STORE, JSON.stringify({ v: 1, simNow: now(), seq, S: keep }));
     } catch (e) { }
   }, 250);
@@ -6171,8 +6246,41 @@ const A = {
     logB(b, 'Customer shared trip details');
     if (navigator.share) { navigator.share({ title: 'My Ticktap booking', text: txt }).catch(() => { }); }
     else { clip(txt); toast('customer', 'Trip details copied', 'Paste them to someone you trust.'); } },
-  custHelp: () => { S.cust.help = true; },
-  helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
+  custHelp: arg => { S.cust.help = { bid: arg === 'acct' ? null : (S.cust.bid || null), topic: '', text: '', reply: '', open: null }; },
+  provHelp: arg => { S.prov.help = { bid: arg || null, topic: '', text: '', reply: '', open: null }; },
+  helpClose: role => { if (role === 'customer') S.cust.help = false; else S.prov.help = false; },
+  helpTopic: arg => { const i = arg.indexOf('|'), role = arg.slice(0, i), h = role === 'customer' ? S.cust.help : S.prov.help; if (h) h.topic = arg.slice(i + 1); },
+  helpOpen: arg => { const [role, id] = arg.split('|'), h = role === 'customer' ? S.cust.help : S.prov.help; if (h) { h.open = h.open === id ? null : id; h.reply = ''; } },
+  helpSend: role => {
+    const h = role === 'customer' ? S.cust.help : S.prov.help; if (!h || !h.topic) return; const text = (h.text || '').trim();
+    if (text.length < 5 && !/address|Cancel|late/.test(h.topic)) { toast(role, 'Tell us a little more', 'Write what happened so we can check the booking record.'); return; }
+    if (!cgCheck(text).ok) { toast(role, 'Remove contact details', cgMsg(cgCheck(text))); return; }
+    const b = h.bid ? bk(h.bid) : null, me = role === 'customer' ? { who: S.customer.name || 'Customer' } : { who: (prov(S.prov.id) || {}).name || 'Provider' };
+    const urgent = !!(HELP_TOPICS[role].find(x => x[0] === h.topic) || [])[1], t = now(), id = 'T-' + (1043 + (S.tickets || []).length) + Math.random().toString(36).slice(2, 4).toUpperCase();
+    const late = !!(b && b.endAt && ['ended', 'reviewed'].includes(b.status) && t - b.endAt > HELP_SLA);
+    S.tickets.unshift({ id, at: t, role, key: tkKey(role), who: me.who, bid: b ? b.id : null, topic: h.topic, urgent, late, status: 'open', needs: 'staff', dueBy: t + HELP_SLA, msgs: [{ by: 'member', name: me.who, at: t, text: text || h.topic }] });
+    if (S.tickets.length > 500) S.tickets.length = 500;
+    if (b) logB(b, (role === 'customer' ? 'Customer' : 'Provider') + ' reported a problem: ' + h.topic + ' (' + id + ')');
+    pushAlert('admin', (urgent ? 'URGENT · ' : '') + 'Help report · ' + h.topic, me.who + (b ? ' on ' + b.id : '') + ' · ' + id + '. Reply within 48 hours.', b ? b.id : null, urgent ? 'bad' : 'info');
+    if (urgent) sendSms(S.settings.adminNumbers, `[Ticktap] URGENT help report ${id}: ${h.topic}${b ? ' · ' + b.id : ''}. Open Admin › Help & disputes.`, 'late');
+    toast(role, 'Report sent · ' + id, 'Ticktap will reply here within 48 hours, usually much sooner.');
+    Object.assign(h, { topic: '', text: '', open: id });
+  },
+  helpReply: arg => {
+    const [role, id] = arg.split('|'), h = role === 'customer' ? S.cust.help : S.prov.help, x = (S.tickets || []).find(k => k.id === id); if (!h || !x) return; const text = (h.reply || '').trim(); if (!text) return;
+    if (!cgCheck(text).ok) { toast(role, 'Remove contact details', cgMsg(cgCheck(text))); return; }
+    x.msgs.push({ by: 'member', name: x.who, at: now(), text }); x.needs = 'staff'; x.dueBy = now() + HELP_SLA; h.reply = '';
+    pushAlert('admin', 'Help report reply · ' + x.id, x.who + ': ' + text.slice(0, 80), x.bid, 'info');
+  },
+  admTkSel: id => { S.admin.tk = id; S.admin.tkReply = ''; S.admin.tkOut = ''; },
+  admTkFilter: f => { S.admin.tkF = f; },
+  admTkReply: id => { const x = (S.tickets || []).find(k => k.id === id), text = (S.admin.tkReply || '').trim(); if (!x || !text) return; const u = admUser() || {};
+    x.msgs.push({ by: 'staff', name: u.name || 'Ticktap support', at: now(), text }); x.needs = 'member'; if (!x.firstReplyAt) x.firstReplyAt = now(); S.admin.tkReply = '';
+    pushAlert(tkTo(x), 'Ticktap support replied', x.topic + ' · ' + x.id + ': ' + text.slice(0, 90), x.bid, 'info'); admLog('Help ' + x.id + ' · replied'); toast('admin', 'Reply sent', x.id + ' · ' + x.who); },
+  admTkResolve: id => { const x = (S.tickets || []).find(k => k.id === id); if (!x) return; const out = (S.admin.tkOut || '').trim() || 'Resolved';
+    x.status = 'resolved'; x.resolvedAt = now(); x.outcome = out; S.admin.tkOut = ''; if (x.bid && bk(x.bid)) logB(bk(x.bid), 'Help ' + x.id + ' resolved: ' + out);
+    pushAlert(tkTo(x), 'Your report is resolved', x.topic + ' · ' + out, x.bid, 'info'); admLog('Help ' + x.id + ' · resolved · ' + out); toast('admin', 'Resolved', x.id); },
+  admTkReopen: id => { const x = (S.tickets || []).find(k => k.id === id); if (!x) return; x.status = 'open'; x.needs = 'staff'; x.dueBy = now() + HELP_SLA; admLog('Help ' + x.id + ' · reopened'); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); if (bk(a.bid).status === 'offered') A.openPay(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
   readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); noticesFor(to).forEach(n => { S.noticeSeen[n.id] = true; }); },
   startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null, ref: urlRef() }; },
@@ -6599,7 +6707,7 @@ window.addEventListener('blur', () => peekEnd(false));
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['opsLog', 'opsNotes', 'waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
+const SHARED_LIST = ['tickets', 'opsLog', 'opsNotes', 'waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -6717,7 +6825,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 121;
+const BUILD = 122;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
