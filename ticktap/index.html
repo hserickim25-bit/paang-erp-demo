@@ -3298,6 +3298,18 @@ function deskItems() {
   add({ id: 'bir', level: 'today', tab: 'ap', icon: 'doc', title: 'BIR 0619-E for ' + pKey, n: remitDue ? 1 : 0, detail: remitDue ? 'Due by the 10th' : 'Recorded or not due yet', how: 'Remit last month\'s withheld tax by the 10th, then record the eFPS reference in Accounts payable › BIR filings.' });
   const hr = (S.hrReq || []).filter(r => r.status === 'pending');
   add({ id: 'hrdocs', level: 'today', tab: 'hrdocs', icon: 'doc', title: 'Staff document requests', n: hr.length, detail: hr.length ? oldest(hr, r => r.at || t) : 'None', how: 'Issue the Certificate of Employment or ID within 3 days.' });
+  // payroll remittances for last month: BIR 1601-C by the 10th; SSS, PhilHealth and Pag-IBIG on each agency's schedule
+  const g = GOV()[pKey] || {}, hasPay = linesOfMonth(pKey).length > 0, govMiss = hasPay ? ['bir', 'sss', 'phic', 'hdmf'].filter(k => !g[k]) : [];
+  add({ id: 'gov', level: 'today', tab: 'payroll', icon: 'receipt', title: 'Payroll remittances for ' + pKey, n: govMiss.length, detail: govMiss.length ? govMiss.map(k => ({ bir: '1601-C', sss: 'SSS', phic: 'PhilHealth', hdmf: 'Pag-IBIG' })[k]).join(' · ') + ' not yet remitted' : 'All remitted or nothing due', how: 'File BIR 1601-C by the 10th and pay SSS, PhilHealth and Pag-IBIG on their schedules, then press Mark remitted in Payroll & BIR.' });
+  const exU = (S.expenses || []).filter(e => e.status === 'unpaid');
+  add({ id: 'bills', level: 'today', tab: 'expenses', icon: 'receipt', title: 'Supplier bills to pay', n: exU.length, detail: exU.length ? peso(exU.reduce((a, e) => a + (+e.amount || 0), 0)) + ' · ' + exU.slice(0, 2).map(e => e.payee || e.cat).join(', ') : 'No unpaid bills', how: 'Pay rent, permits and other bills on time, then set the expense to Paid with the reference.' });
+  // quarter-end BIR duties in the month after each quarter: 2307 to payees by the 20th, 1601-EQ with QAP by month end
+  const qEnd = [0, 3, 6, 9].includes(n0.getMonth()), pq = qEnd ? (n0.getMonth() === 0 ? 4 : n0.getMonth() / 3) : 0, pqKey = (n0.getMonth() === 0 ? n0.getFullYear() - 1 : n0.getFullYear()) + '-Q' + pq;
+  const F = S.fin || {}, q2307 = qEnd && n0.getDate() <= 20 && !Object.keys((F.issued || {})[pqKey] || {}).length, q1601 = qEnd && !(F.filed || {})[pqKey];
+  add({ id: 'bir-q', level: 'today', tab: 'ap', icon: 'doc', title: 'Quarter-end BIR for ' + (pq ? pqKey : 'last quarter'), n: (q2307 ? 1 : 0) + (q1601 ? 1 : 0), detail: [q2307 ? 'Issue Form 2307 to payees by the 20th' : '', q1601 ? 'File 1601-EQ with QAP by month end' : ''].filter(Boolean).join(' · ') || 'Nothing due now', how: 'In Accounts payable › BIR filings: issue 2307 to every payee with tax withheld, then file 1601-EQ with the QAP list and record the reference.' });
+  const has13 = (S.payrolls || []).some(r => r.kind === '13th' && String(r.per).startsWith(String(n0.getFullYear())));
+  if (n0.getMonth() === 11 && n0.getDate() <= 24) add({ id: 'th13', level: 'today', tab: 'payroll', icon: 'wallet', title: '13th month pay', n: has13 ? 0 : 1, detail: has13 ? 'Computed for this year' : 'Pay by December 24', how: 'In Payroll & BIR › Year, compute and record the 13th month pay before December 24.' });
+  if (n0.getMonth() === 0) add({ id: 'annual', level: 'today', tab: 'payroll', icon: 'doc', title: 'Year-end employee forms', n: 1, detail: 'BIR 2316 to each employee and alphalist (1604-C) by January 31', how: 'In Payroll & BIR › Year, open 2316 for each employee and the alphalist, give the 2316 copies and file with BIR.' });
   const prUnpaid = (S.payrolls || []).filter(r => r.status === 'approved');
   add({ id: 'payroll', level: 'today', tab: 'payroll', icon: 'wallet', title: 'Approved payroll to pay', n: prUnpaid.length, detail: prUnpaid.length ? prUnpaid.map(r => r.per).join(', ') : 'Nothing approved and unpaid', how: 'Pay staff salaries for the approved period, then mark the payroll paid.' });
   // watch
@@ -6705,7 +6717,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 120;
+const BUILD = 121;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
