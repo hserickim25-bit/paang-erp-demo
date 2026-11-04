@@ -294,6 +294,10 @@ button.li:hover{background:var(--surface-2)}
 .tl.m i.on.r{box-shadow:0 0 8px 2px rgba(255,45,45,.95),0 0 20px 5px rgba(255,45,45,.55)}.tl.m i.on.y{box-shadow:0 0 8px 2px rgba(255,214,10,.95),0 0 20px 5px rgba(255,190,0,.55)}.tl.m i.on.g{box-shadow:0 0 8px 2px rgba(34,240,138,.95),0 0 20px 5px rgba(0,220,110,.55)}
 .status-line{gap:8px}.status-line.big{font-size:14px}
 .status-line.green{color:var(--good)} .status-line.yellow{color:var(--warn)} .status-line.red{color:var(--bad)}
+.sns-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}@media(min-width:520px){.sns-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.sns{height:40px;border-radius:10px;border:0;font:inherit;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:#fff;letter-spacing:.01em}
+.sns-facebook{background:#1877F2}.sns-instagram{background:linear-gradient(45deg,#F58529,#DD2A7B 45%,#8134AF 75%,#515BD4)}.sns-tiktok{background:#010101;text-shadow:-1px -1px 0 #25F4EE,1px 1px 0 #FE2C55}.sns-other{background:#F4C430;color:#111}
+.ms-today{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;background:#fff;border-top:1px solid #eef0f3}.ms-today button{border:0;background:transparent;font:inherit;font-size:14px;font-weight:600;color:#1b2430;cursor:pointer;display:inline-flex;align-items:center;gap:6px;padding:6px 4px}.ms-today button:last-child{color:#12355B}
 .ret.mine{color:#fff;background:var(--accent)}
 .soon{gap:10px;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}.soon.on{border-color:var(--good);box-shadow:0 0 0 3px var(--good-soft)}.soon-ic{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent)}.soon.on .soon-ic{background:var(--good-soft);color:var(--good)}.soon-t{font-size:17px;line-height:1.3}
 .ownbiz{gap:8px;background:var(--accent-soft);border-color:transparent}.ob-t{font-size:16px;line-height:1.3}.ob-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.ob-stats>div{display:flex;flex-direction:column;gap:2px;background:var(--surface);border-radius:10px;padding:8px 10px}.ob-stats b{font-size:20px}
@@ -783,6 +787,7 @@ function availEditor(path, av, idp) {
 const peso = (n, d = 0) => { const v = Number(n || 0), r = Math.abs(v).toLocaleString('en-PH', { minimumFractionDigits: d, maximumFractionDigits: d }); return (v < 0 && +r.replace(/,/g, '') ? '−' : '') + '₱' + r; };
 const pct = n => Math.round(n) + '%';
 const mmss = ms => { ms = Math.max(0, ms); const s = Math.floor(ms / 1000); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+const clip = t => { try { const p = navigator.clipboard && navigator.clipboard.writeText(t); if (p && p.catch) p.catch(() => { }); } catch (e) { } };   // copy without unhandled rejections
 const haversine = (a, b) => {
   const R = 6371, r = x => x * Math.PI / 180;
   const dLa = r(b.lat - a.lat), dLo = r(b.lng - a.lng);
@@ -978,6 +983,7 @@ const nearPros = a => S.providers.filter(p => p.active !== false && haversine(a,
 const covered = () => nearPros(addr()) > 0;
 const wlList = () => (S.waitlist || []).filter(w => !w.left);
 const wlMine = () => wlList().find(w => w.cid === (S.customer.cid || 'me') && w.city === cityOf(addr()));
+const msHiddenToday = () => (S.msHide || lsGet('tt-ms-hide')) === new Date(now()).toDateString();
 const myProId = () => { const c = S.customers && S.customers[S.customer.cid]; return c && c.refBy || null; };
 function seedWaitlist() {   // demo demand in cities Ticktap does not cover yet
   const plan = [['Cebu City', 46], ['Davao City', 31], ['Iloilo City', 14], ['Baguio', 12], ['Cagayan de Oro', 11], ['Angeles / Clark', 9], ['Lapu-Lapu (Mactan)', 8], ['Bohol (Panglao)', 5], ['Puerto Princesa', 4]];
@@ -1833,6 +1839,9 @@ function provJobs() {
     <div class="col" style="gap:8px"><h3 style="font-size:15px">Recent jobs</h3><div class="list">${myLedger(me).slice(0, 4).map(b => `<div class="li"><div class="col grow"><b class="small">${esc(b.services[0].name)}</b><span class="tiny muted">${fmtD(b.endedAt)} · ${esc(b.customer)} · ${b.review ? starsH(b.review.stars) : ''}</span></div><b class="num small">${peso(staff ? b.gross : b.ledger.net, 2)}</b></div>`).join('') || '<div class="empty">No jobs yet.</div>'}</div></div>
   </div>`;
 }
+/* share buttons in each network's colours, then "Other SNS" in Ticktap yellow for any other app (Viber, Messenger, X, Threads…) */
+const SNS = [['facebook', 'Facebook'], ['instagram', 'Instagram'], ['tiktok', 'TikTok']];
+const snsRow = () => `<div class="sns-row" role="group" aria-label="Share on social media">${SNS.map(([k, l]) => `<button class="sns sns-${k}" data-act="shareTo" data-arg="${k}">${l}</button>`).join('')}<button class="sns sns-other" data-act="shareTo" data-arg="other">${ic('share', 16)} Other SNS</button></div>`;
 /* "Your own business": Ticktap is the shop, the pro is the owner. Shows what the monthly goal needs and the customers the pro brought in. */
 function ownBizCard(me, earned) {
   const fee = tierRate(me) / 100, mine = myLedger(me), avg = mine.length ? mine.reduce((a, b) => a + b.ledger.net, 0) / mine.length : (me.services.filter(x => x.on !== false).reduce((a, x, _, l) => a + x.price / l.length, 0) || 500) * (1 - fee);
@@ -1846,7 +1855,8 @@ function ownBizCard(me, earned) {
     <span class="small">${left ? `<b>${jobs} more job${jobs === 1 ? '' : 's'}</b> (about ${peso(avg)} take-home each) reach your ${peso(me.goal)} goal this month.` : `You reached your ${peso(me.goal)} goal this month. Raise it in Account.`}</span>
     <div class="ob-stats"><div><b class="num">${myCust}</b><span class="tiny muted">my customers<br>joined with my link</span></div><div><b class="num">${repeat}</b><span class="tiny muted">repeat<br>customers</span></div><div><b class="num">${tierRate(me)}%</b><span class="tiny muted">fee now<br>${me.credits} credits</span></div></div>
     <span class="tiny muted">Customers who join with your link see you first and rebook you in one tap. Each one also adds ${sgn(CR().rules.referral)} reward credit.</span>
-    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary sm" data-act="copyRef">${ic('share', 16)} Invite my customers</button><button class="btn ghost sm" data-act="guideOpen" data-arg="provider">How to grow</button></div></div>`;
+    <div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn primary sm" data-act="copyRef">${ic('share', 16)} Invite my customers</button><button class="btn ghost sm" data-act="guideOpen" data-arg="provider">How to grow</button></div>
+    ${snsRow()}</div>`;
 }
 function provRequest() {
   const b = bk(S.prov.bid), me = prov(S.prov.id);
@@ -1953,8 +1963,7 @@ function provPerf() {
       <div class="list">${pr.items.map(e => `<div class="li"><span class="small grow">${esc(e.text)}${e.kind === 'hours' || e.kind === 'under' || e.kind === 'daily' ? ' <span class="tiny muted">(so far)</span>' : ''}</span><b class="num" style="color:${e.pts > 0 ? 'var(--good)' : 'var(--bad)'}">${sgn(e.pts)}</b></div>`).join('')}</div>
       <span class="small">If the week ended now: <b>${pr.cur} → ${pr.after} credits</b>, platform fee <b>${nextRate}%</b> from Monday.</span></div>
     <div class="card" style="gap:10px"><span class="eyebrow">Share Ticktap and earn ${sgn(R0.share)} a week</span>
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-        <button class="btn secondary sm" data-act="shareTo" data-arg="facebook">Facebook</button><button class="btn secondary sm" data-act="shareTo" data-arg="instagram">Instagram</button><button class="btn secondary sm" data-act="shareTo" data-arg="tiktok">TikTok</button></div>
+      ${snsRow()}
       <div class="row between" style="gap:8px"><div class="col" style="gap:2px;min-width:0"><span class="tiny muted">Your referral code</span><b class="num">${refCode(me)}</b></div><button class="btn ghost xs" data-act="copyRef">Copy referral link</button></div>
       <span class="tiny muted">Each customer or provider who joins with your code adds ${sgn(R0.referral)}.</span></div>
     <div class="card" style="gap:6px"><span class="eyebrow">How credits work · measured Monday to Sunday</span>
@@ -3638,7 +3647,7 @@ function missionModal() {
           <button class="btn primary block" data-act="missionJoin" data-arg="provider">Apply as a provider</button><button class="btn secondary block" data-act="missionJoin" data-arg="business">Register a business</button></div></div></section>
       ${rv ? `<section class="ms-sec ms-quote"><div class="ms-stars">★★★★★</div><blockquote>“${esc(rv.r.text)}”</blockquote><span>— ${esc(rv.r.by || 'Ticktap customer')}, about ${esc(rv.p.name.split(' ')[0])} · ${esc(catName(rv.p.cat))}</span></section>` : ''}
       <footer class="ms-foot"><span><b>Ticktap</b> © 2026</span><span class="grow"></span><button data-act="missionTerms">Terms & privacy</button><span>Payments held safely in the app</span></footer>
-    </div></div></div>`;
+    </div><div class="ms-today"><button data-act="missionHideToday">${ic('x', 15)} Don't show again today</button><button data-act="missionClose">Close</button></div></div></div>`;
 }
 function modal() {
   const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
@@ -5800,10 +5809,11 @@ const A = {
     S.cust.wl = { cats: [] }; toast('customer', 'You are on the waitlist', 'We will tell you when pros open bookings in ' + city + '.'); },
   wlLeave: () => { const m = wlMine(); if (m) { m.left = now(); toast('customer', 'Removed from the waitlist', m.city); } },
   wlInvite: () => { let u = 'https://ticktap.ph/'; try { const x = new URL(location.href); x.search = ''; x.hash = ''; u = x.toString(); } catch (e) { }
-    const txt = 'Join Ticktap as a pro and get customers in ' + cityOf(addr()) + ': ' + u; try { navigator.clipboard.writeText(txt); } catch (e) { } toast('customer', 'Invite link copied', 'Send it to a therapist, stylist or groomer you trust.'); },
+    const txt = 'Join Ticktap as a pro and get customers in ' + cityOf(addr()) + ': ' + u; clip(txt); toast('customer', 'Invite link copied', 'Send it to a therapist, stylist or groomer you trust.'); },
   admWlNotify: city => { const ws = wlList().filter(w => w.city === city && !w.notifiedAt); ws.forEach(w => { w.notifiedAt = now(); if (w.cid && w.cid === (S.customer.cid || 'me')) pushAlert('customer', 'Ticktap is open near you', 'Pros now take bookings in ' + city + '. Open the app to book.'); });
     toast('admin', 'Waitlist notified', ws.length + ' in ' + city); },
   admWlTarget: city => { const t = S.settings.wlTargets || (S.settings.wlTargets = {}); t[city] = t[city] === 'recruiting' ? 'open' : t[city] === 'open' ? '' : 'recruiting'; },
+  missionHideToday: () => { const d = new Date(now()).toDateString(); S.msHide = d; lsSet('tt-ms-hide', d); S.modal = null; toast('customer', 'Hidden for today', 'The story will not pop up while you scroll. Tap the banner to open it any time.'); },
   missionOpen: () => { if (Date.now() < PEEK_HUSH) return; peekEnd(true); S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
   missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
   missionBook: () => { S.modal = null; S.role = 'customer'; S.cust.screen = 'list'; S.cust.cat = null; },
@@ -5980,7 +5990,7 @@ const A = {
     const txt = `Ticktap trip ${b.id}: ${p.name} (${catName(p.cat)}, ID-verified) ${st}. ${b.status === 'arrived' ? 'Service until about ' + fmtT(b.endAt) : 'Arrives by ' + fmtT(b.promisedAt)}. Address: ${b.address}.`;
     logB(b, 'Customer shared trip details');
     if (navigator.share) { navigator.share({ title: 'My Ticktap booking', text: txt }).catch(() => { }); }
-    else { try { navigator.clipboard.writeText(txt); } catch (e) { } toast('customer', 'Trip details copied', 'Paste them to someone you trust.'); } },
+    else { clip(txt); toast('customer', 'Trip details copied', 'Paste them to someone you trust.'); } },
   custHelp: () => { S.cust.help = true; },
   helpPick: t => { S.cust.help = false; const b = bk(S.cust.bid); if (b) logB(b, 'Customer asked for help: ' + t); toast('customer', 'Our team is on it', t + ' · we will update you here.'); toast('admin', 'Customer help request', (b ? b.id + ' · ' : '') + t); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); if (bk(a.bid).status === 'offered') A.openPay(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
@@ -6238,10 +6248,11 @@ const A = {
   shareTo: net => { const p = prov(S.prov.id); const link = shareUrl(p); const txt = 'Book trusted home beauty, massage and pet-grooming pros on Ticktap: ';
     if (net === 'facebook') { try { window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link), '_blank', 'noopener'); } catch (e) { } }
     else if (navigator.share) { navigator.share({ title: 'Ticktap', text: txt, url: link }).catch(() => { }); }
-    else { try { navigator.clipboard.writeText(txt + link); } catch (e) { } try { window.open(net === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/', '_blank', 'noopener'); } catch (e) { } toast('provider', 'Link copied', 'Paste it into your ' + (net === 'instagram' ? 'Instagram' : 'TikTok') + ' post or message.'); }
+    else if (net === 'other') { clip(txt + link); toast('provider', 'Link copied', 'Paste it into Viber, Messenger, X, Threads or any app you use.'); }
+    else { clip(txt + link); try { window.open(net === 'instagram' ? 'https://www.instagram.com/' : 'https://www.tiktok.com/', '_blank', 'noopener'); } catch (e) { } toast('provider', 'Link copied', 'Paste it into your ' + (net === 'instagram' ? 'Instagram' : 'TikTok') + ' post or message.'); }
     p.shares = (p.shares || 0) + 1;
-    addCredit(p, CR().rules.share, 'Shared Ticktap on ' + ({ facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok' })[net], null, 'share', 'share:' + weekKeyOf(now())); },
-  copyRef: () => { const p = prov(S.prov.id); try { navigator.clipboard.writeText(shareUrl(p)); } catch (e) { } toast('provider', 'Referral link copied', refCode(p)); },
+    addCredit(p, CR().rules.share, 'Shared Ticktap on ' + ({ facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', other: 'social media' })[net], null, 'share', 'share:' + weekKeyOf(now())); },
+  copyRef: () => { const p = prov(S.prov.id); clip(shareUrl(p)); toast('provider', 'Referral link copied', refCode(p)); },
   admSuspend: id => { const p = prov(id); if (p.active === false) { p.active = true; toast('admin', 'Reactivated ' + p.name, 'They appear to customers again.'); pushAlert('provider:' + id, 'Account reactivated', 'You can take requests again.', null, 'good'); }
     else { p.active = false; p.status = 'red'; toast('admin', 'Suspended ' + p.name, 'Hidden from customers.'); pushAlert('provider:' + id, 'Account suspended', 'Contact Ticktap support.', null, 'bad'); } S.admin.confirm = ''; },
   admCustJobs: name => { S.admin.tab = 'jobs'; S.admin.jobFilter = 'all'; S.admin.jobQ = name; S.admin.sel = null; },
@@ -6369,7 +6380,7 @@ function peekEnd(keepModal) {
   if (p.pending && !keepModal) render();
 }
 document.addEventListener('touchstart', e => {
-  const btn = e.target.closest && e.target.closest('.mission-btn'); if (!btn || PEEK || S.modal || e.touches.length > 1) return;
+  const btn = e.target.closest && e.target.closest('.mission-btn'); if (!btn || PEEK || S.modal || e.touches.length > 1 || msHiddenToday()) return;   // hidden today: no peek; a tap still opens it
   const t = e.touches[0], el = document.createElement('div');
   el.className = 'ms-peek'; el.setAttribute('aria-hidden', 'true');
   el.innerHTML = missionModal() + '<div class="ms-peek-hint">Hold to peek · Tap or scroll to open</div>';
@@ -6509,7 +6520,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 116;
+const BUILD = 117;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
