@@ -741,7 +741,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .form2307{border:1.5px solid var(--fg);border-radius:6px;padding:14px;font-size:12px;display:flex;flex-direction:column;gap:10px;background:var(--surface)}
 .form2307 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px 16px}
 .form2307 .k{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
-/* Help & disputes */
+/* Help desk */
 .hp-sheet{gap:12px}
 .hp-msg{display:flex;flex-direction:column;gap:2px;padding:8px 10px;border-radius:12px;background:var(--surface-2,var(--bg));border:1px solid var(--line);max-width:92%}
 .hp-msg.staff{align-self:flex-start;background:var(--accent-soft);border-color:transparent}
@@ -2979,7 +2979,7 @@ function adminPane() {
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
-    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('help', 'Help & disputes', 'chat', tkWaiting().length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
+    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('help', 'Help desk', 'chat', tkWaiting().length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
@@ -3281,7 +3281,7 @@ function admGuard() {
   </tbody></table></div></div>
   <div class="panel"><div class="panel-b"><span class="small"><b>Rules (Terms Section 10).</b> Provider: −3 reward credits per confirmed breach. Customer: written warning; a second confirmed breach within 90 days may be suspended for up to 30 days. Off-app deals or repeated breaches: forced withdrawal (Section 18). Messages themselves were never delivered, so nothing reached the other person.</span></div></div>`;
 }
-/* ---------- Help & disputes: member reports with a 48-hour reply target ---------- */
+/* ---------- Help desk: member reports with a 48-hour reply target ---------- */
 function admHelp() {
   const all = (S.tickets || []).slice().sort((a, b) => (b.urgent && b.needs === 'staff' && b.status === 'open') - (a.urgent && a.needs === 'staff' && a.status === 'open') || (a.status === 'open' && a.needs === 'staff' ? tkDue(a) : 9e15) - (b.status === 'open' && b.needs === 'staff' ? tkDue(b) : 9e15) || b.at - a.at);
   const f = S.admin.tkF || 'staff', F = { staff: x => x.status === 'open' && x.needs === 'staff', member: x => x.status === 'open' && x.needs === 'member', resolved: x => x.status === 'resolved', all: () => true };
@@ -3298,7 +3298,7 @@ function admHelp() {
          <div class="row" style="gap:8px;align-items:flex-end"><label class="field grow">Outcome<input id="tk-out" class="input" data-bind="admin.tkOut" value="${esc(S.admin.tkOut || '')}" placeholder="e.g. Partial refund ₱200 · provider warned"></label><button class="btn secondary sm" data-act="admTkResolve" data-arg="${sel.id}">${ic('check', 16)} Resolve</button></div>`}
     </div></div>` : '';
   const pill = (k, l, n) => `<button class="chip" data-act="admTkFilter" data-arg="${k}" aria-pressed="${f === k}">${l}${n != null ? ' · ' + n : ''}</button>`;
-  return `<div class="page-h"><div><h1>Help & disputes</h1><p>Reports members send from <b>Help</b> on a booking or in their account. Reply in the app within 48 hours counted on working days only — Saturdays, Sundays and holidays (Payroll › Holidays) do not count; urgent safety, damage and no-show reports first. Refunds are made from the booking record (Terms §7, §12).</p></div></div>
+  return `<div class="page-h"><div><h1>Help desk</h1><p>Reports members send from <b>Help</b> on a booking or in their account. Reply in the app within 48 hours counted on working days only — Saturdays, Sundays and holidays (Payroll › Holidays) do not count; urgent safety, damage and no-show reports first. Refunds are made from the booking record (Terms §7, §12).</p></div></div>
   <div class="kpis"><div class="kpi accent"><span class="l">Waiting for us</span><span class="v">${w.length}</span></div><div class="kpi"><span class="l">Urgent</span><span class="v">${w.filter(x => x.urgent).length}</span></div><div class="kpi"><span class="l">Past due</span><span class="v" style="${w.some(tkOver) ? 'color:var(--bad)' : ''}">${w.filter(tkOver).length}</span></div><div class="kpi"><span class="l">Resolved, 30 days</span><span class="v">${(S.tickets || []).filter(x => x.status === 'resolved' && now() - x.resolvedAt < 30 * DAY).length}</span></div></div>
   <div class="row" style="gap:6px;flex-wrap:wrap">${pill('staff', 'Waiting for us', w.length)}${pill('member', 'Waiting for member', all.filter(F.member).length)}${pill('resolved', 'Resolved')}${pill('all', 'All')}</div>
   <div class="hp-grid"><div class="panel"><div class="tablewrap"><table><thead><tr><th>Report</th><th>From</th><th>Booking</th><th>Reply due</th></tr></thead><tbody>
@@ -4418,7 +4418,7 @@ function callScreen(role) {
 }
 
 /*MGMT-BEGIN*/
-/* =============== Help & disputes: members report a problem in the app; staff reply within 48 hours (Terms §12). Tickets live in S.tickets (shared). =============== */
+/* =============== Help desk: members report a problem in the app; staff reply within 48 hours (Terms §12). Tickets live in S.tickets (shared). =============== */
 const HELP_TOPICS = {
   customer: [['Provider is late', 1], ['Service was not as described', 0], ['Charged the wrong amount', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Change the address', 0], ['Cancel this booking', 0], ['Refund', 0], ['Account or app problem', 0], ['Something else', 0]],
   provider: [['Customer is not at the address', 1], ['Customer asked to pay outside the app', 0], ['Payout is missing or wrong', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Account or app problem', 0], ['Something else', 0]]
@@ -4474,7 +4474,7 @@ const mid = d => dayTs(d) + 12 * HOUR;
 
 /* ---------- admin levels and areas ---------- */
 const MG_AREAS = [
-  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['help', 'Help & disputes'], ['jobs', 'Requests & jobs']]],
+  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['help', 'Help desk'], ['jobs', 'Requests & jobs']]],
   ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
   ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
@@ -6302,7 +6302,7 @@ const A = {
     if (S.tickets.length > 500) S.tickets.length = 500;
     if (b) logB(b, (role === 'customer' ? 'Customer' : 'Provider') + ' reported a problem: ' + h.topic + ' (' + id + ')');
     pushAlert('admin', (urgent ? 'URGENT · ' : '') + 'Help report · ' + h.topic, me.who + (b ? ' on ' + b.id : '') + ' · ' + id + '. Reply due ' + fmtWhen(workAdd(t, HELP_SLA)) + ' (48 working hours).', b ? b.id : null, urgent ? 'bad' : 'info');
-    if (urgent) sendSms(S.settings.adminNumbers, `[Ticktap] URGENT help report ${id}: ${h.topic}${b ? ' · ' + b.id : ''}. Open Admin › Help & disputes.`, 'late');
+    if (urgent) sendSms(S.settings.adminNumbers, `[Ticktap] URGENT help report ${id}: ${h.topic}${b ? ' · ' + b.id : ''}. Open Admin › Help desk.`, 'late');
     toast(role, 'Report sent · ' + id, 'Ticktap will reply by ' + fmtWhen(workAdd(t, HELP_SLA)) + ' at the latest (48 hours, working days only), usually much sooner.');
     Object.assign(h, { topic: '', text: '', open: id });
   },
@@ -6865,7 +6865,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 124;
+const BUILD = 125;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
