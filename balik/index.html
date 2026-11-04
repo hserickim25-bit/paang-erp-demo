@@ -3283,14 +3283,14 @@ function admGuard() {
 }
 /* ---------- Help & disputes: member reports with a 48-hour reply target ---------- */
 function admHelp() {
-  const all = (S.tickets || []).slice().sort((a, b) => (b.urgent && b.needs === 'staff' && b.status === 'open') - (a.urgent && a.needs === 'staff' && a.status === 'open') || (a.status === 'open' && a.needs === 'staff' ? a.dueBy : 9e15) - (b.status === 'open' && b.needs === 'staff' ? b.dueBy : 9e15) || b.at - a.at);
+  const all = (S.tickets || []).slice().sort((a, b) => (b.urgent && b.needs === 'staff' && b.status === 'open') - (a.urgent && a.needs === 'staff' && a.status === 'open') || (a.status === 'open' && a.needs === 'staff' ? tkDue(a) : 9e15) - (b.status === 'open' && b.needs === 'staff' ? tkDue(b) : 9e15) || b.at - a.at);
   const f = S.admin.tkF || 'staff', F = { staff: x => x.status === 'open' && x.needs === 'staff', member: x => x.status === 'open' && x.needs === 'member', resolved: x => x.status === 'resolved', all: () => true };
   const rows = all.filter(F[f]), w = tkWaiting(), sel = (S.tickets || []).find(x => x.id === S.admin.tk) || rows[0];
-  const left = x => { const t = now(); return t > x.dueBy ? `<b style="color:var(--bad)">${Math.max(1, Math.round(workBetween(x.dueBy, t) / HOUR))} working h over</b>` : `${Math.floor(workBetween(t, x.dueBy) / HOUR)} working h left${isWorkDay(t) ? '' : ' · clock paused'}`; };
+  const left = x => { const t = now(); return t > tkDue(x) ? `<b style="color:var(--bad)">${Math.max(1, Math.round(workBetween(tkDue(x), t) / HOUR))} working h over</b>` : `${Math.floor(workBetween(t, tkDue(x)) / HOUR)} working h left${isWorkDay(t) ? '' : ' · clock paused'}`; };
   const b = sel && sel.bid ? bk(sel.bid) : null;
   const rec = b ? `<div class="list">${[['Booking', `${b.id} · ${esc(b.services.map(s => s.name).join(' + '))} · ${peso(b.gross)}`], ['Customer / provider', `${esc(b.customer)} · ${esc((prov(b.pid) || {}).name || '—')}`], ['Status', esc(b.status) + (b.refunded ? ' · refunded' : '')], ['Times', [b.paidAt && 'paid ' + fmtT(b.paidAt), b.arrivedAt && 'arrived ' + fmtT(b.arrivedAt), b.endAt && 'end ' + fmtT(b.endAt)].filter(Boolean).join(' · ') || '—'], ['Messages & calls', ((b.chat || []).length) + ' messages · ' + ((b.calls || []).length) + ' calls']].map(([k, v]) => `<div class="li"><span class="small muted" style="width:130px">${k}</span><span class="small grow">${v}</span></div>`).join('')}</div><button class="btn secondary sm" data-act="hcOpen" data-arg="${b.id}">${ic('list', 16)} Open full booking record · refund</button>` : '<span class="small muted">Not about a booking.</span>';
   const detail = sel ? `<div class="panel"><div class="panel-h"><h3>${sel.id} · ${esc(sel.topic)}</h3>${tkState(sel)}</div><div class="panel-b col" style="gap:12px">
-      <span class="small">${esc(sel.who)} · ${sel.role === 'customer' ? 'Customer' : 'Provider'} · sent ${fmtD(sel.at)} ${fmtT(sel.at)}${sel.urgent ? ' · <span class="pill bad" style="height:18px">Urgent</span>' : ''}${sel.late ? ' · <span class="pill warn" style="height:18px">Reported after 48 working h</span>' : ''}${sel.status === 'open' && sel.needs === 'staff' ? ' · reply due ' + fmtWhen(sel.dueBy) + ' (' + left(sel) + ')' : ''}</span>
+      <span class="small">${esc(sel.who)} · ${sel.role === 'customer' ? 'Customer' : 'Provider'} · sent ${fmtD(sel.at)} ${fmtT(sel.at)}${sel.urgent ? ' · <span class="pill bad" style="height:18px">Urgent</span>' : ''}${sel.late ? ' · <span class="pill warn" style="height:18px">Reported after 48 working h</span>' : ''}${sel.status === 'open' && sel.needs === 'staff' ? ' · reply due ' + fmtWhen(tkDue(sel)) + ' (' + left(sel) + ')' : ''}</span>
       ${rec}
       <div class="col" style="gap:6px">${sel.msgs.map(m => `<div class="hp-msg ${m.by}"><span class="tiny muted">${m.by === 'staff' ? esc(m.name) + ' (staff)' : esc(m.name)} · ${fmtD(m.at)} ${fmtT(m.at)}</span><span class="small">${esc(m.text)}</span></div>`).join('')}</div>
       ${sel.status === 'resolved' ? `<span class="small"><b>Outcome:</b> ${esc(sel.outcome || '')} · ${fmtD(sel.resolvedAt)}</span><button class="btn ghost sm" data-act="admTkReopen" data-arg="${sel.id}">Reopen</button>`
@@ -3377,6 +3377,7 @@ function admDesk() {
   ${sec('now', 'Act now', 'Customers or pros are waiting')}
   ${sec('today', 'Do today', 'Approvals, money and documents')}
   ${sec('watch', 'Keep an eye on', 'No action unless something goes wrong')}
+  <div class="panel" data-desk-hol="1"><div class="panel-h"><h3>Holidays</h3><span class="small muted">Weekends and holidays pause the Help reply clock</span></div><div class="panel-b">${holPanel(+isoD(now() + 8 * HOUR).slice(0, 4), true)}</div></div>
   <div class="split"><div class="wide panel"><div class="panel-h"><h3>Shift handover notes</h3><span class="small muted">For the next person on shift</span></div><div class="panel-b col" style="gap:10px">
     <div class="row" style="gap:8px"><input id="desk-note" class="input grow" data-bind="admin.deskNote" value="${esc(S.admin.deskNote || '')}" placeholder="e.g. Called Liza about B-1057, she arrives 3:40" data-enter="deskNote"><button class="btn primary sm" data-act="deskNote">Add note</button></div>
     <div class="list">${notes.slice(0, 12).map(n => `<div class="li"><div class="col grow"><span class="small">${esc(n.text)}</span><span class="tiny muted">${fmtD(n.at)} ${fmtT(n.at)} · ${esc(n.by)}</span></div></div>`).join('') || '<div class="li"><span class="small muted">No notes yet.</span></div>'}</div></div></div>
@@ -4424,20 +4425,21 @@ const HELP_TOPICS = {
 };
 const HELP_SLA = 48 * HOUR;   // counted on working days only: Saturdays, Sundays and holidays (Payroll › Holidays list) do not count
 const PH_OFF = 8 * HOUR, phDate = t => new Date(t + PH_OFF).toISOString().slice(0, 10), phDayEnd = t => Math.floor((t + PH_OFF) / DAY) * DAY + DAY - PH_OFF;
-const isWorkDay = t => { const w = new Date(t + PH_OFF).getUTCDay(), d = phDate(t); return w !== 0 && w !== 6 && !HOLS().some(h => h.d === d); };
+const isWorkDay = t => { const w = new Date(t + PH_OFF).getUTCDay(), d = phDate(t); return w !== 0 && w !== 6 && !holOf(d); };
 function workAdd(t, ms) { let c = t, left = ms; for (let i = 0; i < 800 && left > 0; i++) { const e = phDayEnd(c); if (isWorkDay(c)) { const k = Math.min(left, e - c); left -= k; c += k; if (left <= 0) break; } c = e; } return c; }
 function workBetween(a, b) { let s = 0, c = a; for (let i = 0; i < 800 && c < b; i++) { const e = Math.min(b, phDayEnd(c)); if (isWorkDay(c)) s += e - c; c = e; } return s; }
 const tkKey = role => role === 'customer' ? 'c:' + (S.customer.cid || 'me') : 'p:' + S.prov.id;
 const tkMine = role => (S.tickets || []).filter(x => x.key === tkKey(role)).sort((a, b) => b.at - a.at);
 const tkWaiting = () => (S.tickets || []).filter(x => x.status === 'open' && x.needs === 'staff');
-const tkOver = x => x.status === 'open' && x.needs === 'staff' && now() > x.dueBy;
+const tkDue = x => workAdd(x.clock || x.at, HELP_SLA);   // worked out each time, so a holiday added later moves open deadlines too
+const tkOver = x => x.status === 'open' && x.needs === 'staff' && now() > tkDue(x);
 const tkTo = x => x.key.startsWith('c:') ? 'customer:' + x.key.slice(2) : 'provider:' + x.key.slice(2);
 const tkState = x => x.status === 'resolved' ? '<span class="pill good">Resolved</span>' : x.needs === 'staff' ? (tkOver(x) ? '<span class="pill bad">Past due</span>' : '<span class="pill warn">Waiting for Ticktap</span>') : '<span class="pill accent">Ticktap replied</span>';
 function seedTickets() {   // demo reports so the admin page and Ops desk show real cases
   const t = now(), b = S.bookings.find(x => x.cid === 'me' && ['ended', 'reviewed'].includes(x.status)), p = S.providers[0];
   const out = [];
-  if (b) out.push({ id: 'T-1042', at: t - 30 * HOUR, role: 'customer', key: 'c:me', who: S.customer.name || 'Customer', bid: b.id, topic: 'Service was not as described', urgent: false, status: 'open', needs: 'staff', dueBy: workAdd(t - 30 * HOUR, HELP_SLA), msgs: [{ by: 'member', name: S.customer.name || 'Customer', at: t - 30 * HOUR, text: 'The provider finished 15 minutes before the booked time and skipped the foot part. Can you check?' }] });
-  if (p) out.push({ id: 'T-1037', at: t - 4 * DAY, role: 'provider', key: 'p:' + p.id, who: p.name, bid: null, topic: 'Payout is missing or wrong', urgent: false, status: 'resolved', needs: 'member', dueBy: t - 2 * DAY, resolvedAt: t - 3 * DAY, outcome: 'Payout sent by GCash, reference given', msgs: [{ by: 'member', name: p.name, at: t - 4 * DAY, text: 'My payout for Saturday has not arrived yet.' }, { by: 'staff', name: 'Ticktap support', at: t - 3 * DAY, text: 'Sorry for the delay. It was sent today by GCash, reference 7Q2K-55. It may take up to 1 hour to show.' }] });
+  if (b) out.push({ id: 'T-1042', at: t - 30 * HOUR, role: 'customer', key: 'c:me', who: S.customer.name || 'Customer', bid: b.id, topic: 'Service was not as described', urgent: false, status: 'open', needs: 'staff', clock: t - 30 * HOUR, msgs: [{ by: 'member', name: S.customer.name || 'Customer', at: t - 30 * HOUR, text: 'The provider finished 15 minutes before the booked time and skipped the foot part. Can you check?' }] });
+  if (p) out.push({ id: 'T-1037', at: t - 4 * DAY, role: 'provider', key: 'p:' + p.id, who: p.name, bid: null, topic: 'Payout is missing or wrong', urgent: false, status: 'resolved', needs: 'member', clock: t - 4 * DAY, resolvedAt: t - 3 * DAY, outcome: 'Payout sent by GCash, reference given', msgs: [{ by: 'member', name: p.name, at: t - 4 * DAY, text: 'My payout for Saturday has not arrived yet.' }, { by: 'staff', name: 'Ticktap support', at: t - 3 * DAY, text: 'Sorry for the delay. It was sent today by GCash, reference 7Q2K-55. It may take up to 1 hour to show.' }] });
   return out;
 }
 function helpSheet(role) {
@@ -4501,9 +4503,42 @@ function admLog(what) { if (!Array.isArray(S.admLog)) S.admLog = []; const u = a
 /* ---------- company, holidays, pay settings ---------- */
 const CO_DEF = { name: 'Ticktap, Inc.', tin: '[Company TIN]', rdo: '[RDO code]', address: '[Registered business address]', sss: '[SSS employer no.]', phic: '[PhilHealth employer no.]', hdmf: '[Pag-IBIG employer no.]', sign: 'Patricia Gomez', signTitle: 'Finance & HR Manager', phone: '+63 2 8888 2254', email: '[HR email]' };
 const CO = () => Object.assign({}, CO_DEF, S.settings.company || {});
-const HOL_DEF = [['2026-01-01', "New Year's Day", 'regular'], ['2026-02-17', 'Chinese New Year', 'special'], ['2026-04-02', 'Maundy Thursday', 'regular'], ['2026-04-03', 'Good Friday', 'regular'], ['2026-04-04', 'Black Saturday', 'special'], ['2026-04-09', 'Araw ng Kagitingan', 'regular'], ['2026-05-01', 'Labor Day', 'regular'], ['2026-06-12', 'Independence Day', 'regular'], ['2026-08-21', 'Ninoy Aquino Day', 'special'], ['2026-08-31', 'National Heroes Day', 'regular'], ['2026-11-01', "All Saints' Day", 'special'], ['2026-11-30', 'Bonifacio Day', 'regular'], ['2026-12-08', 'Immaculate Conception', 'special'], ['2026-12-24', 'Christmas Eve', 'special'], ['2026-12-25', 'Christmas Day', 'regular'], ['2026-12-30', 'Rizal Day', 'regular'], ['2026-12-31', 'Last day of the year', 'special'], ['2027-01-01', "New Year's Day", 'regular'], ['2027-02-06', 'Chinese New Year', 'special'], ['2027-03-25', 'Maundy Thursday', 'regular'], ['2027-03-26', 'Good Friday', 'regular'], ['2027-03-27', 'Black Saturday', 'special'], ['2027-04-09', 'Araw ng Kagitingan', 'regular'], ['2027-05-01', 'Labor Day', 'regular'], ['2027-06-12', 'Independence Day', 'regular'], ['2027-08-21', 'Ninoy Aquino Day', 'special'], ['2027-08-30', 'National Heroes Day', 'regular'], ['2027-11-01', "All Saints' Day", 'special'], ['2027-11-02', "All Souls' Day", 'special'], ['2027-11-30', 'Bonifacio Day', 'regular'], ['2027-12-08', 'Immaculate Conception', 'special'], ['2027-12-24', 'Christmas Eve', 'special'], ['2027-12-25', 'Christmas Day', 'regular'], ['2027-12-30', 'Rizal Day', 'regular'], ['2027-12-31', 'Last day of the year', 'special']].map(([d, n, t]) => ({ d, n, t }));
-const HOLS = () => Array.isArray(S.settings.holidays) ? S.settings.holidays : HOL_DEF;
-const holOf = d => HOLS().find(h => h.d === d) || null;
+/* Holidays: the official calendar is computed for any year (fixed dates, Holy Week from Easter, National Heroes Day =
+   last Monday of August, Chinese New Year from the lunar table, plus year-specific proclamation additions). Holidays the
+   President announces at short notice are entered by hand (S.settings.holidays); a hand entry of type 'working' cancels
+   or moves an official date. Payroll premiums, attendance and the Help reply clock all read the same list. */
+const CNY = { 2025: '01-29', 2026: '02-17', 2027: '02-06', 2028: '01-26', 2029: '02-13', 2030: '02-03', 2031: '01-23', 2032: '02-11', 2033: '01-31', 2034: '02-19', 2035: '02-08' };
+const PH_PROC = { 2027: { no: 'Proclamation No. 1427', add: [['11-02', "All Souls' Day", 'special']] } };   // additions published in each year's official calendar
+const easterUTC = y => { const a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), mo = Math.floor((h + l - 7 * m + 114) / 31), da = ((h + l - 7 * m + 114) % 31) + 1; return Date.UTC(y, mo - 1, da); };
+const isoD = ms => new Date(ms).toISOString().slice(0, 10);
+function holAuto(y) {
+  const e = easterUTC(y), aug31 = Date.UTC(y, 7, 31), heroes = aug31 - ((new Date(aug31).getUTCDay() + 6) % 7) * DAY;
+  const L = [['01-01', "New Year's Day", 'regular'], [isoD(e - 3 * DAY).slice(5), 'Maundy Thursday', 'regular'], [isoD(e - 2 * DAY).slice(5), 'Good Friday', 'regular'], [isoD(e - DAY).slice(5), 'Black Saturday', 'special'], ['04-09', 'Araw ng Kagitingan', 'regular'], ['05-01', 'Labor Day', 'regular'], ['06-12', 'Independence Day', 'regular'], ['08-21', 'Ninoy Aquino Day', 'special'], [isoD(heroes).slice(5), 'National Heroes Day', 'regular'], ['11-01', "All Saints' Day", 'special'], ['11-30', 'Bonifacio Day', 'regular'], ['12-08', 'Immaculate Conception', 'special'], ['12-24', 'Christmas Eve', 'special'], ['12-25', 'Christmas Day', 'regular'], ['12-30', 'Rizal Day', 'regular'], ['12-31', 'Last day of the year', 'special']];
+  if (CNY[y]) L.push([CNY[y], 'Chinese New Year', 'special']);
+  ((PH_PROC[y] || {}).add || []).forEach(x => L.push(x));
+  return L.map(([md, n, t]) => ({ d: y + '-' + md, n, t, src: 'auto' }));
+}
+const HOL_MAN = () => Array.isArray(S.settings.holidays) ? S.settings.holidays : [];
+let HOL_C = { ref: null, sig: '', y: {} };
+function holsYear(y) {
+  const man = HOL_MAN(), sig = man.map(h => h.d + h.t).join();
+  if (HOL_C.ref !== man || HOL_C.sig !== sig) HOL_C = { ref: man, sig, y: {} };
+  if (HOL_C.y[y]) return HOL_C.y[y];
+  const mine = man.filter(h => String(h.d).startsWith(y + '-')), over = new Set(mine.map(h => h.d));
+  return (HOL_C.y[y] = holAuto(y).filter(h => !over.has(h.d)).concat(mine.filter(h => h.t !== 'working').map(h => Object.assign({ src: 'manual' }, h))).sort((a, b) => a.d < b.d ? -1 : 1));
+}
+const HOLS = (y = +new Date(now() + 8 * HOUR).toISOString().slice(0, 4)) => holsYear(y);
+const holOf = d => holsYear(+String(d).slice(0, 4)).find(h => h.d === d) || null;
+function holPanel(y, compact) {   // the official calendar plus hand entries; used on the Ops desk and in Payroll settings
+  const L = holsYear(y), cancelled = HOL_MAN().filter(h => h.t === 'working' && h.d.startsWith(y + '-')), t0 = isoD(now() + 8 * HOUR), next = L.filter(h => h.d >= t0).slice(0, compact ? 4 : 99), h = S.admin.hol, today = holOf(t0);
+  const row = x => `<div class="row between tiny hol-r" data-hol="${x.d}"><span class="mono">${x.d}</span><span class="grow" style="padding:0 8px">${esc(x.n)}${x.note ? ' <span class="muted">· ' + esc(x.note) + '</span>' : ''}</span><span class="pill ${x.t === 'regular' ? 'bad' : x.t === 'working' ? 'good' : 'outline'}" style="height:18px">${x.t === 'working' ? 'working day' : x.t}</span><span class="pill ${x.src === 'auto' ? 'outline' : 'accent'}" style="height:18px;margin-left:4px">${x.src === 'auto' ? 'official' : 'manual'}</span><button class="btn ghost xs" data-act="prHolDel" data-arg="${x.d}" title="${x.src === 'auto' ? 'Cancel this official date (make it a working day)' : 'Remove this entry'}">×</button></div>`;
+  return `<div class="col" style="gap:6px">
+    <span class="small">${today ? `<b style="color:var(--bad)">Today is a holiday: ${esc(today.n)}</b> (${today.t})` : 'Today is a ' + (isWorkDay(now()) ? 'working day' : 'weekend day')} · official calendar is computed automatically${PH_PROC[y] ? ' (' + PH_PROC[y].no + ')' : ''}.</span>
+    <div class="col" style="gap:4px">${(compact ? next : L).map(row).join('') || '<span class="tiny muted">No more holidays this year.</span>'}${cancelled.map(x => row(Object.assign({ src: 'manual' }, x))).join('')}</div>
+    <span class="tiny"><b>Add a holiday announced by Malacañang</b> (special days are often announced a day or two before; Eid'l Fitr and Eid'l Adha are always added here):</span>
+    <div class="row" style="gap:4px;flex-wrap:wrap"><input id="ph-d" class="input" type="date" data-bind="admin.hol.d" value="${esc(h.d)}" style="height:32px;width:150px"><input id="ph-n" class="input grow" data-bind="admin.hol.n" value="${esc(h.n)}" placeholder="Name, e.g. Eid'l Fitr" style="height:32px;min-width:120px"><select id="ph-t" class="select" data-bind="admin.hol.t" style="height:32px;width:190px"><option value="special" ${h.t === 'special' ? 'selected' : ''}>Special non-working</option><option value="regular" ${h.t === 'regular' ? 'selected' : ''}>Regular holiday</option><option value="working" ${h.t === 'working' ? 'selected' : ''}>Working day (cancel/move)</option></select><input id="ph-note" class="input" data-bind="admin.hol.note" value="${esc(h.note || '')}" placeholder="Proclamation no." style="height:32px;width:140px"><button class="btn primary xs" data-act="prHolAdd">Add</button></div>
+    <span class="tiny muted">Adding a day updates payroll holiday pay, attendance and the Help reply deadlines at once.</span></div>`;
+}
 const PAYSET = () => Object.assign({ freq: 'semi', grace: 5 }, S.settings.pay || {});
 const GOV = () => ((S.fin || {}).gov) || {};
 const GOVN = { sss: 'SSS contributions (R-3)', phic: 'PhilHealth premiums (RF-1)', hdmf: 'Pag-IBIG contributions (MCRF)', bir: 'BIR 1601-C · tax withheld on compensation' };
@@ -4730,8 +4765,8 @@ function mgInit() {
   if (!S.settings.perm) S.settings.perm = Object.assign({}, PERM_DEF);
   if (!S.settings.company) S.settings.company = Object.assign({}, CO_DEF);
   if (!S.settings.pay) S.settings.pay = { freq: 'semi', grace: 5 };
-  if (!Array.isArray(S.settings.holidays)) S.settings.holidays = HOL_DEF.map(h => Object.assign({}, h));
-  if (!S.settings.hol2027) { const have = new Set(S.settings.holidays.map(h => h.d)); S.settings.holidays = S.settings.holidays.concat(HOL_DEF.filter(h => h.d.startsWith('2027') && !have.has(h.d)).map(h => Object.assign({}, h))); S.settings.hol2027 = true; }
+  if (!Array.isArray(S.settings.holidays)) S.settings.holidays = [];
+  if (!S.settings.holV2) { const auto = {}; S.settings.holidays.forEach(h => { const y = +String(h.d).slice(0, 4); if (!auto[y]) auto[y] = new Set(holAuto(y).map(a => a.d + a.t)); }); S.settings.holidays = S.settings.holidays.filter(h => !auto[+String(h.d).slice(0, 4)].has(h.d + h.t)); S.settings.holV2 = true; }   // keep only true hand entries; the official calendar is computed now
   if (S.fin && !S.fin.gov) S.fin.gov = {};
   if (S.settings.openCash == null) S.settings.openCash = 5000000;
   const A0 = S.admin;
@@ -4741,7 +4776,7 @@ function mgInit() {
   if (!A0.me) A0.me = { purpose: '', withPay: false, old: '', pw1: '', pw2: '' };
   if (!A0.al) A0.al = { id: '', pw: '' };
   if (!A0.doc0) A0.doc0 = { eid: '', purpose: 'Bank requirement', withPay: true, year: '2026' };
-  if (!A0.hol) A0.hol = { d: '', n: '', t: 'regular' };
+  if (!A0.hol) A0.hol = { d: '', n: '', t: 'special', note: '' };
 }
 
 /* ---------- admin sign-in gate ---------- */
@@ -4874,8 +4909,7 @@ function admPayroll() {
     <div class="panel-h"><h3>Payroll settings</h3></div><div class="panel-b" style="gap:8px">
     <label class="field">Pay frequency<select id="ps-f" class="select" data-bind="settings.pay.freq" data-rerender="1"><option value="semi" ${P.freq === 'semi' ? 'selected' : ''}>Semi-monthly (15th and end of month)</option><option value="monthly" ${P.freq === 'monthly' ? 'selected' : ''}>Monthly</option></select></label>
     <label class="field">Late grace period (minutes)<input id="ps-g" class="input num" inputmode="numeric" data-bind="settings.pay.grace" data-type="num" value="${P.grace}"></label>
-    <details><summary class="small" style="cursor:pointer"><b>Holidays ${y}</b> · ${HOLS().length}</summary><div class="col" style="gap:4px;margin-top:6px">${HOLS().slice().sort((a, b) => a.d < b.d ? -1 : 1).map((h, i) => `<div class="row between tiny"><span class="mono">${h.d}</span><span class="grow" style="padding:0 8px">${esc(h.n)}</span><span class="pill ${h.t === 'regular' ? 'bad' : 'outline'}" style="height:18px">${h.t}</span><button class="btn ghost xs" data-act="prHolDel" data-arg="${h.d}">×</button></div>`).join('')}
-      <div class="row" style="gap:4px"><input id="ph-d" class="input" type="date" data-bind="admin.hol.d" value="${esc(S.admin.hol.d)}" style="height:32px"><input id="ph-n" class="input" data-bind="admin.hol.n" value="${esc(S.admin.hol.n)}" placeholder="Name" style="height:32px"><select id="ph-t" class="select" data-bind="admin.hol.t" style="height:32px;width:96px"><option value="regular">Regular</option><option value="special" ${S.admin.hol.t === 'special' ? 'selected' : ''}>Special</option></select><button class="btn secondary xs" data-act="prHolAdd">Add</button></div>
+    <details><summary class="small" style="cursor:pointer"><b>Holidays ${y}</b> · ${holsYear(+y).length}</summary><div style="margin-top:6px">${holPanel(+y)}
       <span class="tiny muted">Follow the Presidential proclamation for the year; add Eid'l Fitr and Eid'l Adha when declared.</span></div></details>
     <span class="tiny muted">Rates used: SSS 15% (MSC ₱5,000–₱35,000), PhilHealth 5% (₱10,000–₱100,000), Pag-IBIG 2% each (up to ₱10,000), BIR withholding tables effective 2023. Confirm against new circulars before each filing.</span></div></div></div>`;
 }
@@ -5228,8 +5262,9 @@ const MG_ACTIONS = {
   prPaid: () => { const per = S.admin.prPer || curPer(), r = runOf(per); if (!r) return; r.status = 'paid'; r.paidAt = now(); r.ref = String(S.admin.prRef || '').trim(); S.admin.prRef = ''; admLog('Marked payroll paid ' + perRange(per).label); toast('admin', 'Payroll paid', 'Payslips are on each employee\'s My work page.'); },
   prRemit: arg => { const [ym, k] = arg.split('|'); S.fin.gov = S.fin.gov || {}; const g = S.fin.gov[ym] || (S.fin.gov[ym] = {}); g[k] = { at: now(), ref: '' }; admLog('Recorded remittance ' + GOVN[k] + ' ' + ym); toast('admin', 'Remittance recorded', GOVN[k]); },
   prTh13: y => { if (runsAll().some(r => r.kind === '13th' && r.per.startsWith(String(y)))) return; const lines = emps().filter(e => e.status === 'active' && !e.exPay).map(e => { const t = th13Of(e, +y), amount = r2(Math.max(0, t.due - t.paid)), taxable = Math.max(0, amount - PH.EXEMPT13); return { eid: e.id, name: e.name, no: e.no, amount, taxable, tax: 0, net: amount }; }).filter(l => l.amount > 0); if (!lines.length) return; S.payrolls.push({ id: 'PR-' + y + '-13', per: y + '-13', kind: '13th', status: 'paid', lines, at: now(), paidAt: now(), ref: '13TH-' + y, by: (admUser() || {}).name || '' }); admLog('Recorded 13th month pay ' + y); toast('admin', '13th month recorded', peso(sumBy(lines, 'amount'), 2)); },
-  prHolAdd: () => { const h = S.admin.hol; if (!/^\d{4}-\d{2}-\d{2}$/.test(h.d) || !String(h.n).trim()) return; S.settings.holidays = HOLS().filter(x => x.d !== h.d).concat([{ d: h.d, n: String(h.n).trim(), t: h.t }]); S.admin.hol = { d: '', n: '', t: 'regular' }; },
-  prHolDel: d => { S.settings.holidays = HOLS().filter(x => x.d !== d); },
+  prHolAdd: () => { const h = S.admin.hol, t = h.t || 'special'; if (!/^\d{4}-\d{2}-\d{2}$/.test(h.d)) { toast('admin', 'Pick the date', 'Choose the date of the holiday.'); return; } const n = String(h.n || '').trim() || (t === 'working' ? 'Working day' : ''); if (!n) { toast('admin', 'Name the holiday', 'e.g. Eid\'l Fitr or the event in the proclamation.'); return; } const u = admUser() || {};
+    S.settings.holidays = HOL_MAN().filter(x => x.d !== h.d).concat([{ d: h.d, n, t, note: String(h.note || '').trim(), by: u.name || '', at: now() }]); admLog('Holiday ' + h.d + ' · ' + n + ' · ' + t); toast('admin', 'Holiday saved', h.d + ' · ' + n + ' (' + t + ')'); S.admin.hol = { d: '', n: '', t: 'special', note: '' }; },
+  prHolDel: d => { const man = HOL_MAN(); if (man.some(x => x.d === d)) S.settings.holidays = man.filter(x => x.d !== d); else { const o = holOf(d); S.settings.holidays = man.concat([{ d, n: (o ? o.n : 'Holiday') + ' · cancelled or moved', t: 'working', by: (admUser() || {}).name || '', at: now() }]); } admLog('Holiday ' + d + ' · changed'); },
   docIssue: arg => { const P = arg.split('|'), e = emp(P[1]); if (!e) return; const u = admUser(), y = ymd(now()).slice(0, 4);
     if (P[0] === 'idcard') { const n = (S.hrDocs || []).filter(d => d.kind === 'idcard').length + 1; e.idNo = e.no; e.idIssued = ymd(now()); e.idValid = ymd(now() + 730 * DAY); S.hrDocs.unshift({ id: 'ID-' + y + '-' + String(n).padStart(4, '0'), eid: e.id, kind: 'idcard', at: now(), by: u ? u.name : '' }); admLog('Issued employee ID to ' + e.name); S.admin.doc = { k: 'idcard', a: e.id }; return; }
     const n = (S.hrDocs || []).filter(d => d.kind === 'coe' && d.id.includes('-' + y + '-')).length + 1, no = 'COE-' + y + '-' + String(n).padStart(4, '0');
@@ -6263,7 +6298,7 @@ const A = {
     const b = h.bid ? bk(h.bid) : null, me = role === 'customer' ? { who: S.customer.name || 'Customer' } : { who: (prov(S.prov.id) || {}).name || 'Provider' };
     const urgent = !!(HELP_TOPICS[role].find(x => x[0] === h.topic) || [])[1], t = now(), id = 'T-' + (1043 + (S.tickets || []).length) + Math.random().toString(36).slice(2, 4).toUpperCase();
     const late = !!(b && b.endAt && ['ended', 'reviewed'].includes(b.status) && workBetween(b.endAt, t) > HELP_SLA);
-    S.tickets.unshift({ id, at: t, role, key: tkKey(role), who: me.who, bid: b ? b.id : null, topic: h.topic, urgent, late, status: 'open', needs: 'staff', dueBy: workAdd(t, HELP_SLA), msgs: [{ by: 'member', name: me.who, at: t, text: text || h.topic }] });
+    S.tickets.unshift({ id, at: t, role, key: tkKey(role), who: me.who, bid: b ? b.id : null, topic: h.topic, urgent, late, status: 'open', needs: 'staff', clock: t, msgs: [{ by: 'member', name: me.who, at: t, text: text || h.topic }] });
     if (S.tickets.length > 500) S.tickets.length = 500;
     if (b) logB(b, (role === 'customer' ? 'Customer' : 'Provider') + ' reported a problem: ' + h.topic + ' (' + id + ')');
     pushAlert('admin', (urgent ? 'URGENT · ' : '') + 'Help report · ' + h.topic, me.who + (b ? ' on ' + b.id : '') + ' · ' + id + '. Reply due ' + fmtWhen(workAdd(t, HELP_SLA)) + ' (48 working hours).', b ? b.id : null, urgent ? 'bad' : 'info');
@@ -6274,7 +6309,7 @@ const A = {
   helpReply: arg => {
     const [role, id] = arg.split('|'), h = role === 'customer' ? S.cust.help : S.prov.help, x = (S.tickets || []).find(k => k.id === id); if (!h || !x) return; const text = (h.reply || '').trim(); if (!text) return;
     if (!cgCheck(text).ok) { toast(role, 'Remove contact details', cgMsg(cgCheck(text))); return; }
-    x.msgs.push({ by: 'member', name: x.who, at: now(), text }); x.needs = 'staff'; x.dueBy = workAdd(now(), HELP_SLA); h.reply = '';
+    x.msgs.push({ by: 'member', name: x.who, at: now(), text }); x.needs = 'staff'; x.clock = now(); h.reply = '';
     pushAlert('admin', 'Help report reply · ' + x.id, x.who + ': ' + text.slice(0, 80), x.bid, 'info');
   },
   admTkSel: id => { S.admin.tk = id; S.admin.tkReply = ''; S.admin.tkOut = ''; },
@@ -6285,7 +6320,7 @@ const A = {
   admTkResolve: id => { const x = (S.tickets || []).find(k => k.id === id); if (!x) return; const out = (S.admin.tkOut || '').trim() || 'Resolved';
     x.status = 'resolved'; x.resolvedAt = now(); x.outcome = out; S.admin.tkOut = ''; if (x.bid && bk(x.bid)) logB(bk(x.bid), 'Help ' + x.id + ' resolved: ' + out);
     pushAlert(tkTo(x), 'Your report is resolved', x.topic + ' · ' + out, x.bid, 'info'); admLog('Help ' + x.id + ' · resolved · ' + out); toast('admin', 'Resolved', x.id); },
-  admTkReopen: id => { const x = (S.tickets || []).find(k => k.id === id); if (!x) return; x.status = 'open'; x.needs = 'staff'; x.dueBy = workAdd(now(), HELP_SLA); admLog('Help ' + x.id + ' · reopened'); },
+  admTkReopen: id => { const x = (S.tickets || []).find(k => k.id === id); if (!x) return; x.status = 'open'; x.needs = 'staff'; x.clock = now(); admLog('Help ' + x.id + ' · reopened'); },
   openAlert: id => { const a = S.alerts.find(x => x.id === id); a.read = true; if (a.to.startsWith('customer') && a.bid && bk(a.bid)) { A.openBooking(a.bid); if (bk(a.bid).status === 'offered') A.openPay(a.bid); const b = bk(a.bid); if (b.status === 'ended') A.goReview(a.bid); } if (a.to.startsWith('provider') && a.bid) { const b = bk(a.bid); if (b.status === 'requested') { S.prov.bid = b.id; S.prov.screen = 'request'; } else if (['offered', 'paid', 'departed', 'arrived', 'ended'].includes(b.status)) { S.prov.bid = b.id; S.prov.screen = 'job'; } } },
   readAll: to => { S.alerts.filter(a => a.to === tgt(to)).forEach(a => a.read = true); noticesFor(to).forEach(n => { S.noticeSeen[n.id] = true; }); },
   startSignup: () => { S.cust.signup = { step: 1, name: '', email: '', phone: '', terms: false, eCode: '', pCode: '', eOtp: '', pOtp: '', addr: null, ref: urlRef() }; },
@@ -6717,7 +6752,7 @@ const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
 const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
-window.__balikGuard = cgCheck; window.__balikWork = { workAdd, workBetween }; window.__ocrTest = photoCheck; window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
+window.__balikGuard = cgCheck; window.__balikWork = { workAdd, workBetween, holsYear, holOf }; window.__ocrTest = photoCheck; window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
 function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
@@ -6830,7 +6865,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 123;
+const BUILD = 124;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
