@@ -294,6 +294,7 @@ button.li:hover{background:var(--surface-2)}
 .tl.m i.on.r{box-shadow:0 0 8px 2px rgba(255,45,45,.95),0 0 20px 5px rgba(255,45,45,.55)}.tl.m i.on.y{box-shadow:0 0 8px 2px rgba(255,214,10,.95),0 0 20px 5px rgba(255,190,0,.55)}.tl.m i.on.g{box-shadow:0 0 8px 2px rgba(34,240,138,.95),0 0 20px 5px rgba(0,220,110,.55)}
 .status-line{gap:8px}.status-line.big{font-size:14px}
 .status-line.green{color:var(--good)} .status-line.yellow{color:var(--warn)} .status-line.red{color:var(--bad)}
+.call-cg{display:flex;gap:6px;align-items:flex-start;max-width:320px;margin-top:10px;font-size:12px;line-height:1.4;opacity:.85;text-align:left;background:rgba(255,255,255,.1);border-radius:10px;padding:8px 10px}
 .cg-note{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.4;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:8px 10px}.cg-note .ic{flex-shrink:0;margin-top:1px}.cg-note.hot{color:var(--bad);background:var(--bad-soft);font-weight:600}
 .sns-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}@media(min-width:520px){.sns-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .sns{height:40px;border-radius:10px;border:0;font:inherit;font-weight:700;font-size:14px;display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;color:#fff;letter-spacing:.01em}
@@ -967,7 +968,7 @@ const S = {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
       bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 30 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
-      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 } },
+      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1, contact: -3 } },
     respond: 6, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
     alertBiz: true, tellCustomer: true
@@ -2958,12 +2959,12 @@ function adminPane() {
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
-    ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guide', 'How to use', 'doc')}
+    ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
@@ -3238,6 +3239,32 @@ function admWaitlist() {
       <td><div class="row" style="gap:6px;justify-content:flex-end;white-space:nowrap"><button class="btn ghost xs" data-act="admWlTarget" data-arg="${esc(r.city)}">${T[r.city] === 'recruiting' ? 'Mark open' : T[r.city] === 'open' ? 'Reset' : 'Start recruiting'}</button><button class="btn secondary xs" data-act="admWlNotify" data-arg="${esc(r.city)}" ${r.open && r.pros ? '' : 'disabled'} title="${r.pros ? '' : 'Approve a pro in this city first'}">Notify ${r.open}</button></div></td></tr>`).join('') || '<tr><td colspan="8" class="muted">No one is waiting. Every customer address has pros nearby.</td></tr>'}
     </tbody></table></div></div>
   <div class="panel"><div class="panel-b"><span class="small"><b>How to use this page.</b> Start recruiting in the top cities (Facebook groups, TESDA schools, spas). When a pro there is approved, the city counts pros, bookings open automatically for customers nearby, and Notify sends the waitlist an in-app notice.</span></div></div>`;
+}
+/* ---------- contact guard review: blocked attempts to share contact details, per booking and side ---------- */
+function cgCases() {
+  const out = [];
+  S.bookings.filter(b => b.cgTries).forEach(b => Object.entries(b.cgTries).forEach(([k, n]) => {
+    const log = (b.cgLog || []).filter(x => x.k === k), res = (b.cgRes || {})[k];
+    out.push({ b, k, n, last: log.length ? log[log.length - 1].at : b.createdAt || 0, kinds: [...new Set(log.map(x => x.kind))], res, open: !res,
+      who: k === 'p' ? (prov(b.pid) || {}).name || 'Provider' : b.customer || 'Customer', role: k === 'p' ? 'Provider' : 'Customer' });
+  }));
+  return out.sort((a, b) => (b.open - a.open) || b.n - a.n || b.last - a.last);
+}
+function cgCustStrikes(cid) { const r = (S.customers || {})[cid]; return ((r && r.cgStrikes) || []).filter(t => now() - t < 90 * DAY).length; }
+function admGuard() {
+  const rows = cgCases(), open = rows.filter(r => r.open), hot = open.filter(r => r.n >= 3);
+  const act = r => {
+    if (r.res) return `<span class="pill ${r.res === 'dismissed' ? '' : 'warn'}">${r.res === 'credits' ? 'Confirmed · −3 credits' : r.res === 'warned' ? 'Confirmed · warned' : r.res === 'suspended' ? 'Suspended 30 days' : 'Dismissed'}</span>`;
+    const conf = r.k === 'p' ? `<button class="btn secondary xs" data-act="cgResolve" data-arg="${r.b.id}|p|credits">Confirm · −3 credits</button>`
+      : `<button class="btn secondary xs" data-act="cgResolve" data-arg="${r.b.id}|c|warned">Confirm · warn</button>${cgCustStrikes(r.b.cid) >= 1 ? `<button class="btn danger xs" data-act="cgResolve" data-arg="${r.b.id}|c|suspended">Suspend 30 days</button>` : ''}`;
+    return `<div class="row" style="gap:6px;justify-content:flex-end;white-space:nowrap">${conf}<button class="btn ghost xs" data-act="cgResolve" data-arg="${r.b.id}|${r.k}|dismissed">Dismiss</button></div>`;
+  };
+  return `<div class="page-h"><div><h1>Contact guard</h1><p>Attempts to share phone numbers, emails or social accounts that the app blocked. Review bookings with 3 or more attempts and apply Terms Section 10.</p></div></div>
+  <div class="kpis"><div class="kpi accent"><span class="l">To review (3+ attempts)</span><span class="v">${hot.length}</span></div><div class="kpi"><span class="l">Open cases</span><span class="v">${open.length}</span></div><div class="kpi"><span class="l">Blocked attempts, all time</span><span class="v">${rows.reduce((a, r) => a + r.n, 0)}</span></div><div class="kpi"><span class="l">Digits allowed per message</span><span class="v">${CG_MAX_DIGITS}</span></div></div>
+  <div class="panel"><div class="panel-h"><h3>Cases</h3></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Who</th><th class="num">Attempts</th><th>What was blocked</th><th>Last</th><th></th></tr></thead><tbody>
+    ${rows.map(r => `<tr data-cg="${r.b.id}-${r.k}"><td><b>${r.b.id}</b><br><span class="tiny muted">${esc(r.b.services.map(s => s.name).join(', '))}</span></td><td>${esc(r.who)}<br><span class="tiny muted">${r.role}${r.k === 'c' && cgCustStrikes(r.b.cid) ? ' · ' + cgCustStrikes(r.b.cid) + ' confirmed in 90 days' : ''}</span></td><td class="num"><b style="color:${r.n >= 3 ? 'var(--bad)' : 'inherit'}">${r.n}</b></td><td>${r.kinds.map(k => `<span class="pill">${esc(CG_TXT[k] || k)}</span>`).join(' ') || '—'}</td><td class="small">${r.last ? fmtD(r.last) + ' ' + fmtT(r.last) : '—'}</td><td>${act(r)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No blocked attempts yet.</td></tr>'}
+  </tbody></table></div></div>
+  <div class="panel"><div class="panel-b"><span class="small"><b>Rules (Terms Section 10).</b> Provider: −3 reward credits per confirmed breach. Customer: written warning; a second confirmed breach within 90 days may be suspended for up to 30 days. Off-app deals or repeated breaches: forced withdrawal (Section 18). Messages themselves were never delivered, so nothing reached the other person.</span></div></div>`;
 }
 function admCustomers() {
   const flags = S.admin.custFlags || {};
@@ -4130,6 +4157,7 @@ function chatSheet(role) {
 function cgStrike(role, kind) {   // count blocked attempts per booking; the third one alerts Ticktap staff
   const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat); if (!b) return;
   const k = myRoleKey(role); b.cgTries = b.cgTries || {}; b.cgTries[k] = (b.cgTries[k] || 0) + 1;
+  (b.cgLog || (b.cgLog = [])).push({ k, kind, at: now() });
   if (b.cgTries[k] === 3) pushAlert('admin', 'Contact sharing blocked 3 times', (role === 'customer' ? 'Customer ' + (b.customer || '') : 'Provider ' + (prov(b.pid) || {}).name) + ' · ' + b.id + ' · ' + (CG_TXT[kind] || kind), b.id);
 }
 function sendChat(role, text) {
@@ -4267,7 +4295,7 @@ function callScreen(role) {
   else if (b.call.state === 'ringing') { status = 'Incoming Ticktap call'; actions = `<button class="callbtn end" data-act="callDecline" data-arg="${role}:${b.id}" aria-label="Decline">${ic('phone', 28)}</button><button class="callbtn ok" data-act="callAccept" data-arg="${role}:${b.id}" aria-label="Answer">${ic('phone', 28)}</button>`; }
   else if (!c) { status = 'On a call on another device'; actions = `<button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="End call">${ic('phone', 28)}</button>`; }
   else { status = `<span data-calltime="${b.call.startedAt}">${mmss(Date.now() - b.call.startedAt)}</span>${c.conn && c.conn !== 'connected' ? ' · ' + esc(c.conn) : ''}`; actions = `<button class="callbtn mute ${c.muted ? 'on' : ''}" data-act="callMute" data-arg="${role}" aria-label="${c.muted ? 'Unmute' : 'Mute'}">${ic(c.muted ? 'micoff' : 'mic', 26)}</button><button class="callbtn end" data-act="callEnd" data-arg="${role}:${b.id}" aria-label="End call">${ic('phone', 28)}</button>`; }
-  return `<div class="callscreen" data-ov="call-${k}"><div class="col" style="align-items:center;gap:12px;margin-top:12%">${pic}<b style="font-size:24px">${esc(who)}</b><span class="small" style="opacity:.8">${status}</span><span class="tiny" style="opacity:.55">${b.id} · in-app voice · your number stays private</span></div><div class="row" style="gap:44px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
+  return `<div class="callscreen" data-ov="call-${k}"><div class="col" style="align-items:center;gap:12px;margin-top:12%">${pic}<b style="font-size:24px">${esc(who)}</b><span class="small" style="opacity:.8">${status}</span><span class="tiny" style="opacity:.55">${b.id} · in-app voice · your number stays private</span><span class="call-cg">${ic('shield', 14)} Please don't share phone numbers or social accounts on this call. Keep bookings and payments in Ticktap so you stay protected.</span></div><div class="row" style="gap:44px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
 }
 
 /*MGMT-BEGIN*/
@@ -4283,13 +4311,13 @@ const mid = d => dayTs(d) + 12 * HOUR;
 
 /* ---------- admin levels and areas ---------- */
 const MG_AREAS = [
-  ['Monitor now', [['overview', 'Overview'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
+  ['Monitor now', [['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
   ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
   ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
   ['4 · Management', [['employees', 'Employees'], ['attendance', 'Attendance'], ['payroll', 'Payroll & BIR · 1601-C, 2316, alphalist'], ['hrdocs', 'HR documents · ID, COE'], ['expenses', 'Expenses'], ['revenue', 'Revenue'], ['ledger', 'Ledger · P&L and cash book'], ['access', 'Admin access & levels']]]
 ];
-const PERM_DEF = { overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, waitlist: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
+const PERM_DEF = { overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
 const PERM_TXT = { 1: 'Level 1 only', 2: 'Levels 1–2', 3: 'All levels' };
 function permOf(a) { if (a === 'finance') a = 'ap'; if (a === 'me' || a === 'guide') return 3; if (a === 'access') return 1; const p = (S.settings.perm || {})[a]; return [1, 2, 3].includes(+p) ? +p : (PERM_DEF[a] || 3); }
 const emps = () => S.employees || [];
@@ -5200,8 +5228,8 @@ function admCalls() {
 
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.1',
-  effective: 'November 1, 2026',
+  version: '1.2',
+  effective: 'November 4, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
   sections: [
@@ -5249,7 +5277,7 @@ const TERMS = {
     ['8. Reward credits for Providers', [
       'Every Provider starts with 5 reward credits. Credits are counted from Monday to Sunday and updated every Sunday, and are kept between 0 and 20.',
       'A Provider earns 1 credit for: 30 or more hours on green (stand-by) in the week; completing 2 or more services a day as set by the Company; sharing Ticktap on Facebook, Instagram or TikTok (once a week); and each customer or provider who joins with the Provider\'s referral code.',
-      'A Provider loses 1 credit for each late arrival and for a week with fewer than 30 hours on green, 3 credits for cancelling after accepting a request, and 5 credits for cancelling after the Customer has paid.',
+      'A Provider loses 1 credit for each late arrival and for a week with fewer than 30 hours on green, 3 credits for cancelling after accepting a request, 3 credits for each confirmed attempt to share contact details or arrange an off-app deal (Section 10), and 5 credits for cancelling after the Customer has paid.',
       'The Platform Fee is set by the credits held after each Sunday update: 0 to 4 credits, 30%; 5 to 6 credits, 25%; 7 to 8 credits, 23%; 9 or more credits, 22%. The Company may review a Provider\'s record and adjust credits or the fee band where it finds an error or abuse.',
       'Reward credits are not money, cannot be transferred and have no cash value.'
     ]],
@@ -5263,7 +5291,10 @@ const TERMS = {
       'On arrival, a Provider must check in with a photo taken in the app\'s live camera. Photos from the gallery cannot be used. The photo is time-stamped and shared with the Customer and the Company.',
       'With permission, the app uses the device location so Customers can find nearby Providers and see the Provider on a live map while the Provider is on the way. Location sharing stops at check-in.',
       'The "Connect to Ticktap staff" button opens an in-app voice call with the Company\'s safety team, and "Share trip" lets a Customer send booking details to someone they trust. These tools help but do not replace emergency services. In an emergency, call 911 or the nearest police station.',
-      'After payment, the Customer and Provider can send in-app messages and make in-app voice calls until the service ends. Phone numbers are not shared. Messages, call times and booking records are kept to help with safety and disputes.'
+      'After payment, the Customer and Provider can send in-app messages and make in-app voice calls until the service ends. Phone numbers are not shared. Messages, call times and booking records are kept to help with safety and disputes.',
+      'No contact details. Users may not share or ask for phone numbers, email addresses, social media or messaging accounts (such as Viber, WhatsApp, Telegram or Facebook), or any other way to contact each other outside Ticktap, in messages, calls, reviews, profiles or photos. The app blocks such details automatically, limits the digits that can be typed in one message, and may refuse photos that show contact details. Calls in the app are not recorded.',
+      'No off-app deals. Users may not offer, arrange or accept bookings or payments outside the app with someone they met through Ticktap, during or after a booking. Off-app deals are not covered by refunds, support, identity checks, safety tools or insurance.',
+      'Each blocked attempt is recorded with the booking. After a third attempt on a booking, the Company reviews it. For a confirmed breach: a Provider loses 3 reward credits (Section 8); a Customer receives a written warning; a second confirmed breach within 90 days may lead to suspension for up to 30 days; arranging an off-app deal or repeated breaches may lead to forced withdrawal (Section 18).'
     ]],
     ['11. Reviews', [
       'Customers may leave a star rating and a written review after a service. Reviews must be honest, based on the actual service and free of personal information, abuse or unlawful content. Photos cannot be added to reviews. The Company may hide reviews that break these rules.'
@@ -5295,7 +5326,7 @@ const TERMS = {
     ]],
     ['18. Suspension, forced withdrawal and closing an account', [
       'The Company may warn, restrict, suspend or close an account if a User breaks these Terms or the law, gives false information, receives serious or repeated complaints, or puts others at risk. Where it is safe and lawful to do so, we will tell the User why. Amounts owed for completed services will still be paid, less any refunds or amounts owed to the Company.',
-      'Forced withdrawal. The Company may permanently remove (forcibly withdraw) any Customer, Provider or Business Partner, without prior warning, for a serious breach, including: violence, threats or harassment; sexual misconduct; theft, damage or fraud; paying or asking to be paid outside the app; false identity or documents; harm to or neglect of a pet; illegal activity; or repeated no-shows or serious complaints.',
+      'Forced withdrawal. The Company may permanently remove (forcibly withdraw) any Customer, Provider or Business Partner, without prior warning, for a serious breach, including: violence, threats or harassment; sexual misconduct; theft, damage or fraud; paying or asking to be paid outside the app; arranging off-app deals or repeatedly sharing contact details (Section 10); false identity or documents; harm to or neglect of a pet; illegal activity; or repeated no-shows or serious complaints.',
       'When an account is forcibly withdrawn: (a) it is closed at once and the User may not sign up again, directly or through another person; (b) the User\'s listings, discount events and reviews written by the User may be removed; (c) open bookings are cancelled and amounts paid by Customers for them are refunded in full; (d) amounts earned for services already completed are paid only after refunds, damages and amounts owed to the Company are settled; and (e) records are kept as required by law and may be shared with the police or other authorities where the law allows.',
       'If a Business Partner is forcibly withdrawn, all of its staff listings are removed as well. Staff who were not involved may apply again as individual Providers.',
       'A User whose account was forcibly withdrawn may ask for a review within 15 days by contacting support. The Company\'s decision after review is final, without affecting any rights the User has under Philippine law.',
@@ -5702,6 +5733,7 @@ function render() {
   // Shared data loaded from the live room may predate accounts: make sure every demo account exists
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
+  Object.values(S.customers || {}).forEach(r => { if (r && r.suspendedUntil && now() > r.suspendedUntil) { r.suspended = false; r.suspendedUntil = null; } });
   if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
   if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
@@ -5870,6 +5902,12 @@ const A = {
   admWlNotify: city => { const ws = wlList().filter(w => w.city === city && !w.notifiedAt); ws.forEach(w => { w.notifiedAt = now(); if (w.cid && w.cid === (S.customer.cid || 'me')) pushAlert('customer', 'Ticktap is open near you', 'Pros now take bookings in ' + city + '. Open the app to book.'); });
     toast('admin', 'Waitlist notified', ws.length + ' in ' + city); },
   admWlTarget: city => { const t = S.settings.wlTargets || (S.settings.wlTargets = {}); t[city] = t[city] === 'recruiting' ? 'open' : t[city] === 'open' ? '' : 'recruiting'; },
+  cgResolve: arg => { const [bid, k, res] = arg.split('|'); const b = bk(bid); if (!b) return; (b.cgRes || (b.cgRes = {}))[k] = res;
+    if (res === 'credits') { const p = prov(b.pid); if (p) addCredit(p, CR().rules.contact != null ? CR().rules.contact : -3, 'Shared or asked for contact details · ' + bid + ' (Terms 10)', bid, 'contact', 'cg:' + bid); }
+    if (res === 'warned' || res === 'suspended') { const C = S.customers || (S.customers = {}); const r = C[b.cid] || (C[b.cid] = { cid: b.cid, name: b.customer }); (r.cgStrikes || (r.cgStrikes = [])).push(now());
+      pushAlert('customer', 'Warning: contact details', 'Sharing or asking for phone numbers or social accounts is not allowed in Ticktap (Terms Section 10). A second breach within 90 days may suspend your account.', bid);
+      if (res === 'suspended') { r.suspended = true; r.suspendedUntil = now() + 30 * DAY; } }
+    admLog('Contact guard ' + bid + ' · ' + (k === 'p' ? 'provider' : 'customer') + ' · ' + res); toast('admin', 'Case updated', bid + ' · ' + res); },
   missionHideToday: () => { const d = new Date(now()).toDateString(); S.msHide = d; lsSet('tt-ms-hide', d); S.modal = null; toast('customer', 'Hidden for today', 'The story will not pop up while you scroll. Tap the banner to open it any time.'); },
   missionOpen: () => { if (Date.now() < PEEK_HUSH) return; peekEnd(true); S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
   missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
@@ -6594,7 +6632,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 118;
+const BUILD = 119;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
