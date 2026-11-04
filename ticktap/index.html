@@ -294,6 +294,11 @@ button.li:hover{background:var(--surface-2)}
 .tl.m i.on.r{box-shadow:0 0 8px 2px rgba(255,45,45,.95),0 0 20px 5px rgba(255,45,45,.55)}.tl.m i.on.y{box-shadow:0 0 8px 2px rgba(255,214,10,.95),0 0 20px 5px rgba(255,190,0,.55)}.tl.m i.on.g{box-shadow:0 0 8px 2px rgba(34,240,138,.95),0 0 20px 5px rgba(0,220,110,.55)}
 .status-line{gap:8px}.status-line.big{font-size:14px}
 .status-line.green{color:var(--good)} .status-line.yellow{color:var(--warn)} .status-line.red{color:var(--bad)}
+.desk-st{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;border-radius:14px;margin-bottom:4px}.desk-st b{font-size:17px}.desk-st.bad{background:var(--bad-soft);color:var(--bad)}.desk-st.warn{background:var(--warn-soft,#FFF4D6);color:#8a5a00}.desk-st.ok{background:var(--good-soft);color:var(--good)}
+.desk-s{display:flex;flex-direction:column;gap:10px}.desk-s h3{font-size:16px}.desk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.desk-i{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:var(--surface)}.desk-i.hot-now{border-color:var(--bad);box-shadow:0 0 0 3px var(--bad-soft)}.desk-i.hot-today{border-color:#E8A600;box-shadow:0 0 0 3px #FFF1C7}.desk-i.warn .desk-n{color:var(--bad)}
+.desk-ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:var(--surface-2);flex-shrink:0}.hot-now .desk-ic{background:var(--bad-soft);color:var(--bad)}.hot-today .desk-ic{background:#FFF1C7;color:#8a5a00}
+.desk-n{font-size:24px;font-weight:700;line-height:1}.desk-how{line-height:1.4}
 .call-cg{display:flex;gap:6px;align-items:flex-start;max-width:320px;margin-top:10px;font-size:12px;line-height:1.4;opacity:.85;text-align:left;background:rgba(255,255,255,.1);border-radius:10px;padding:8px 10px}
 .cg-note{display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.4;color:var(--muted);background:var(--surface-2);border-radius:10px;padding:8px 10px}.cg-note .ic{flex-shrink:0;margin-top:1px}.cg-note.hot{color:var(--bad);background:var(--bad-soft);font-weight:600}
 .sns-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}@media(min-width:520px){.sns-row{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -961,7 +966,7 @@ const S = {
   cust: { screen: 'home', cat: null, filter: 'nearest', q: '', pid: null, bizId: null, cart: [], when: 'now', slot: null, bid: null, pay: null, review: { stars: 5, tags: ['On time'], text: '', photos: [] }, addrSheet: false, signup: null, help: false },
   prov: { id: 'p1', screen: 'jobs', bid: null, eta: 30, apply: null, perf: false },
   biz: { id: 'b1', tab: 'bookings', invite: { name: '', phone: '' }, confirm: '', editStaff: null },
-  admin: { poRef: {}, tab: 'overview', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
+  admin: { poRef: {}, tab: 'desk', sel: null, jobFilter: 'all', jobQ: '', msg: '', note: '', provQ: '', provEdit: null, confirm: '', custFlags: {} },
   fin: { remit: {}, filed: {}, issued: {}, ref: '' },
   providers: [], businesses: [], bookings: [], alerts: [], sms: [], toasts: [], applications: [], consents: null, terms: null, accounts: null, bizApps: [], session: null, auth: null, modal: null,
   settings: {
@@ -2959,12 +2964,12 @@ function adminPane() {
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
-  const m = { overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
-    ${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
+    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
@@ -3265,6 +3270,71 @@ function admGuard() {
     ${rows.map(r => `<tr data-cg="${r.b.id}-${r.k}"><td><b>${r.b.id}</b><br><span class="tiny muted">${esc(r.b.services.map(s => s.name).join(', '))}</span></td><td>${esc(r.who)}<br><span class="tiny muted">${r.role}${r.k === 'c' && cgCustStrikes(r.b.cid) ? ' · ' + cgCustStrikes(r.b.cid) + ' confirmed in 90 days' : ''}</span></td><td class="num"><b style="color:${r.n >= 3 ? 'var(--bad)' : 'inherit'}">${r.n}</b></td><td>${r.kinds.map(k => `<span class="pill">${esc(CG_TXT[k] || k)}</span>`).join(' ') || '—'}</td><td class="small">${r.last ? fmtD(r.last) + ' ' + fmtT(r.last) : '—'}</td><td>${act(r)}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">No blocked attempts yet.</td></tr>'}
   </tbody></table></div></div>
   <div class="panel"><div class="panel-b"><span class="small"><b>Rules (Terms Section 10).</b> Provider: −3 reward credits per confirmed breach. Customer: written warning; a second confirmed breach within 90 days may be suspended for up to 30 days. Off-app deals or repeated breaches: forced withdrawal (Section 18). Messages themselves were never delivered, so nothing reached the other person.</span></div></div>`;
+}
+/* ---------- Ops desk: every manual daily task in one place, for whoever is on shift (each item stays on its own page too) ---------- */
+function deskItems() {
+  const t = now(), age = ms => ms < HOUR ? Math.max(1, Math.round(ms / MIN)) + ' min' : ms < DAY ? Math.round(ms / HOUR) + ' h' : Math.round(ms / DAY) + ' d';
+  const oldest = (xs, f) => xs.length ? 'oldest ' + age(t - Math.min(...xs.map(f))) : '';
+  const out = [];
+  const add = (o) => { if (canArea(o.tab)) out.push(o); };
+  // act now
+  const ring = (S.helpCalls || []).filter(r => r.state === 'ringing'), missed = (S.helpCalls || []).filter(r => r.state === 'ended' && r.why === 'missed' && !r.handled);
+  add({ id: 'calls', level: 'now', tab: 'calls', icon: 'headset', title: 'Support calls', n: ring.length + missed.length, detail: ring.length ? ring.length + ' ringing now' + (missed.length ? ' · ' + missed.length + ' missed' : '') : missed.length ? missed.length + ' missed, call back' : 'No calls waiting', how: 'Answer ringing calls first. Call back every missed call and mark it handled.' });
+  const late = S.bookings.filter(b => b.late && !b.late.resolved);
+  add({ id: 'late', level: 'now', tab: 'late', icon: 'alert', title: 'Late arrivals', n: late.length, detail: late.length ? oldest(late, b => b.late.at) : 'No one is late', how: 'Call the provider, tell the customer the new arrival time, and resolve the alert. Reassign or refund if they cannot come.' });
+  const rf = S.bookings.filter(b => b.refund && !b.refund.sentAt);
+  add({ id: 'refunds', level: 'now', tab: 'ap', icon: 'wallet', title: 'Refunds to send', n: rf.length, detail: rf.length ? peso(rf.reduce((a, b) => a + (b.refund.amount || 0), 0)) + ' · ' + oldest(rf, b => b.refund.at || b.cancelledAt || t) : 'None waiting', how: 'Send each refund to the original payment method: GCash or Maya within 24 hours, card within 5 days (Terms §7).' });
+  const cg = cgCases().filter(c => c.open && c.n >= 3);
+  add({ id: 'guard', level: 'now', tab: 'guard', icon: 'shield', title: 'Contact-sharing cases', n: cg.length, detail: cg.length ? cg.map(c => c.b.id).slice(0, 3).join(', ') : 'Nothing to review', how: 'Read the case, then confirm (provider −3 credits, customer warning) or dismiss (Terms §10).' });
+  // today
+  const apps = S.applications.filter(a => a.status === 'pending'), bapps = (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info');
+  add({ id: 'approvals', level: 'today', tab: 'approvals', icon: 'shield', title: 'Applications to approve', n: apps.length + bapps.length, detail: apps.length + bapps.length ? apps.length + ' provider · ' + bapps.length + ' business' + (apps.length ? ' · ' + oldest(apps, a => a.at || t) : '') : 'No one waiting', how: 'Compare the face photo with the ID, check TIN and documents, then approve or ask for more information. Aim for the same day.' });
+  const due = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded), late48 = due.filter(b => t - paidRefOf(b) > 48 * HOUR);
+  add({ id: 'payouts', level: 'today', tab: 'ap', icon: 'receipt', title: 'Payouts to send', n: due.length, warn: late48.length > 0, detail: due.length ? peso(due.reduce((a, b) => a + b.ledger.net, 0)) + ' to ' + new Set(due.map(payKey)).size + ' payees' + (late48.length ? ' · ' + late48.length + ' past 48 h' : '') : 'All paid', how: 'Pay each provider or business by GCash or bank within 72 hours of the customer payment, then mark it paid with the reference.' });
+  const ready = wlCities().filter(r => r.pros > 0 && r.open > 0);
+  add({ id: 'waitlist', level: 'today', tab: 'waitlist', icon: 'pin', title: 'Waitlists ready to notify', n: ready.length, detail: ready.length ? ready.map(r => r.city + ' ' + r.open).slice(0, 3).join(' · ') : 'No city ready yet', how: 'A city now has pros: press Notify so waiting customers know they can book.' });
+  const n0 = new Date(t), y = n0.getMonth() === 0 ? n0.getFullYear() - 1 : n0.getFullYear(), pm = n0.getMonth() === 0 ? 12 : n0.getMonth(), pKey = y + '-' + String(pm).padStart(2, '0');
+  const remitDue = n0.getDate() <= 10 && !(S.fin && S.fin.remit && S.fin.remit[pKey]);
+  add({ id: 'bir', level: 'today', tab: 'ap', icon: 'doc', title: 'BIR 0619-E for ' + pKey, n: remitDue ? 1 : 0, detail: remitDue ? 'Due by the 10th' : 'Recorded or not due yet', how: 'Remit last month\'s withheld tax by the 10th, then record the eFPS reference in Accounts payable › BIR filings.' });
+  const hr = (S.hrReq || []).filter(r => r.status === 'pending');
+  add({ id: 'hrdocs', level: 'today', tab: 'hrdocs', icon: 'doc', title: 'Staff document requests', n: hr.length, detail: hr.length ? oldest(hr, r => r.at || t) : 'None', how: 'Issue the Certificate of Employment or ID within 3 days.' });
+  const prUnpaid = (S.payrolls || []).filter(r => r.status === 'approved');
+  add({ id: 'payroll', level: 'today', tab: 'payroll', icon: 'wallet', title: 'Approved payroll to pay', n: prUnpaid.length, detail: prUnpaid.length ? prUnpaid.map(r => r.per).join(', ') : 'Nothing approved and unpaid', how: 'Pay staff salaries for the approved period, then mark the payroll paid.' });
+  // watch
+  const live = S.bookings.filter(b => ['paid', 'departed', 'arrived'].includes(b.status));
+  add({ id: 'jobs', level: 'watch', tab: 'jobs', icon: 'list', title: 'Jobs in progress', n: live.length, detail: live.length ? live.filter(b => b.status === 'arrived').length + ' in service · ' + live.filter(b => b.status === 'departed').length + ' on the way' : 'None right now', how: 'Watch for problems; open a job to see its map, check-in photo and messages.' });
+  const reqs = S.bookings.filter(b => ['requested', 'business_queue', 'offered'].includes(b.status));
+  add({ id: 'requests', level: 'watch', tab: 'jobs', icon: 'bag', title: 'Requests waiting for an answer', n: reqs.length, detail: reqs.length ? reqs.filter(b => b.status === 'business_queue').length + ' waiting for a spa to assign' : 'None', how: 'If a spa has not assigned a therapist in 10 minutes, call the spa.' });
+  const unpaid = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt);
+  add({ id: 'unpaid', level: 'watch', tab: 'ar', icon: 'wallet', title: 'Scheduled bookings not paid yet', n: unpaid.length, detail: unpaid.length ? 'Auto-cancel 1 h before start' : 'None', how: 'Reminders go out automatically; call the customer only if the booking is today.' });
+  const green = S.providers.filter(p => p.active !== false && p.status === 'green').length;
+  add({ id: 'standby', level: 'watch', tab: 'live', icon: 'light', title: 'Pros on stand-by now', n: green, warn: green === 0, detail: green ? green + ' ready for requests' : 'No one on stand-by', how: 'If no one is on stand-by during the day, message providers through Messages.' });
+  return out;
+}
+function admDesk() {
+  const items = deskItems(), U = admUser(), log = S.opsLog || [], notes = S.opsNotes || [];
+  const now_ = items.filter(x => x.level === 'now' && x.n), today = items.filter(x => x.level === 'today' && x.n);
+  const lastCheck = id => log.find(l => l.item === id && now() - l.at < 8 * HOUR);   // a shift is 8 hours
+  const card = x => { const l = lastCheck(x.id), hot = x.level !== 'watch' && x.n;
+    return `<div class="desk-i ${hot ? 'hot-' + x.level : ''} ${x.warn ? 'warn' : ''}" data-desk="${x.id}">
+      <div class="row" style="gap:10px;align-items:flex-start"><span class="desk-ic">${ic(x.icon, 18)}</span><div class="col grow" style="min-width:0;gap:2px"><b>${esc(x.title)}</b><span class="small ${hot ? '' : 'muted'}">${esc(x.detail)}</span></div><span class="desk-n num">${x.n}</span></div>
+      <span class="tiny muted desk-how">${esc(x.how)}</span>
+      <div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><button class="btn ${hot ? 'primary' : 'secondary'} xs" data-act="adminTab" data-arg="${x.tab}">Open ${ic('chev', 13)}</button><button class="btn ghost xs" data-act="deskCheck" data-arg="${x.id}">${ic('check', 13)} Checked</button><span class="tiny muted grow" style="text-align:right">${l ? 'Checked ' + fmtT(l.at) + ' by ' + esc(l.by) : 'Not checked this shift'}</span></div></div>`; };
+  const sec = (lv, title, sub) => { const xs = items.filter(x => x.level === lv); return xs.length ? `<section class="desk-s"><div class="row between"><h3>${title}</h3><span class="small muted">${sub}</span></div><div class="desk-grid">${xs.map(card).join('')}</div></section>` : ''; };
+  const status = now_.length ? `<div class="desk-st bad">${ic('alert', 20)}<b>${now_.length} ${now_.length === 1 ? 'thing needs' : 'things need'} action now</b><span class="small">${now_.map(x => x.title).join(' · ')}</span></div>`
+    : today.length ? `<div class="desk-st warn">${ic('clock', 20)}<b>Nothing urgent · ${today.length} task${today.length === 1 ? '' : 's'} for today</b><span class="small">${today.map(x => x.title).join(' · ')}</span></div>`
+    : `<div class="desk-st ok">${ic('check', 20)}<b>All clear</b><span class="small">Nothing needs action. Keep this page open; it updates by itself.</span></div>`;
+  return `<div class="page-h"><div><h1>Ops desk</h1><p>Start every shift here. Everything that needs a person today is on this page, with what to do. Work top to bottom: red first, then amber. Each item also stays on its own page.</p></div><div class="col" style="align-items:flex-end;gap:2px"><b class="num" style="font-size:22px">${fmtT(now())}</b><span class="tiny muted">${new Date(now()).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })} · ${esc(U ? U.name : '')}</span></div></div>
+  ${status}
+  ${sec('now', 'Act now', 'Customers or pros are waiting')}
+  ${sec('today', 'Do today', 'Approvals, money and documents')}
+  ${sec('watch', 'Keep an eye on', 'No action unless something goes wrong')}
+  <div class="split"><div class="wide panel"><div class="panel-h"><h3>Shift handover notes</h3><span class="small muted">For the next person on shift</span></div><div class="panel-b col" style="gap:10px">
+    <div class="row" style="gap:8px"><input id="desk-note" class="input grow" data-bind="admin.deskNote" value="${esc(S.admin.deskNote || '')}" placeholder="e.g. Called Liza about B-1057, she arrives 3:40" data-enter="deskNote"><button class="btn primary sm" data-act="deskNote">Add note</button></div>
+    <div class="list">${notes.slice(0, 12).map(n => `<div class="li"><div class="col grow"><span class="small">${esc(n.text)}</span><span class="tiny muted">${fmtD(n.at)} ${fmtT(n.at)} · ${esc(n.by)}</span></div></div>`).join('') || '<div class="li"><span class="small muted">No notes yet.</span></div>'}</div></div></div>
+    <div class="narrow panel"><div class="panel-h"><h3>Start-of-shift checklist</h3></div><div class="panel-b col" style="gap:8px">
+      ${['Open this page and read the handover notes', 'Clear everything in red', 'Approve applications and send payouts', 'Press Checked on each item you reviewed', 'Write a handover note before you leave'].map((x, i) => `<span class="small">${i + 1}. ${x}</span>`).join('')}
+      <button class="btn secondary sm" data-act="deskCheckAll">${ic('check', 14)} Mark all items checked</button></div></div></div>`;
 }
 function admCustomers() {
   const flags = S.admin.custFlags || {};
@@ -4311,13 +4381,13 @@ const mid = d => dayTs(d) + 12 * HOUR;
 
 /* ---------- admin levels and areas ---------- */
 const MG_AREAS = [
-  ['Monitor now', [['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
+  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['jobs', 'Requests & jobs']]],
   ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
   ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
   ['4 · Management', [['employees', 'Employees'], ['attendance', 'Attendance'], ['payroll', 'Payroll & BIR · 1601-C, 2316, alphalist'], ['hrdocs', 'HR documents · ID, COE'], ['expenses', 'Expenses'], ['revenue', 'Revenue'], ['ledger', 'Ledger · P&L and cash book'], ['access', 'Admin access & levels']]]
 ];
-const PERM_DEF = { overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
+const PERM_DEF = { desk: 3, overview: 3, approvals: 3, live: 3, late: 3, calls: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
 const PERM_TXT = { 1: 'Level 1 only', 2: 'Levels 1–2', 3: 'All levels' };
 function permOf(a) { if (a === 'finance') a = 'ap'; if (a === 'me' || a === 'guide') return 3; if (a === 'access') return 1; const p = (S.settings.perm || {})[a]; return [1, 2, 3].includes(+p) ? +p : (PERM_DEF[a] || 3); }
 const emps = () => S.employees || [];
@@ -5024,7 +5094,7 @@ const MG_ACTIONS = {
   admLogin: () => { const f = S.admin.al || {}, id = String(f.id || '').trim().toLowerCase(); const e = emps().find(x => (x.adminId || '').toLowerCase() === id);
     if (!e || !+e.level || e.adminOff || e.pw !== hashPw(f.pw || '', e.salt)) { S.admin.alErr = 'Admin ID or password is incorrect.'; return; }
     if (e.status !== 'active') { S.admin.alErr = 'This employee is separated. Console access has ended.'; return; }
-    S.admSess = { eid: e.id, at: Date.now(), key: e.salt }; S.admSignedOut = false; e.lastLogin = now(); S.admin.al = { id: '', pw: '' }; S.admin.alErr = ''; admLog('Signed in'); if (!canArea(S.admin.tab)) S.admin.tab = firstArea(); toast('admin', 'Welcome, ' + e.first, 'Level ' + e.level + ' · ' + e.pos); },
+    S.admSess = { eid: e.id, at: Date.now(), key: e.salt }; S.admSignedOut = false; e.lastLogin = now(); S.admin.al = { id: '', pw: '' }; S.admin.alErr = ''; admLog('Signed in'); S.admin.tab = canArea('desk') ? 'desk' : firstArea(); toast('admin', 'Welcome, ' + e.first, 'Level ' + e.level + ' · ' + e.pos); },
   admGateBack: () => { S.role = 'customer'; S.cust.screen = 'home'; S.admin.al = { id: '', pw: '' }; S.admin.alErr = ''; },
   admLogout: () => { admLog('Signed out'); S.admSess = null; S.admSignedOut = true; S.admin.doc = null; },
   admGo: t => { S.admin.tab = t; },
@@ -5096,7 +5166,7 @@ const MG_ACTIONS = {
   accPwHide: () => { S.admin.accPwShow = null; },
   accPerm: arg => { const [a, n] = arg.split('|'); if (a === 'access') return; S.settings.perm = Object.assign({}, PERM_DEF, S.settings.perm || {}); const was = permOf(a); S.settings.perm[a] = +n; if (was !== +n) admLog('Area "' + a + '": ' + PERM_TXT[was] + ' → ' + PERM_TXT[+n]); }
 };
-function firstArea() { const order = ['overview', 'approvals', 'live', 'late', 'calls', 'jobs', 'customers', 'providers', 'businesses', 'broadcast', 'ar', 'ap', 'promos', 'settings', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access']; return order.find(canArea) || 'me'; }
+function firstArea() { const order = ['desk', 'overview', 'approvals', 'live', 'late', 'calls', 'jobs', 'customers', 'providers', 'businesses', 'broadcast', 'ar', 'ap', 'promos', 'settings', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access']; return order.find(canArea) || 'me'; }
 /*MGMT-END*/
 /* =============== Connect to Ticktap staff: member → admin in-app voice call (WebRTC, signalled through helpCalls) =============== */
 const STAFF = { call: null, adm: null, view: null };
@@ -5734,7 +5804,7 @@ function render() {
   if (!Array.isArray(S.accounts)) S.accounts = [];
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
   Object.values(S.customers || {}).forEach(r => { if (r && r.suspendedUntil && now() > r.suspendedUntil) { r.suspended = false; r.suspendedUntil = null; } });
-  if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
+  if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!Array.isArray(S.opsLog)) S.opsLog = []; if (!Array.isArray(S.opsNotes)) S.opsNotes = []; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
   if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (ADMIN_URL) { ADMIN_URL = false; S.role = 'admin'; S.demoOpen = false; S.modal = null; }
@@ -5908,6 +5978,9 @@ const A = {
       pushAlert('customer', 'Warning: contact details', 'Sharing or asking for phone numbers or social accounts is not allowed in Ticktap (Terms Section 10). A second breach within 90 days may suspend your account.', bid);
       if (res === 'suspended') { r.suspended = true; r.suspendedUntil = now() + 30 * DAY; } }
     admLog('Contact guard ' + bid + ' · ' + (k === 'p' ? 'provider' : 'customer') + ' · ' + res); toast('admin', 'Case updated', bid + ' · ' + res); },
+  deskCheck: id => { const u = admUser(); (S.opsLog || (S.opsLog = [])).unshift({ item: id, by: u ? u.name : 'Admin', at: now() }); S.opsLog = S.opsLog.slice(0, 300); },
+  deskCheckAll: () => { const u = admUser(); deskItems().forEach(x => (S.opsLog || (S.opsLog = [])).unshift({ item: x.id, by: u ? u.name : 'Admin', at: now() })); S.opsLog = S.opsLog.slice(0, 300); toast('admin', 'Shift check recorded', deskItems().length + ' items'); },
+  deskNote: () => { const t = String(S.admin.deskNote || '').trim(); if (!t) return; const u = admUser(); (S.opsNotes || (S.opsNotes = [])).unshift({ id: 'N' + Date.now().toString(36), text: t.slice(0, 400), by: u ? u.name : 'Admin', at: now() }); S.opsNotes = S.opsNotes.slice(0, 200); S.admin.deskNote = ''; },
   missionHideToday: () => { const d = new Date(now()).toDateString(); S.msHide = d; lsSet('tt-ms-hide', d); S.modal = null; toast('customer', 'Hidden for today', 'The story will not pop up while you scroll. Tap the banner to open it any time.'); },
   missionOpen: () => { if (Date.now() < PEEK_HUSH) return; peekEnd(true); S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
   missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
@@ -6514,7 +6587,7 @@ window.addEventListener('blur', () => peekEnd(false));
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
+const SHARED_LIST = ['opsLog', 'opsNotes', 'waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -6632,7 +6705,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 119;
+const BUILD = 120;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
