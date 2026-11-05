@@ -6531,7 +6531,7 @@ const A = {
     toast('admin', 'Provider replied · ' + b.id, '+' + m + ' min'); b.late.dismissedUntil = Date.now() + 1; },
 
   lateCancel: id => { const b = bk(id), p = prov(b.pid); addCredit(p, CR().rules.paidCancel, 'Cancelled after the customer paid · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); provFault(b, 'Provider could not make it (late)', 'choice'); logB(b, 'Reward credits −5'); S.prov.screen = 'jobs'; },
-  addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
+  addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false, isNew: true }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
   resendApply: () => { const a = meAcct(); if (!a) return; a.status = 'applying'; a.link = {}; A.startApply(); if (S.prov.apply) S.prov.apply.name = a.name || ''; },
@@ -6723,7 +6723,7 @@ const onBind = (e, live) => {
     }
   }
   setPath(path, v);
-  if (svcName && wasEmpty && String(v).trim()) S.providers[svcName[1]].services[svcName[2]].on = true;
+  if (svcName && String(v).trim()) { const sv = S.providers[svcName[1]].services[svcName[2]]; if (wasEmpty || sv.isNew) { sv.on = true; delete sv.isNew; } }   /* naming a new service turns it on (also after an Android keyboard composition) */
   if (path === 'prov.id') { S.prov.screen = 'jobs'; S.prov.apply = null; }
   if (el.dataset.go === 'list' && v && S.cust.screen === 'home') { S.cust.screen = 'list'; S.cust.cat = null; }
   if (!live || el.tagName !== 'INPUT' || el.type !== 'text' && el.type !== 'search' && !el.inputMode && el.type !== 'number' && el.type !== 'tel') render();
@@ -7238,7 +7238,7 @@ function diffPaths() {
   const paths = {};
   SHARED_LIST.concat(SHARED_MAP).forEach(n => {
     const cur = recordsOf(n), last = SYNC.last[n] || {};
-    Object.keys(cur).forEach(k => { if (cur[k] !== last[k]) paths[n + '/' + k] = cur[k]; });
+    Object.keys(cur).forEach(k => { if (cur[k] !== last[k]) { paths[n + '/' + k] = cur[k]; markDirty(n, k, last[k], cur[k]); } });
     Object.keys(last).forEach(k => { if (!(k in cur)) paths[n + '/' + k] = null; });
     SYNC.last[n] = cur;
   });
@@ -7267,6 +7267,20 @@ function pushNow() {
 }
 function schedulePush() { if (!SYNC.adapter || !SYNC.ready) return; clearTimeout(SYNC.pushT); SYNC.pushT = setTimeout(pushNow, 60); }
 function myTargets() { return { ['customer:' + (S.customer.cid || 'me')]: 'customer', ['provider:' + S.prov.id]: 'provider', ['business:' + S.biz.id]: 'business' }; }
+/* Concurrent edits of the same record on two devices (e.g. the leader updating a provider's hours while the provider adds a
+   service) are merged field by field: fields this device changed and has not yet seen come back from the server are kept
+   on top of the other device's version. A field stays "dirty" for 30 seconds after this device last changed it. */
+const DIRTY = {};
+function markDirty(n, k, lastStr, curStr) {
+  try { const a = lastStr ? JSON.parse(lastStr) : {}, b = JSON.parse(curStr), t = Date.now(), d = DIRTY[n + '/' + k] || (DIRTY[n + '/' + k] = {});
+    Object.keys(b).forEach(f => { const v = JSON.stringify(b[f]); if (v !== JSON.stringify(a[f])) d[f] = { v, at: t }; }); } catch (e) { }
+}
+function overlayDirty(n, k, remoteStr, localStr, lastStr) {   // remote record + this device's recent and unsent field changes
+  try { const r = JSON.parse(remoteStr), d = DIRTY[n + '/' + k] || {}, t = Date.now(); let keep = false;
+    Object.keys(d).forEach(f => { if (t - d[f].at > 30000) delete d[f]; else { r[f] = JSON.parse(d[f].v); keep = true; } });
+    if (localStr && lastStr && localStr !== lastStr) { const lo = JSON.parse(localStr), b = JSON.parse(lastStr); Object.keys(lo).forEach(f => { if (JSON.stringify(lo[f]) !== JSON.stringify(b[f])) { r[f] = lo[f]; keep = true; } }); }
+    return keep ? JSON.stringify(r) : remoteStr; } catch (e) { return remoteStr; }
+}
 function applyRemote(root) {
   if (!root) return false;
   let changed = false;
@@ -7278,7 +7292,8 @@ function applyRemote(root) {
     let differs = false; const merged = {};
     keys.forEach(k => {
       const localChanged = local[k] !== last[k] || !!(SYNC.inflight && SYNC.inflight[n + '/' + k]);       // edited here and not confirmed by the server yet
-      const v = localChanged ? local[k] : remote[k];
+      let v = localChanged ? local[k] : remote[k];
+      if (remote[k] != null && local[k] != null && remote[k] !== local[k] && (DIRTY[n + '/' + k] || localChanged)) v = overlayDirty(n, k, remote[k], local[k], last[k]);   /* another device changed it too: keep both */
       if (v != null) merged[k] = v;
       if (v !== local[k]) differs = true;
       if (!localChanged && remote[k] != null && last[k] == null && local[k] == null) {   // brand-new record from another device
@@ -7314,7 +7329,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 135;
+const BUILD = 136;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
