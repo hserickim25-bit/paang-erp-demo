@@ -779,6 +779,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* trusted contact (family) view */
 .fam-s{background:var(--bg)}.fam-s .scroll{display:flex;flex-direction:column;gap:12px}
 .fam-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px max(16px,env(safe-area-inset-left,0px));padding-top:calc(12px + env(safe-area-inset-top,0px));background:#12355B;color:#fff}
+.web .callscreen{position:fixed;z-index:95}   /* business console: full window */
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -2866,7 +2867,7 @@ function bizPane() {
   if (tab === 'guide') main = `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('business')].page}</h1></div></div><div class="gd-page">${guideBody('business')}</div>`;
   return `<div class="web" data-pane="business"><aside class="side"><div class="org">${bizLogo(b, 36, 10, 19, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
     ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${nav('guide', 'Paano Gamitin', 'doc')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
-    <main class="main">${pushCard(true)}${noticeList('business:' + b.id)}${main}</main>${toastsFor('business', true)}</div>`;
+    <main class="main">${pushCard(true)}${noticeList('business:' + b.id)}${main}</main>${toastsFor('business', true)}${staffCallScreen('business')}</div>`;
 }
 function bizRequests(b, q) {
   const active = S.bookings.filter(x => x.bizId === b.id && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status));
@@ -3075,7 +3076,7 @@ function admJobs() {
       ${list.slice(0, 60).map(b => { const p = b.pid ? prov(b.pid) : null; const diff = b.arrivedAt && b.promisedAt ? Math.round((b.arrivedAt - b.promisedAt) / MIN) : null; return `<tr class="click ${sel && sel.id === b.id ? 'sel' : ''}" data-act="admSel" data-arg="${b.id}"><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td>${p ? esc(p.name) : esc(biz(b.bizId).name)}</td><td>${statusPill(b.status)}${b.refunded ? ' <span class="pill bad">Refunded</span>' : ''}</td><td class="num mono">${b.eta ? b.eta + 'm' : '—'}</td><td class="mono">${b.paidAt ? fmtT(b.paidAt) : '—'}</td><td>${diff == null ? '—' : diff <= 0 ? '<span style="color:var(--good)">On time</span>' : `<span style="color:${diff > S.settings.penaltyAfter ? 'var(--bad)' : 'var(--warn)'}">+${diff} min</span>`}</td><td class="num">${peso(b.gross)}</td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No jobs match.</div></td></tr>'}
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
-      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${sel.cid ? staffDialBtn('c:' + sel.cid, sel.id, 'Call customer in app') : ''}${sel.pid ? staffDialBtn('p:' + sel.pid, sel.id, 'Call provider in app') : ''}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${sel.cid ? staffDialBtn('c:' + sel.cid, sel.id, 'Call customer in app') : ''}${sel.pid ? staffDialBtn('p:' + sel.pid, sel.id, 'Call provider in app') : ''}${sel.bizId ? staffDialBtn('b:' + sel.bizId, sel.id, 'Call business in app') : ''}</div>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
       ${nsAdminCard(sel)}
       ${sel.noShow ? `<div class="card tight" style="margin-top:8px;gap:6px;border-color:var(--warn)"><b class="small">${sel.noShow ? 'Customer no-show (closed by the provider)' : 'Provider no-show (reported by the customer)'}</b><span class="tiny muted">Check the times, the map trail, messages and calls. ${sel.noShow ? 'If the customer was there, cancel the payout and credit the customer.' : 'If the provider did come, reverse the credit through Help desk.'}</span>${sel.nsChecked ? `<span class="pill good">Checked ${fmtD(sel.nsChecked.at)} · ${esc(sel.nsChecked.by)}</span>` : `<button class="btn secondary xs" data-act="admNsOk" data-arg="${sel.id}">Checked · OK</button>`}</div>` : ''}
@@ -3184,7 +3185,7 @@ function admBusinesses() {
     const gross = month.reduce((a, x) => a + x.gross, 0), fee = month.reduce((a, x) => a + x.ledger.fee, 0), due = S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && x.ledger && !x.ledger.paidAt && !x.refunded).reduce((a, x) => a + x.ledger.net, 0);
     const tc = consentOf('business', b.id);
     return `<tr><td><div class="row">${bizLogo(b, 36, 10, 18, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">${catName(b.cat)} · ${esc(b.area)}</span></div></div></td>
-      <td class="small">${esc(b.owner || '')}<br><span class="tiny muted">${esc(b.phone || '')}</span></td>
+      <td class="small">${esc(b.owner || '')}<br><span class="tiny muted">${esc(b.phone || '')}</span><br>${staffDialBtn('b:' + b.id, '', 'Call in app')}</td>
       <td class="num">${staff.length}${b.invited && b.invited.length ? ` <span class="tiny muted">+${b.invited.length} invited</span>` : ''}<br><span class="tiny muted">${staff.filter(p => p.status === 'green').length} on stand-by</span></td>
       <td class="small">${esc(b.dti || '—')}<br><span class="tiny muted">TIN ${esc(b.tin || '—')} · ${esc(b.permit || '')}</span></td>
       <td class="num">${peso(gross)}<br><span class="tiny muted">fees ${peso(fee, 2)}</span></td>
@@ -5371,7 +5372,7 @@ function firstArea() { const order = ['desk', 'overview', 'approvals', 'live', '
 const STAFF = { call: null, adm: null, view: null };
 const HOTLINE = '+63 917 555 0142';
 const helpCall = id => (S.helpCalls || []).find(r => r.id === id);
-const staffMyKey = role => role === 'customer' ? 'c:' + (S.customer.cid || 'me') : role === 'provider' ? 'p:' + S.prov.id : '';
+const staffMyKey = role => role === 'customer' ? 'c:' + (S.customer.cid || 'me') : role === 'provider' ? 'p:' + S.prov.id : role === 'business' ? 'b:' + S.biz.id : '';
 function newPeerStaff(side) {
   const pc = new RTCPeerConnection({ iceServers: ICE });
   const audio = new Audio(); audio.autoplay = true; audio.playsInline = true;
@@ -5387,6 +5388,7 @@ function endStaffLocal(side) {
 function staffMember(key) {   // who is being called: name, phone, role
   if (key.startsWith('c:')) { const cid = key.slice(2), r = custRec(cid) || {}; const me = cid === (S.customer.cid || 'me'); return { role: 'customer', who: r.name || (me ? S.customer.name : '') || 'Customer', phone: r.phone || (me ? S.customer.phone : '') || '' }; }
   if (key.startsWith('p:')) { const p = prov(key.slice(2)) || {}; return { role: 'provider', who: p.name || 'Provider', phone: p.phone || '' }; }
+  if (key.startsWith('b:')) { const z = biz(key.slice(2)) || {}; return { role: 'business', who: z.name || 'Business', phone: z.phone || '' }; }
   return null;
 }
 /* ---------- staff side ---------- */
@@ -5434,7 +5436,7 @@ async function staffPick(id, role) {
 }
 function staffDecline(id) { const r = helpCall(id); if (!r || r.state !== 'ringing') return; r.state = 'ended'; r.why = 'declined'; r.endedAt = Date.now(); r.dur = 0; const b = r.bid && bk(r.bid); if (b) logB(b, 'Member declined the Ticktap call'); }
 /* ---------- sync (runs every second from the call loop) ---------- */
-const staffRinging = () => ['customer', 'provider'].some(role => document.querySelector(`[data-pane="${role}"]`) && staffIncoming(role));
+const staffRinging = () => ['customer', 'provider', 'business'].some(role => document.querySelector(`[data-pane="${role}"]`) && staffIncoming(role));
 function staffCallSync() {
   let ch = false;
   const a = STAFF.adm;
@@ -5466,7 +5468,7 @@ function staffCallScreen(role) {
 function staffCallWin() {
   if (!canArea('calls')) return '';
   const a = STAFF.adm, r = a && helpCall(a.id); if (!r || !['ringing', 'active'].includes(r.state)) return '';
-  const info = `<div class="col" style="gap:3px"><span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'}${r.bid ? ' · ' + r.bid : ''}</span><b style="font-size:17px">${esc(r.who)}</b><span class="small mono">${esc(r.phone || 'no mobile on file')}</span></div>`;
+  const info = `<div class="col" style="gap:3px"><span class="tiny muted">${({ customer: 'Customer', provider: 'Provider', business: 'Business' })[r.from]}${r.bid ? ' · ' + r.bid : ''}</span><b style="font-size:17px">${esc(r.who)}</b><span class="small mono">${esc(r.phone || 'no mobile on file')}</span></div>`;
   const body = r.state === 'ringing' ? `<div class="cw-card ring">${info}<span class="small muted">${a.note ? esc(a.note) : 'Ringing their app… (60 seconds)'}</span><div class="row" style="gap:8px"><button class="btn sm grow" style="background:var(--bad-dot);color:#fff" data-act="staffAdmEnd">${ic('phone', 16)} Cancel call</button></div></div>`
     : `<div class="cw-card on"><div class="row between"><span class="eyebrow" style="color:var(--good)">● On call</span><b class="num" data-calltime="${r.startedAt}">${mmss(Date.now() - r.startedAt)}</b></div>${info}${r.mic === false ? `<span class="small" style="color:var(--warn)">No microphone on their side: phone ${esc(r.phone || 'them')}.</span>` : a.conn && a.conn !== 'connected' ? `<span class="small muted">Line: ${esc(a.conn)}</span>` : ''}
       <div class="row" style="gap:8px">${a.stream ? `<button class="btn secondary sm" data-act="staffMute">${ic(a.muted ? 'micoff' : 'mic', 16)} ${a.muted ? 'Unmute' : 'Mute'}</button>` : ''}<button class="btn sm grow" style="background:var(--bad-dot);color:#fff" data-act="staffAdmEnd">${ic('phone', 16)} End call</button></div></div>`;
@@ -5476,9 +5478,9 @@ const staffDialBtn = (key, bid, label) => key ? `<button class="btn secondary xs
 function admCalls() {
   const L = (S.helpCalls || []).filter(r => r.dir === 'out').sort((a, b) => b.at - a.at);
   const st = r => r.state === 'ringing' ? '<span class="pill warn">Ringing</span>' : r.state === 'active' ? '<span class="pill good">On call</span>' : ['missed', 'declined'].includes(r.why) ? (r.handled ? `<span class="pill outline">${r.why === 'missed' ? 'No answer' : 'Declined'} · handled</span>` : `<span class="pill bad">${r.why === 'missed' ? 'No answer' : 'Declined'} · phone them</span>`) : r.why === 'cancelled' ? '<span class="pill outline">Cancelled</span>' : '<span class="pill good">Done</span>';
-  return `<div class="page-h"><div><h1>Calls to members</h1><p>Members cannot call Ticktap from the app; they write to <b>Help desk</b>. Staff call a customer or provider from a job, a Help report or a no-show report with <b>Call in app</b>. Their phone rings in the app. Calls that are not answered stay here until you phone the member and mark them handled.</p></div></div>
+  return `<div class="page-h"><div><h1>Calls to members</h1><p>Members cannot call Ticktap from the app; they write to <b>Help desk</b>. Staff call a customer, provider or business from a job, a Help report or a no-show report with <b>Call in app</b>. Their phone rings in the app. Calls that are not answered stay here until you phone the member and mark them handled.</p></div></div>
   <div class="panel"><div class="tablewrap"><table><thead><tr><th>Time</th><th>Member</th><th>Booking</th><th>Status</th><th class="num">Length</th><th>Staff</th><th></th></tr></thead><tbody>
-  ${L.map(r => `<tr><td class="mono small">${fmtD(r.at)} ${fmtT(r.at)}</td><td><b class="small">${esc(r.who)}</b><br><span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'} · ${esc(r.phone || '—')}</span></td><td class="small">${r.bid ? `<button class="inlinelink" data-act="hcOpen" data-arg="${r.bid}">${r.bid}</button>` : '—'}</td><td>${st(r)}</td><td class="num small">${r.dur ? mmss(r.dur * 1000) : '—'}</td><td class="small">${esc(r.byName || '')}</td><td>${['missed', 'declined'].includes(r.why) && !r.handled ? `<button class="btn ghost xs" data-act="hcHandled" data-arg="${r.id}">Phoned · handled</button>` : r.state === 'ended' ? staffDialBtn(r.key, r.bid, 'Call again') : ''}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No calls yet.</div></td></tr>'}
+  ${L.map(r => `<tr><td class="mono small">${fmtD(r.at)} ${fmtT(r.at)}</td><td><b class="small">${esc(r.who)}</b><br><span class="tiny muted">${({ customer: 'Customer', provider: 'Provider', business: 'Business' })[r.from]} · ${esc(r.phone || '—')}</span></td><td class="small">${r.bid ? `<button class="inlinelink" data-act="hcOpen" data-arg="${r.bid}">${r.bid}</button>` : '—'}</td><td>${st(r)}</td><td class="num small">${r.dur ? mmss(r.dur * 1000) : '—'}</td><td class="small">${esc(r.byName || '')}</td><td>${['missed', 'declined'].includes(r.why) && !r.handled ? `<button class="btn ghost xs" data-act="hcHandled" data-arg="${r.id}">Phoned · handled</button>` : r.state === 'ended' ? staffDialBtn(r.key, r.bid, 'Call again') : ''}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No calls yet.</div></td></tr>'}
   </tbody></table></div></div>
   <p class="tiny muted">Voice uses a direct connection between the two devices. Some mobile networks block direct connections; a relay (TURN) server will be added for launch so every call connects. If the line does not connect, phone the number shown.</p>`;
 }
@@ -7312,7 +7314,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 134;
+const BUILD = 135;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
