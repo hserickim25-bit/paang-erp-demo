@@ -776,6 +776,9 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .ns-steps li::before{content:'';position:absolute;left:4px;top:5px;width:10px;height:10px;border-radius:50%;border:2px solid var(--line-2,#C9CFD8)}
 .ns-steps li.now,.ns-steps li.done{opacity:1}.ns-steps li.now::before{border-color:var(--warn);background:var(--warn)}.ns-steps li.done::before{border-color:var(--good-dot,#3BB273);background:var(--good-dot,#3BB273)}
 .ns-gate{z-index:60}   /* below the demo switch (z 70) so testers can change role */
+/* trusted contact (family) view */
+.fam-s{background:var(--bg)}.fam-s .scroll{display:flex;flex-direction:column;gap:12px}
+.fam-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px max(16px,env(safe-area-inset-left,0px));padding-top:calc(12px + env(safe-area-inset-top,0px));background:#12355B;color:#fff}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1719,7 +1722,7 @@ function custTrack() {
         chk: b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Arrival check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Check-in photo taken by ${esc(first)} at arrival" style="width:100%;border-radius:10px;max-height:260px;object-fit:contain;background:#0E1520"></div>` : '',
         talk: b.status === 'paid' ? `<div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div></div><span class="tiny muted">Messages and calls open when ${esc(first)} departs.</span></div>` : `<div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>`,
         rate: b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : '',
-        safe: ['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff;line-height:1.15" data-act="staffCall" data-arg="customer:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted"><b>Connect to Ticktap staff</b> opens an in-app voice call with our safety team at once if anything feels wrong during the visit. In an emergency, call 911. <b>Share trip</b> sends who is coming, the arrival time and your address to family or a friend.</p></div>` : '' };
+        safe: ['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><p class="small"><b>In an emergency, call 911.</b> If something is wrong with the booking, tap <b>Help</b> above and choose an urgent topic: urgent reports go first and Ticktap may call you in the app.</p><button class="btn secondary sm" data-act="custHelp">${ic('chat', 16)} Help · report a problem</button></div>` : '' };
         B.ns = ['paid', 'departed'].includes(b.status) ? nsCustCard(b) : '';
         const O0 = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['rate', 'chk', 'talk'] }[b.status] || ['rate', 'chk', 'talk'], O = B.ns ? ['ns'].concat(O0) : O0;   /* a no-show report in progress, or the button to make one, comes first */   // what the customer acts on now comes first
         return O.map(k => k === O[0] && B[k] ? `<div class="job-next" data-next="${b.status}">${B[k]}</div>` : B[k]).join(''); })()}
@@ -1784,7 +1787,6 @@ function custAccount() {
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
       <button class="li" data-act="custHelp" data-arg="acct">${ic('chat', 20)}<div class="col grow"><b>Help & reports</b><span class="small muted">Report a problem · we reply within 48 hours${tkMine('customer').some(x => x.status === 'open' && x.needs === 'member') ? ' · <b style="color:var(--accent)">new reply</b>' : ''}</span></div>${ic('chev', 16)}</button>
-      <button class="li" data-act="staffCall" data-arg="customer:">${ic('headset', 20)}<div class="col grow"><b>Connect to Ticktap staff</b><span class="small muted">In-app voice call with our support team</span></div>${ic('chev', 16)}</button>
     </div>
     ${mktCard('c:' + (S.customer.cid || 'me'))}
     <div class="card"><span class="eyebrow">About Ticktap</span><p class="small">Tick for verified, tap for one tap: every pro is ID-checked, and booking takes a single tap. The platform helps experienced salon, spa and grooming professionals earn again from home-service work, with flexible hours that fit family life.</p></div>
@@ -2009,9 +2011,10 @@ function provJob() {
     ${b.status === 'paid' ? reschedCardProv(b) : ''}
     ${f ? `<div class="job-next" data-next="${b.status}">${f}</div>` : ''}
     ${custNoShowCard(b)}
+    ${famJobCard(b, me)}
     ${b.status === 'departed' ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
     ${canTalk(b) && b.status !== 'paid' ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
-    ${['departed', 'arrived'].includes(b.status) ? `<button class="btn block" style="background:var(--bad-dot);color:#fff" data-act="staffCall" data-arg="provider:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button>` : ''}
+    ${['departed', 'arrived'].includes(b.status) ? `<p class="tiny muted" style="text-align:center"><b>In an emergency, call 911.</b> For a problem with this job, tap <b>Help</b> at the top: urgent reports go first and Ticktap may call you in the app.</p>` : ''}
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${b.reminders && b.reminders.length && b.status === 'paid' ? remindersCard(b) : ''}
     ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
@@ -2319,7 +2322,7 @@ function guideFil(role) {
         ['pin', 'I-track ang provider', 'Kapag na-tap nila ang Depart, makikita mo sila sa mapa kasama ang oras ng pagdating.'],
         ['chat', 'Mag-message o tumawag sa app', 'Kapag may bagong message, may pop-up na may Reply button. Nakatago ang phone number ninyo sa isa\'t isa. Magsasara ang chat pagkatapos ng serbisyo.'],
         ['camera', 'Pag-check sa pagdating', 'Pagdating, kukuha ang provider ng check-in photo na makikita mo. Hilingin na makita ang kanilang Ticktap ID; puwedeng i-scan ng guard ang QR code nito.'],
-        ['headset', 'Kaligtasan', 'Pindutin ang "Connect to Ticktap staff" sa booking screen kung may hindi tama: agad kang makakausap ng Ticktap team sa in-app call. Sa emergency, tumawag sa 911.']]],
+        ['headset', 'Kaligtasan', 'Kung may hindi tama, pindutin ang Help sa booking screen at pumili ng Urgent na topic: inuuna ito at maaaring tawagan ka ng Ticktap sa app. Sa emergency, tumawag sa 911.']]],
       ['Pagtatapos', [
         ['check', 'Tapos na ang serbisyo', 'I-tap ng provider ang End service, o kusa itong matatapos sa naka-book na oras.'],
         ['heart', 'Mag-rate at mag-review', 'Pagkatapos ng serbisyo, may lalabas na pop-up na "Thank you for choosing Ticktap today!". I-tap ang stars at Write a review, o Later para mag-rate mula sa Bookings. Nakakatulong ang reviews sa ibang customer at sa reward credits ng provider.'],
@@ -2394,7 +2397,7 @@ function guideFil(role) {
         ['shield', 'Approvals', 'Providers: compare the live face photo with the ID, check certificates, then approve, ask for more, or reject. Businesses: check permits.'],
         ['light', 'Live status', 'Who is on green, yellow or red right now.'],
         ['alert', 'Late alerts', 'Call the provider, tell the customer, reassign or cancel and refund.'],
-        ['headset', 'Support calls', 'When a member taps "Connect to Ticktap staff", a call window opens on every admin screen with a ring. Answer to talk in the app, or call back on the number shown. Missed calls stay in Support calls until marked handled.'],
+        ['headset', 'Calls to members', 'Members cannot call Ticktap from the app; they write to Help desk. To talk to a customer or provider, press Call in app on the job, the Help report or the no-show report: their phone rings in the app. Unanswered calls stay in Calls to members until you phone them and mark them handled.'],
         ['list', 'Requests & jobs', 'Every booking with its log, payment and check-in photo. Members answer requests, offers and messages from pop-ups, so a stuck booking usually means a phone was offline.']]],
       ['Members', [
         ['users', 'Customers, Providers, Businesses', 'Search a member, adjust reward credits, suspend or reactivate. Suspension makes the provider\'s Ticktap ID show "Not active" at once. One login can hold both sides: the account list shows "Customer + Provider" or "Provider pending". Suspending the provider side does not block the customer side; forced withdrawal closes the whole account.'],
@@ -2444,7 +2447,7 @@ function guideEn(role) {
         ['pin', 'Track the provider', 'When they tap Depart you see them on the map with the arrival time.'],
         ['chat', 'Message or call in the app', 'A new message pops up with a Reply button. Your phone numbers stay hidden from each other. The chat closes when the service ends.'],
         ['camera', 'Arrival check', 'On arrival the provider takes a check-in photo, which you see. Ask to see their Ticktap ID; the guard can scan its QR code.'],
-        ['headset', 'Safety', 'Tap "Connect to Ticktap staff" on the booking screen if anything feels wrong: our team answers in an in-app voice call. In an emergency, call 911.']]],
+        ['headset', 'Safety', 'If something is wrong, tap Help on the booking screen and choose an Urgent topic: it goes first and Ticktap may call you in the app. In an emergency, call 911.']]],
       ['Finish', [
         ['check', 'Service ends', 'The provider taps End service, or it ends automatically at the booked time.'],
         ['heart', 'Rate and review', 'A "Thank you for choosing Ticktap today!" pop-up appears. Tap the stars and Write a review, or Later to rate from Bookings. Reviews help other customers and set the provider\'s reward credits.'],
@@ -2537,7 +2540,7 @@ function guideKo(role) {
         ['pin', '제공자 위치 확인', '제공자가 Depart를 누르면 지도에서 위치와 도착 예정 시간을 볼 수 있습니다.'],
         ['chat', '앱 안에서 메시지·통화', '새 메시지가 오면 Reply 버튼이 있는 팝업이 뜹니다. 서로의 전화번호는 보이지 않고, 서비스가 끝나면 채팅이 닫힙니다.'],
         ['camera', '도착 확인', '도착하면 제공자가 현장 사진을 찍고, 고객도 그 사진을 봅니다. Ticktap ID를 보여달라고 하세요. 경비는 ID의 QR 코드를 찍어 확인할 수 있습니다.'],
-        ['headset', '안전', '불안한 일이 있으면 예약 화면의 "Connect to Ticktap staff"(플랫폼 담당자 연결)를 누르세요. 바로 담당자와 앱 음성통화가 연결됩니다. 긴급 상황은 911에 전화하세요.']]],
+        ['headset', '안전', '문제가 있으면 예약 화면의 Help를 눌러 Urgent(긴급) 주제를 고르세요. 가장 먼저 처리되며, Ticktap이 앱으로 전화를 드릴 수 있습니다. 긴급 상황은 911에 전화하세요.']]],
       ['마무리', [
         ['check', '서비스 종료', '제공자가 End service를 누르거나, 예약된 시간이 되면 자동으로 끝납니다.'],
         ['heart', '별점과 리뷰', '"Thank you for choosing Ticktap today!" 팝업이 뜹니다. 별을 누르고 Write a review를 누르거나, Later를 눌러 나중에 Bookings에서 평가합니다. 리뷰는 다른 고객과 제공자의 리워드 크레딧에 반영됩니다.'],
@@ -2612,7 +2615,7 @@ function guideKo(role) {
         ['shield', 'Approvals', '제공자: 실시간 얼굴 사진과 신분증을 대조하고 자격증을 확인한 뒤 승인·보완 요청·거절. 업소: 인허가 서류 확인.'],
         ['light', 'Live status', '지금 초록·노랑·빨강 상태인 제공자 현황.'],
         ['alert', 'Late alerts', '제공자에게 전화하고 고객에게 알린 뒤, 재배정하거나 취소·환불합니다.'],
-        ['headset', 'Support calls', '회원이 "Connect to Ticktap staff"(플랫폼 담당자 연결)를 누르면 모든 관리자 화면에 벨소리와 함께 통화창이 뜹니다. 받기를 눌러 앱으로 통화하거나 표시된 번호로 전화하세요. 못 받은 통화는 처리 완료로 표시할 때까지 Support calls에 남습니다.'],
+        ['headset', 'Calls to members', '회원은 앱에서 회사로 전화할 수 없고 Help desk로 문의합니다. 고객이나 제공자와 통화가 필요하면 예약, Help 문의, 노쇼 신고 화면의 Call in app을 누르세요. 상대 휴대폰의 앱이 울립니다. 받지 않은 통화는 전화로 연락한 뒤 처리 완료로 표시할 때까지 Calls to members에 남습니다.'],
         ['list', 'Requests & jobs', '모든 예약의 기록, 결제, 도착 사진. 회원들은 요청·결제·메시지에 팝업으로 응답하므로, 멈춘 예약은 대개 해당 폰이 오프라인이었다는 뜻입니다.']]],
       ['회원', [
         ['users', '고객·제공자·업소', '회원을 찾아 리워드 크레딧을 조정하고 정지·재활성화합니다. 정지하면 제공자의 Ticktap ID가 즉시 "Not active"로 표시됩니다. 한 계정이 고객·제공자를 함께 가질 수 있으며 목록에 "Customer + Provider" 또는 "Provider pending"으로 표시됩니다. 제공자 정지는 고객 이용을 막지 않고, 강제 탈퇴는 계정 전체를 닫습니다.'],
@@ -2645,7 +2648,7 @@ function guideFilAdmin() {
         ['shield', 'Approvals', 'Providers: ikumpara ang live na litrato ng mukha sa ID at suriin ang mga certificate, saka i-approve, humingi ng dagdag, o i-reject. Businesses: suriin ang mga permit.'],
         ['light', 'Live status', 'Sino ang naka-green, yellow o red ngayon.'],
         ['alert', 'Late alerts', 'Tawagan ang provider, sabihan ang customer, i-reassign o i-cancel at i-refund.'],
-        ['headset', 'Support calls', 'Kapag pinindot ng miyembro ang "Connect to Ticktap staff", lalabas ang call window na may ring sa bawat admin screen. Sagutin para mag-usap sa app, o tawagan ang numerong nakalagay. Nananatili sa Support calls ang missed calls hanggang markahang handled.'],
+        ['headset', 'Calls to members', 'Hindi makakatawag ang mga miyembro sa Ticktap mula sa app; sumusulat sila sa Help desk. Para makausap ang customer o provider, pindutin ang Call in app sa job, Help report o no-show report: tutunog ang app nila. Nananatili sa Calls to members ang hindi nasagot hanggang tawagan mo sila at markahang handled.'],
         ['list', 'Requests & jobs', 'Lahat ng booking kasama ang log, bayad at check-in photo. Sumasagot ang mga miyembro sa pop-up, kaya kapag naipit ang isang booking, kadalasan ay offline ang isang phone.']]],
       ['Mga miyembro', [
         ['users', 'Customers, Providers, Businesses', 'Hanapin ang miyembro, ayusin ang reward credits, i-suspend o i-reactivate. Kapag na-suspend, agad na "Not active" ang Ticktap ID ng provider. Puwedeng may dalawang side ang isang login: "Customer + Provider" o "Provider pending" sa listahan. Ang suspension ng provider side ay hindi humaharang sa customer side; ang forced withdrawal ay nagsasara ng buong account.'],
@@ -2764,9 +2767,9 @@ function provAccount() {
       <div class="li">${ic('doc', 20)}<div class="col grow"><b>Certificates</b><span class="small muted">${me.cert ? esc(me.cert) : 'Optional · none uploaded'}</span></div>${me.cert ? '<span class="pill accent">Certified</span>' : '<span class="pill outline">Optional</span>'}</div>
       <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Reward credits & platform fee</b><span class="small muted">${me.credits} credits · ${tierRate(me)}% fee</span></div>${ic('chev', 16)}</button>
     </div>
+    ${famCard(me)}
     <div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${me.id}">Mark all read</button></div>${alertList('provider:' + me.id)}</div>
     <button class="btn secondary block" data-act="provHelp" data-arg="">${ic('chat', 18)} Help & reports${tkMine('provider').some(x => x.status === 'open' && x.needs === 'member') ? ' · new reply' : ''}</button>
-    <button class="btn secondary block" data-act="staffCall" data-arg="provider:">${ic('headset', 18)} Connect to Ticktap staff</button>
     ${mktCard('p:' + me.id)}
     ${meAcct() ? `<button class="btn secondary block" data-act="authLogout">${ic('logout', 18)} Log out (${esc(meAcct().loginId)})</button>` : `<button class="btn secondary block" data-act="startApply">${ic('user', 18)} Preview the new-provider application</button>`}
   </div>`;
@@ -3036,7 +3039,7 @@ function adminPane() {
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
-    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Support calls', 'headset', (S.helpCalls || []).filter(r => r.state === 'ringing' || (r.state === 'ended' && r.why === 'missed' && !r.handled)).length)}${nav('help', 'Help desk', 'chat', tkWaiting().length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
+    ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Calls to members', 'headset', (S.helpCalls || []).filter(r => r.dir === 'out' && r.state === 'ended' && ['missed', 'declined'].includes(r.why) && !r.handled).length)}${nav('help', 'Help desk', 'chat', tkWaiting().length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
     ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
@@ -3072,6 +3075,7 @@ function admJobs() {
       ${list.slice(0, 60).map(b => { const p = b.pid ? prov(b.pid) : null; const diff = b.arrivedAt && b.promisedAt ? Math.round((b.arrivedAt - b.promisedAt) / MIN) : null; return `<tr class="click ${sel && sel.id === b.id ? 'sel' : ''}" data-act="admSel" data-arg="${b.id}"><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td>${p ? esc(p.name) : esc(biz(b.bizId).name)}</td><td>${statusPill(b.status)}${b.refunded ? ' <span class="pill bad">Refunded</span>' : ''}</td><td class="num mono">${b.eta ? b.eta + 'm' : '—'}</td><td class="mono">${b.paidAt ? fmtT(b.paidAt) : '—'}</td><td>${diff == null ? '—' : diff <= 0 ? '<span style="color:var(--good)">On time</span>' : `<span style="color:${diff > S.settings.penaltyAfter ? 'var(--bad)' : 'var(--warn)'}">+${diff} min</span>`}</td><td class="num">${peso(b.gross)}</td></tr>`; }).join('') || '<tr><td colspan="8"><div class="empty">No jobs match.</div></td></tr>'}
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
+      <div class="row" style="gap:6px;flex-wrap:wrap;margin-top:6px">${sel.cid ? staffDialBtn('c:' + sel.cid, sel.id, 'Call customer in app') : ''}${sel.pid ? staffDialBtn('p:' + sel.pid, sel.id, 'Call provider in app') : ''}</div>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
       ${nsAdminCard(sel)}
       ${sel.noShow ? `<div class="card tight" style="margin-top:8px;gap:6px;border-color:var(--warn)"><b class="small">${sel.noShow ? 'Customer no-show (closed by the provider)' : 'Provider no-show (reported by the customer)'}</b><span class="tiny muted">Check the times, the map trail, messages and calls. ${sel.noShow ? 'If the customer was there, cancel the payout and credit the customer.' : 'If the provider did come, reverse the credit through Help desk.'}</span>${sel.nsChecked ? `<span class="pill good">Checked ${fmtD(sel.nsChecked.at)} · ${esc(sel.nsChecked.by)}</span>` : `<button class="btn secondary xs" data-act="admNsOk" data-arg="${sel.id}">Checked · OK</button>`}</div>` : ''}
@@ -3353,7 +3357,7 @@ function admHelp() {
       ${rec}
       <div class="col" style="gap:6px">${sel.msgs.map(m => `<div class="hp-msg ${m.by}"><span class="tiny muted">${m.by === 'staff' ? esc(m.name) + ' (staff)' : esc(m.name)} · ${fmtD(m.at)} ${fmtT(m.at)}</span><span class="small">${esc(m.text)}</span></div>`).join('')}</div>
       ${sel.status === 'resolved' ? `<span class="small"><b>Outcome:</b> ${esc(sel.outcome || '')} · ${fmtD(sel.resolvedAt)}</span><button class="btn ghost sm" data-act="admTkReopen" data-arg="${sel.id}">Reopen</button>`
-      : `<label class="field">Reply to ${esc(sel.who)}<textarea id="tk-reply" class="textarea" rows="3" data-bind="admin.tkReply" placeholder="What we checked and what happens next">${esc(S.admin.tkReply || '')}</textarea></label><button class="btn primary sm" data-act="admTkReply" data-arg="${sel.id}">${ic('send', 16)} Send reply</button>
+      : `<div class="row" style="gap:6px">${staffDialBtn(sel.key, sel.bid, 'Call ' + esc(sel.who.split(' ')[0]) + ' in app')}</div><label class="field">Reply to ${esc(sel.who)}<textarea id="tk-reply" class="textarea" rows="3" data-bind="admin.tkReply" placeholder="What we checked and what happens next">${esc(S.admin.tkReply || '')}</textarea></label><button class="btn primary sm" data-act="admTkReply" data-arg="${sel.id}">${ic('send', 16)} Send reply</button>
          <div class="row" style="gap:8px;align-items:flex-end"><label class="field grow">Outcome<input id="tk-out" class="input" data-bind="admin.tkOut" value="${esc(S.admin.tkOut || '')}" placeholder="e.g. Partial refund ₱200 · provider warned"></label><button class="btn secondary sm" data-act="admTkResolve" data-arg="${sel.id}">${ic('check', 16)} Resolve</button></div>`}
     </div></div>` : '';
   const pill = (k, l, n) => `<button class="chip" data-act="admTkFilter" data-arg="${k}" aria-pressed="${f === k}">${l}${n != null ? ' · ' + n : ''}</button>`;
@@ -3371,8 +3375,8 @@ function deskItems() {
   const out = [];
   const add = (o) => { if (canArea(o.tab)) out.push(o); };
   // act now
-  const ring = (S.helpCalls || []).filter(r => r.state === 'ringing'), missed = (S.helpCalls || []).filter(r => r.state === 'ended' && r.why === 'missed' && !r.handled);
-  add({ id: 'calls', level: 'now', tab: 'calls', icon: 'headset', title: 'Support calls', n: ring.length + missed.length, detail: ring.length ? ring.length + ' ringing now' + (missed.length ? ' · ' + missed.length + ' missed' : '') : missed.length ? missed.length + ' missed, call back' : 'No calls waiting', how: 'Answer ringing calls first. Call back every missed call and mark it handled.' });
+  const missed = (S.helpCalls || []).filter(r => r.dir === 'out' && r.state === 'ended' && ['missed', 'declined'].includes(r.why) && !r.handled);
+  add({ id: 'calls', level: 'now', tab: 'calls', icon: 'headset', title: 'Calls not answered', n: missed.length, detail: missed.length ? missed.slice(0, 3).map(r => r.who).join(', ') : 'Every call was answered', how: 'Members did not pick up your in-app call: phone them on the number shown, then mark the call handled.' });
   const late = S.bookings.filter(b => b.late && !b.late.resolved);
   add({ id: 'late', level: 'now', tab: 'late', icon: 'alert', title: 'Late arrivals', n: late.length, detail: late.length ? oldest(late, b => b.late.at) : 'No one is late', how: 'Call the provider, tell the customer the new arrival time, and resolve the alert. Reassign or refund if they cannot come.' });
   const rf = S.bookings.filter(b => b.refund && !b.refund.sentAt);
@@ -4024,6 +4028,7 @@ function demoSheet() {
 }
 function shell() {
   if (VERIFY_ID) return verifyPane();
+  if (FAM.code) { if (S.role !== 'family') S.role = 'family'; return famPane(); }   /* a trusted contact's phone: family view only */
   if (isPhone()) {
     const fabA = `<button class="fab" data-act="demo" aria-label="Test tools" style="width:44px;height:44px;padding:0;justify-content:center;border-radius:50%;opacity:.92">${ic('gear', 20)}<span class="fabdot ${liveBroken() || SYNC.mode !== 'live' ? 'bad' : 'ok'}"></span></button>`;
     if (needsAuth()) return `<div class="appshell">${authPane()}</div>${fabA}${demoSheet()}${modal()}`;
@@ -4522,7 +4527,7 @@ function helpSheet(role) {
   return `<div class="overlay" data-act="helpClose" data-arg="${role}"><div class="sheet hp-sheet" data-stop="1"><div class="grab"></div>
     <div class="row between"><h3 style="font-size:17px">How can we help?</h3>${close}</div>
     ${b ? `<span class="small muted">About booking <b>${b.id}</b> · ${esc(b.services.map(s => s.name).join(' + '))}</span>` : ''}${lateNote}
-    ${b && ['paid', 'departed', 'arrived'].includes(b.status) ? `<button class="btn secondary block" data-act="staffCall" data-arg="${role}:${b.id}">${ic('headset', 18)} Urgent? Talk to Ticktap staff now</button>` : ''}
+    ${b && ['paid', 'departed', 'arrived'].includes(b.status) ? `<p class="tiny" style="color:var(--bad)"><b>Urgent?</b> Choose a topic marked Urgent: it goes to the top of Ticktap's list and staff may call you in the app. In an emergency, call 911.</p>` : ''}
     ${form}${list}
     <p class="tiny muted">Emergency: call 911. Support line: <span class="num" style="user-select:all">+63 2 8888 2254</span></p></div></div>`;
 }
@@ -4538,7 +4543,7 @@ const mid = d => dayTs(d) + 12 * HOUR;
 
 /* ---------- admin levels and areas ---------- */
 const MG_AREAS = [
-  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Support calls'], ['help', 'Help desk'], ['jobs', 'Requests & jobs']]],
+  ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Calls to members'], ['help', 'Help desk'], ['jobs', 'Requests & jobs']]],
   ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
   ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
@@ -5359,10 +5364,14 @@ const MG_ACTIONS = {
 };
 function firstArea() { const order = ['desk', 'overview', 'approvals', 'live', 'late', 'calls', 'jobs', 'customers', 'providers', 'businesses', 'broadcast', 'ar', 'ap', 'promos', 'settings', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access']; return order.find(canArea) || 'me'; }
 /*MGMT-END*/
-/* =============== Connect to Ticktap staff: member → admin in-app voice call (WebRTC, signalled through helpCalls) =============== */
+/* =============== Ticktap staff → member in-app voice call (WebRTC, signalled through helpCalls) ===============
+   Owner's decision 2026-11-05: members (customers, providers, businesses) cannot call Ticktap from the app. Members reach
+   Ticktap through Help (written reports; urgent ones go first). Ticktap staff call members from the admin console when
+   needed: the member's phone rings in the app (lock-screen alert too) and they answer or decline. */
 const STAFF = { call: null, adm: null, view: null };
 const HOTLINE = '+63 917 555 0142';
 const helpCall = id => (S.helpCalls || []).find(r => r.id === id);
+const staffMyKey = role => role === 'customer' ? 'c:' + (S.customer.cid || 'me') : role === 'provider' ? 'p:' + S.prov.id : '';
 function newPeerStaff(side) {
   const pc = new RTCPeerConnection({ iceServers: ICE });
   const audio = new Audio(); audio.autoplay = true; audio.playsInline = true;
@@ -5375,121 +5384,107 @@ function endStaffLocal(side) {
     try { c.stream && c.stream.getTracks().forEach(t => t.stop()); } catch (e) { } try { c.pc && c.pc.close(); } catch (e) { } try { c.audio && (c.audio.srcObject = null); } catch (e) { }
     STAFF[k] = null; });
 }
-async function staffCallStart(role, bid) {
-  const open = STAFF.call && helpCall(STAFF.call.id); if (open && ['ringing', 'active'].includes(open.state)) return;
-  endStaffLocal('call'); STAFF.view = null;
-  const b = bid ? bk(bid) : null;
-  let me;
-  if (role === 'customer') me = { key: 'c:' + (S.customer.cid || 'me'), who: S.customer.name || 'Customer', phone: S.customer.phone || '' };
-  else { const p = prov(S.prov.id) || {}; me = { key: 'p:' + p.id, who: p.name || 'Provider', phone: p.phone || '' }; }
-  const id = 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
-  const other = b ? (role === 'customer' ? (b.pid ? (prov(b.pid) || {}).name : '') : b.customer) : '';
-  S.helpCalls.unshift({ id, from: role, key: me.key, who: me.who, phone: me.phone, bid: b ? b.id : null, svc: b ? b.services.map(x => x.name).join(' + ') : '', other: other || '', addr: b ? b.address : '', status: b ? b.status : '', urgent: !!b, dev: DEVICE, state: 'ringing', offer: null, answer: null, at: srvNow(), mic: true });
-  if (S.helpCalls.length > 200) S.helpCalls.length = 200;
-  STAFF.call = { id, role, caller: true, answered: false };
-  pushAlert('admin', (b ? 'URGENT · ' : '') + 'Call request · ' + me.who, (role === 'customer' ? 'Customer' : 'Provider') + (b ? ' on ' + b.id : '') + ' tapped Connect to Ticktap staff. Answer in the admin console.', b ? b.id : null, 'bad');
-  sendSms(S.settings.adminNumbers, `[Ticktap] ${me.who} (${role}) wants to talk to staff now${b ? ' · ' + b.id : ''}. Answer in the admin console or call ${me.phone}.`, 'late');
-  if (b) logB(b, (role === 'customer' ? 'Customer' : 'Provider') + ' tapped Connect to Ticktap staff');
-  render();
-  try {
-    const stream = await getMic(); const { pc, audio } = newPeerStaff('call'); stream.getTracks().forEach(t => pc.addTrack(t, stream));
-    if (!STAFF.call || STAFF.call.id !== id) { stream.getTracks().forEach(t => t.stop()); pc.close(); return; }
-    Object.assign(STAFF.call, { pc, stream, audio });
-    const off = await pc.createOffer(); await pc.setLocalDescription(off); await waitIce(pc);
-    const r = helpCall(id); if (r && ['ringing', 'active'].includes(r.state)) { r.offer = JSON.stringify(pc.localDescription); render(); }
-  } catch (e) { const r = helpCall(id); if (r) r.mic = false; if (STAFF.call) STAFF.call.micErr = 'Microphone is off, so staff will call you on ' + (me.phone || 'your mobile') + '.'; render(); }
+function staffMember(key) {   // who is being called: name, phone, role
+  if (key.startsWith('c:')) { const cid = key.slice(2), r = custRec(cid) || {}; const me = cid === (S.customer.cid || 'me'); return { role: 'customer', who: r.name || (me ? S.customer.name : '') || 'Customer', phone: r.phone || (me ? S.customer.phone : '') || '' }; }
+  if (key.startsWith('p:')) { const p = prov(key.slice(2)) || {}; return { role: 'provider', who: p.name || 'Provider', phone: p.phone || '' }; }
+  return null;
 }
-async function staffAnswer(id) {
-  const r = helpCall(id); if (!r || r.state !== 'ringing') return;
+/* ---------- staff side ---------- */
+async function staffDial(key, bid) {
+  const m = staffMember(key); if (!m) return;
+  const cur = STAFF.adm && helpCall(STAFF.adm.id); if (cur && ['ringing', 'active'].includes(cur.state)) { toast('admin', 'Already on a call', 'End the current call first.'); return; }
   endStaffLocal('adm');
-  r.state = 'active'; r.by = DEVICE; r.byName = (meAcct() && meAcct().name) || 'Ticktap staff'; r.startedAt = Date.now();
-  STAFF.adm = { id, pending: true, sameDevice: r.dev === DEVICE };
-  if (STAFF.call && STAFF.call.id === id) STAFF.call.sameDevice = true;
+  const b = bid ? bk(bid) : null, u = admUser() || {}, id = 'hc' + Date.now().toString(36) + Math.random().toString(36).slice(2, 4);
+  S.helpCalls.unshift({ id, dir: 'out', from: m.role, key, who: m.who, phone: m.phone, bid: b ? b.id : null, svc: b ? b.services.map(x => x.name).join(' + ') : '', addr: b ? b.address : '', dev: DEVICE, by: DEVICE, byName: u.name || 'Ticktap staff', state: 'ringing', offer: null, answer: null, at: srvNow(), mic: true });
+  if (S.helpCalls.length > 200) S.helpCalls.length = 200;
+  STAFF.adm = { id, out: true };
+  pushAlert(m.role + ':' + key.slice(2), 'Ticktap is calling you', 'Open the app to answer' + (b ? ' · about ' + b.id : '') + '.', b ? b.id : null, 'bad');
+  if (b) logB(b, 'Ticktap staff called the ' + m.role + ' in the app (' + (u.name || 'staff') + ')');
+  admLog('Called ' + m.who + ' in the app' + (b ? ' · ' + b.id : ''));
   render();
-  if (r.mic === false) { STAFF.adm.note = 'The caller has no microphone. Call them on ' + (r.phone || 'their mobile') + '.'; render(); return; }
-  try { STAFF.adm.stream = await getMic(); } catch (e) { if (STAFF.adm) STAFF.adm.note = 'Your microphone is blocked. Allow it in the browser, or call ' + (r.phone || 'the member') + '.'; render(); return; }
-  staffConnect();
-}
-async function staffConnect() {
-  const a = STAFF.adm; if (!a || !a.pending || !a.stream) return; const r = helpCall(a.id); if (!r || !r.offer) return;
-  a.pending = false;
   try {
-    const { pc, audio } = newPeerStaff('adm'); a.stream.getTracks().forEach(t => pc.addTrack(t, a.stream)); Object.assign(a, { pc, audio });
-    await pc.setRemoteDescription(JSON.parse(r.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce(pc);
-    const r2 = helpCall(a.id); if (r2 && r2.state === 'active') { r2.answer = JSON.stringify(pc.localDescription); render(); }
-  } catch (e) { a.note = 'Could not connect the voice line. Call ' + (r.phone || 'the member') + ' instead.'; render(); }
+    const stream = await getMic(); const { pc, audio } = newPeerStaff('adm'); stream.getTracks().forEach(t => pc.addTrack(t, stream));
+    if (!STAFF.adm || STAFF.adm.id !== id) { stream.getTracks().forEach(t => t.stop()); pc.close(); return; }
+    Object.assign(STAFF.adm, { pc, stream, audio });
+    const off = await pc.createOffer(); await pc.setLocalDescription(off); await waitIce(pc);
+    const r = helpCall(id); if (r && r.state === 'ringing') { r.offer = JSON.stringify(pc.localDescription); render(); }
+  } catch (e) { const r = helpCall(id); if (r) { r.mic = false; r.offer = 'none'; } if (STAFF.adm) STAFF.adm.note = 'Your microphone is blocked. Allow it in the browser, or phone ' + (m.phone || 'the member') + '.'; render(); }
 }
 function staffHang(why, fromAdmin) {
   const id = fromAdmin ? STAFF.adm && STAFF.adm.id : STAFF.call && STAFF.call.id; const r = id && helpCall(id);
   if (r && ['ringing', 'active'].includes(r.state)) { r.state = 'ended'; r.endedAt = Date.now(); r.why = r.startedAt ? 'hangup' : why; r.endedBy = fromAdmin ? 'staff' : r.from; r.dur = r.startedAt ? Math.round((Date.now() - r.startedAt) / 1000) : 0;
-    const b = r.bid && bk(r.bid); if (b) logB(b, r.dur ? `Call with Ticktap staff · ${mmss(r.dur * 1000)}` : 'Staff call request cancelled'); }
+    const b = r.bid && bk(r.bid); if (b) logB(b, r.dur ? `Call with Ticktap staff · ${mmss(r.dur * 1000)}` : 'Ticktap call not answered (' + r.why + ')'); }
   if (fromAdmin) endStaffLocal('adm'); else { endStaffLocal('call'); STAFF.view = r && r.dur ? { id: r.id, done: true } : null; }
 }
-const staffRinging = () => !!document.querySelector('[data-pane="admin"]') && canArea('calls') && (S.helpCalls || []).some(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !(S.admin.callHide || {})[r.id]);
+/* ---------- member side ---------- */
+const staffIncoming = role => { const k = staffMyKey(role); return k && (S.helpCalls || []).find(r => r.dir === 'out' && r.key === k && r.state === 'ringing' && r.offer && srvNow() - r.at < 60000); };
+async function staffPick(id, role) {
+  const r = helpCall(id); if (!r || r.state !== 'ringing') return;
+  endStaffLocal('call');
+  r.state = 'active'; r.startedAt = Date.now(); r.pickDev = DEVICE;
+  STAFF.call = { id, role, sameDevice: r.dev === DEVICE };
+  if (STAFF.adm && STAFF.adm.id === id) STAFF.adm.sameDevice = true;
+  render();
+  if (r.offer === 'none') { STAFF.call.micErr = 'Ticktap will phone you on ' + (r.phone || 'your mobile') + '.'; render(); return; }
+  try {
+    const stream = await getMic(); const { pc, audio } = newPeerStaff('call'); stream.getTracks().forEach(t => pc.addTrack(t, stream)); Object.assign(STAFF.call, { pc, stream, audio });
+    await pc.setRemoteDescription(JSON.parse(r.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); await waitIce(pc);
+    const r2 = helpCall(id); if (r2 && r2.state === 'active') { r2.answer = JSON.stringify(pc.localDescription); render(); }
+  } catch (e) { r.mic = false; if (STAFF.call) STAFF.call.micErr = 'Your microphone is off, so Ticktap will phone you on ' + (r.phone || 'your mobile') + '.'; render(); }
+}
+function staffDecline(id) { const r = helpCall(id); if (!r || r.state !== 'ringing') return; r.state = 'ended'; r.why = 'declined'; r.endedAt = Date.now(); r.dur = 0; const b = r.bid && bk(r.bid); if (b) logB(b, 'Member declined the Ticktap call'); }
+/* ---------- sync (runs every second from the call loop) ---------- */
+const staffRinging = () => ['customer', 'provider'].some(role => document.querySelector(`[data-pane="${role}"]`) && staffIncoming(role));
 function staffCallSync() {
   let ch = false;
-  const c = STAFF.call;
-  if (c) { const r = helpCall(c.id);
-    if (!r) { endStaffLocal('call'); ch = true; }
-    else if (r.state === 'ended') { endStaffLocal('call'); STAFF.view = { id: r.id, done: true }; ch = true; }
-    else {
-      if (r.state === 'active' && r.answer && c.pc && !c.answered) { c.answered = true; c.pc.setRemoteDescription(JSON.parse(r.answer)).catch(() => { }); }
-      if (r.state === 'ringing' && r.dev === DEVICE && srvNow() - r.at > 60000) { r.state = 'ended'; r.why = 'missed'; r.endedAt = Date.now(); r.dur = 0; ch = true; }
-    } }
   const a = STAFF.adm;
   if (a) { const r = helpCall(a.id);
-    if (!r || r.state === 'ended' || (r.by && r.by !== DEVICE)) { endStaffLocal('adm'); ch = true; }
-    else if (a.pending && r.offer && a.stream) staffConnect(); }
+    if (!r) { endStaffLocal('adm'); ch = true; }
+    else if (r.state === 'ended') { endStaffLocal('adm'); ch = true; }
+    else {
+      if (r.state === 'active' && r.answer && a.pc && !a.answered) { a.answered = true; a.pc.setRemoteDescription(JSON.parse(r.answer)).catch(() => { }); }
+      if (r.state === 'ringing' && r.dev === DEVICE && srvNow() - r.at > 60000) { r.state = 'ended'; r.why = 'missed'; r.endedAt = Date.now(); r.dur = 0; ch = true; }
+    } }
+  const c = STAFF.call;
+  if (c) { const r = helpCall(c.id); if (!r || r.state === 'ended') { endStaffLocal('call'); STAFF.view = r && r.dur ? { id: r.id, done: true } : null; ch = true; } }
   return ch;
 }
+/* ---------- member screens ---------- */
 function staffCallScreen(role) {
   const c = STAFF.call, v = STAFF.view;
+  const logo = `<span class="avatar" style="width:96px;height:96px;background:#fff;padding:14px"><img src="${ICON_T}" alt="" style="width:100%;height:100%;object-fit:contain"></span>`;
+  const shell = (status, sub, actions, r) => `<div class="callscreen" data-ov="staffcall"><div class="col" style="align-items:center;gap:12px;margin-top:12%;text-align:center">${logo}<b style="font-size:24px">Ticktap staff</b><span class="small" style="opacity:.85">${status}</span><span class="tiny" style="opacity:.65;max-width:300px">${sub}</span>${r && r.bid ? `<span class="tiny" style="opacity:.65">About ${r.bid}</span>` : ''}</div><div class="row" style="gap:28px;justify-content:center;margin-bottom:12%">${actions}</div></div>`;
+  const inc = !(c && c.role === role) && staffIncoming(role);
+  if (inc) return shell('Ticktap is calling you', esc(inc.byName || 'Ticktap staff') + ' wants to talk to you in the app.', `<button class="callbtn end" data-act="staffDecline" data-arg="${inc.id}" aria-label="Decline">${ic('phone', 28)}</button><button class="callbtn accept" data-act="staffPick" data-arg="${inc.id}|${role}" aria-label="Answer" style="background:var(--good-dot,#22B573)">${ic('phone', 28)}</button>`, inc);
   const id = (c && c.role === role && c.id) || (v && v.id); if (!id) return '';
   const r = helpCall(id); if (!r || r.from !== role) return '';
-  const logo = `<span class="avatar" style="width:96px;height:96px;background:#fff;padding:14px"><img src="${ICON_T}" alt="" style="width:100%;height:100%;object-fit:contain"></span>`;
-  let status, sub = '', actions;
-  if (r.state === 'ringing') { status = 'Connecting you to Ticktap staff…'; sub = c && c.micErr ? c.micErr : 'Most calls are answered within a minute. Stay on this screen.'; actions = `<button class="callbtn end" data-act="staffCancel" aria-label="Cancel">${ic('phone', 28)}</button>`; }
-  else if (r.state === 'active') { const conn = c && c.conn && c.conn !== 'connected' ? ' · ' + esc(c.conn) : ''; status = `<span data-calltime="${r.startedAt}">${mmss(Date.now() - r.startedAt)}</span>${conn}`; sub = r.mic === false ? 'Staff will phone you on ' + esc(r.phone) + ' now.' : 'You are talking to ' + esc(r.byName || 'Ticktap staff') + '.';
-    actions = `${c && c.stream ? `<button class="callbtn mute ${c.muted ? 'on' : ''}" data-act="staffMute" aria-label="${c && c.muted ? 'Unmute' : 'Mute'}">${ic(c && c.muted ? 'micoff' : 'mic', 26)}</button>` : ''}<button class="callbtn end" data-act="staffHangup" aria-label="End call">${ic('phone', 28)}</button>`; }
-  else { const missed = r.why === 'missed';
-    status = missed ? 'Staff could not answer yet' : 'Call ended' + (r.dur ? ' · ' + mmss(r.dur * 1000) : '');
-    sub = missed ? `Your request reached the team by app alert and SMS. They will call you on ${esc(r.phone || 'your mobile')}. Hotline: <b>${HOTLINE}</b>. In an emergency, call 911.` : 'Thank you. If you need anything else, connect again.';
-    actions = `${missed ? `<button class="btn" style="background:#fff;color:#12355B" data-act="staffCall" data-arg="${role}:${r.bid || ''}">${ic('headset', 18)} Try again</button>` : ''}<button class="btn secondary" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)" data-act="staffClose">Close</button>`; }
-  return `<div class="callscreen" data-ov="staffcall"><div class="col" style="align-items:center;gap:12px;margin-top:12%;text-align:center">${logo}<b style="font-size:24px">Ticktap staff</b><span class="small" style="opacity:.85">${status}</span><span class="tiny" style="opacity:.65;max-width:300px">${sub}</span>${r.bid ? `<span class="tiny" style="opacity:.5">${r.bid} · in-app voice</span>` : ''}</div><div class="row" style="gap:${r.state === 'ended' ? 10 : 44}px;justify-content:center;margin-bottom:12%;flex-wrap:wrap">${actions}</div></div>`;
+  if (r.state === 'active') { const conn = c && c.conn && c.conn !== 'connected' ? ' · ' + esc(c.conn) : '';
+    return shell(`<span data-calltime="${r.startedAt}">${mmss(Date.now() - r.startedAt)}</span>${conn}`, c && c.micErr ? esc(c.micErr) : 'You are talking to ' + esc(r.byName || 'Ticktap staff') + '.', `${c && c.stream ? `<button class="callbtn mute ${c.muted ? 'on' : ''}" data-act="staffMute" aria-label="${c.muted ? 'Unmute' : 'Mute'}">${ic(c.muted ? 'micoff' : 'mic', 26)}</button>` : ''}<button class="callbtn end" data-act="staffHangup" aria-label="End call">${ic('phone', 28)}</button>`, r); }
+  return shell('Call ended' + (r.dur ? ' · ' + mmss(r.dur * 1000) : ''), 'Thank you. To reach Ticktap, use Help in the app.', `<button class="btn secondary" style="background:transparent;color:#fff;border-color:rgba(255,255,255,.5)" data-act="staffClose">Close</button>`, r);
 }
+/* ---------- staff call window (shows on every admin page during a call) ---------- */
 function staffCallWin() {
   if (!canArea('calls')) return '';
-  const hide = S.admin.callHide || {};
-  const ring = (S.helpCalls || []).filter(r => r.state === 'ringing' && srvNow() - r.at < 75000 && !hide[r.id]);
-  const a = STAFF.adm, act = a && helpCall(a.id);
-  if (!ring.length && !act) return '';
-  const info = r => `<div class="col" style="gap:3px"><div class="row" style="gap:8px">${r.urgent ? '<span class="pill bad" style="height:20px">Urgent · during a booking</span>' : '<span class="pill accent" style="height:20px">Support</span>'}<span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'} · ${fmtT(r.at)}</span></div>
-    <b style="font-size:17px">${esc(r.who)}</b><span class="small mono">${esc(r.phone || 'no mobile on file')}</span>
-    ${r.bid ? `<span class="small">${r.bid} · ${esc(r.svc)}${r.other ? ' · with ' + esc(r.other) : ''}</span><span class="tiny muted">${esc(r.addr)}</span>` : ''}
-    ${r.mic === false ? '<span class="tiny" style="color:var(--bad)">Caller has no microphone: phone them back.</span>' : ''}</div>`;
-  const links = r => `<div class="row" style="gap:6px;flex-wrap:wrap">${r.phone ? `<a class="btn ghost xs" href="tel:${esc(r.phone.replace(/\s/g, ''))}">${ic('phone', 14)} Phone ${esc(r.phone)}</a>` : ''}${r.bid ? `<button class="btn ghost xs" data-act="hcOpen" data-arg="${r.bid}">Open ${r.bid}</button>` : ''}</div>`;
-  let body = '';
-  if (act && act.state === 'active') {
-    body = `<div class="cw-card on"><div class="row between"><span class="eyebrow" style="color:var(--good)">● On call</span><b class="num" data-calltime="${act.startedAt}">${mmss(Date.now() - act.startedAt)}</b></div>${info(act)}
-      ${a.note ? `<span class="small" style="color:var(--warn)">${esc(a.note)}</span>` : a.pending ? '<span class="small muted">Connecting the voice line…</span>' : a.conn && a.conn !== 'connected' ? `<span class="small muted">Line: ${esc(a.conn)}</span>` : ''}
-      ${links(act)}<div class="row" style="gap:8px">${a.stream ? `<button class="btn secondary sm" data-act="staffMute">${ic(a.muted ? 'micoff' : 'mic', 16)} ${a.muted ? 'Unmute' : 'Mute'}</button>` : ''}<button class="btn sm grow" style="background:var(--bad-dot);color:#fff" data-act="staffAdmEnd">${ic('phone', 16)} End call</button></div></div>`;
-  }
-  body += ring.map(r => `<div class="cw-card ring">${info(r)}${links(r)}<div class="row" style="gap:8px"><button class="btn sm grow" style="background:var(--good-dot,#22B573);color:#fff" data-act="staffAnswer" data-arg="${r.id}" ${act && act.state === 'active' ? 'disabled' : ''}>${ic('phone', 16)} Answer</button><button class="btn ghost sm" data-act="staffLater" data-arg="${r.id}">Hide</button></div></div>`).join('');
-  return `<div class="callwin" data-ov="callwin" role="dialog" aria-label="Ticktap support call"><div class="row between" style="padding:2px 4px"><b class="small">${ic('headset', 16)} ${ring.length ? 'Incoming call' + (ring.length > 1 ? 's · ' + ring.length : '') : 'Support call'}</b><span class="tiny muted">Connect to Ticktap staff</span></div>${body}</div>`;
+  const a = STAFF.adm, r = a && helpCall(a.id); if (!r || !['ringing', 'active'].includes(r.state)) return '';
+  const info = `<div class="col" style="gap:3px"><span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'}${r.bid ? ' · ' + r.bid : ''}</span><b style="font-size:17px">${esc(r.who)}</b><span class="small mono">${esc(r.phone || 'no mobile on file')}</span></div>`;
+  const body = r.state === 'ringing' ? `<div class="cw-card ring">${info}<span class="small muted">${a.note ? esc(a.note) : 'Ringing their app… (60 seconds)'}</span><div class="row" style="gap:8px"><button class="btn sm grow" style="background:var(--bad-dot);color:#fff" data-act="staffAdmEnd">${ic('phone', 16)} Cancel call</button></div></div>`
+    : `<div class="cw-card on"><div class="row between"><span class="eyebrow" style="color:var(--good)">● On call</span><b class="num" data-calltime="${r.startedAt}">${mmss(Date.now() - r.startedAt)}</b></div>${info}${r.mic === false ? `<span class="small" style="color:var(--warn)">No microphone on their side: phone ${esc(r.phone || 'them')}.</span>` : a.conn && a.conn !== 'connected' ? `<span class="small muted">Line: ${esc(a.conn)}</span>` : ''}
+      <div class="row" style="gap:8px">${a.stream ? `<button class="btn secondary sm" data-act="staffMute">${ic(a.muted ? 'micoff' : 'mic', 16)} ${a.muted ? 'Unmute' : 'Mute'}</button>` : ''}<button class="btn sm grow" style="background:var(--bad-dot);color:#fff" data-act="staffAdmEnd">${ic('phone', 16)} End call</button></div></div>`;
+  return `<div class="callwin" data-ov="callwin" role="dialog" aria-label="Ticktap call"><div class="row between" style="padding:2px 4px"><b class="small">${ic('headset', 16)} Calling a member</b></div>${body}</div>`;
 }
+const staffDialBtn = (key, bid, label) => key ? `<button class="btn secondary xs" data-act="staffDial" data-arg="${key}|${bid || ''}">${ic('phone', 14)} ${label || 'Call in app'}</button>` : '';
 function admCalls() {
-  const L = (S.helpCalls || []).slice().sort((a, b) => b.at - a.at);
-  const why = r => r.state === 'ringing' ? '<span class="pill bad">Ringing</span>' : r.state === 'active' ? '<span class="pill good">On call</span>' : r.why === 'missed' ? (r.handled ? '<span class="pill outline">Missed · handled</span>' : '<span class="pill bad">Missed · call back</span>') : r.why === 'cancelled' ? '<span class="pill outline">Cancelled by caller</span>' : '<span class="pill good">Talked</span>';
-  return `<div class="page-h"><div><h1>Support calls</h1><p>Members tap <b>Connect to Ticktap staff</b> on a booking or in their account. A call window rings on every admin screen; answer to talk in the app. Missed calls stay here until you mark them handled.</p></div></div>
-  <div class="panel"><div class="tablewrap"><table><thead><tr><th>Time</th><th>Caller</th><th>Booking</th><th>Status</th><th class="num">Length</th><th>Answered by</th><th></th></tr></thead><tbody>
-  ${L.map(r => `<tr><td class="mono small">${fmtD(r.at)} ${fmtT(r.at)}</td><td><b class="small">${esc(r.who)}</b><br><span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'} · ${esc(r.phone || '—')}</span></td><td class="small">${r.bid ? `<button class="inlinelink" data-act="hcOpen" data-arg="${r.bid}">${r.bid}</button>${r.urgent ? ' <span class="pill bad" style="height:18px">Urgent</span>' : ''}` : '—'}</td><td>${why(r)}</td><td class="num">${r.dur ? mmss(r.dur * 1000) : '—'}</td><td class="small">${esc(r.byName || '—')}</td><td><div class="row" style="gap:6px;justify-content:flex-end">${r.phone ? `<a class="btn ghost xs" href="tel:${esc(r.phone.replace(/\s/g, ''))}">Call back</a>` : ''}${r.state === 'ended' && r.why === 'missed' && !r.handled ? `<button class="btn secondary xs" data-act="hcHandled" data-arg="${r.id}">Mark handled</button>` : ''}</div></td></tr>`).join('') || '<tr><td colspan="7" class="small muted">No support calls yet.</td></tr>'}
+  const L = (S.helpCalls || []).filter(r => r.dir === 'out').sort((a, b) => b.at - a.at);
+  const st = r => r.state === 'ringing' ? '<span class="pill warn">Ringing</span>' : r.state === 'active' ? '<span class="pill good">On call</span>' : ['missed', 'declined'].includes(r.why) ? (r.handled ? `<span class="pill outline">${r.why === 'missed' ? 'No answer' : 'Declined'} · handled</span>` : `<span class="pill bad">${r.why === 'missed' ? 'No answer' : 'Declined'} · phone them</span>`) : r.why === 'cancelled' ? '<span class="pill outline">Cancelled</span>' : '<span class="pill good">Done</span>';
+  return `<div class="page-h"><div><h1>Calls to members</h1><p>Members cannot call Ticktap from the app; they write to <b>Help desk</b>. Staff call a customer or provider from a job, a Help report or a no-show report with <b>Call in app</b>. Their phone rings in the app. Calls that are not answered stay here until you phone the member and mark them handled.</p></div></div>
+  <div class="panel"><div class="tablewrap"><table><thead><tr><th>Time</th><th>Member</th><th>Booking</th><th>Status</th><th class="num">Length</th><th>Staff</th><th></th></tr></thead><tbody>
+  ${L.map(r => `<tr><td class="mono small">${fmtD(r.at)} ${fmtT(r.at)}</td><td><b class="small">${esc(r.who)}</b><br><span class="tiny muted">${r.from === 'customer' ? 'Customer' : 'Provider'} · ${esc(r.phone || '—')}</span></td><td class="small">${r.bid ? `<button class="inlinelink" data-act="hcOpen" data-arg="${r.bid}">${r.bid}</button>` : '—'}</td><td>${st(r)}</td><td class="num small">${r.dur ? mmss(r.dur * 1000) : '—'}</td><td class="small">${esc(r.byName || '')}</td><td>${['missed', 'declined'].includes(r.why) && !r.handled ? `<button class="btn ghost xs" data-act="hcHandled" data-arg="${r.id}">Phoned · handled</button>` : r.state === 'ended' ? staffDialBtn(r.key, r.bid, 'Call again') : ''}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No calls yet.</div></td></tr>'}
   </tbody></table></div></div>
-  <p class="tiny muted">Voice uses a direct connection between the two browsers. Some mobile networks block direct connections; a relay (TURN) server will be added for launch so every call connects. If the line does not connect, use the phone number shown.</p>`;
+  <p class="tiny muted">Voice uses a direct connection between the two devices. Some mobile networks block direct connections; a relay (TURN) server will be added for launch so every call connects. If the line does not connect, phone the number shown.</p>`;
 }
-
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.4',
+  version: '1.5',
   effective: 'November 5, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
@@ -5555,7 +5550,8 @@ const TERMS = {
       'Customers must give an accurate address, provide a safe place to work, keep pets under control and tell the Provider about any health condition or allergy that matters for the service. Providers must arrive on time, keep tools clean and hygienic, perform only the booked service and leave if they feel unsafe.',
       'On arrival, a Provider must check in with a photo taken in the app\'s live camera. Photos from the gallery cannot be used. The photo is time-stamped and shared with the Customer and the Company.',
       'With permission, the app uses the device location so Customers can find nearby Providers and see the Provider on a live map while the Provider is on the way. Location sharing stops at check-in.',
-      'The "Connect to Ticktap staff" button opens an in-app voice call with the Company\'s safety team, and "Share trip" lets a Customer send booking details to someone they trust. These tools help but do not replace emergency services. In an emergency, call 911 or the nearest police station.',
+      'Users contact the Company through Help in the app; reports marked urgent are handled first. The Company may call a Customer or Provider through an in-app voice call when needed. Users cannot start a voice call to the Company from the app. These tools do not replace emergency services. In an emergency, call 911 or the nearest police station.',
+      'For their safety, a Provider may register up to three trusted contacts (family or friends), who must install the Ticktap app to follow the Provider\'s trips. A trusted contact sees when the Provider sets out, arrives and finishes, and the general area (city and district) of the job, but no Customer details. Only when the Provider asks a trusted contact to pick them up does that contact also see the service address, for the pickup. The Provider is responsible for having each contact\'s permission to register them.',
       'After payment, the Customer and Provider can send in-app messages and make in-app voice calls until the service ends. Phone numbers are not shared. Messages, call times and booking records are kept to help with safety and disputes.',
       'No contact details. Users may not share or ask for phone numbers, email addresses, social media or messaging accounts (such as Viber, WhatsApp, Telegram or Facebook), or any other way to contact each other outside Ticktap, in messages, calls, reviews, profiles or photos. The app blocks such details automatically, limits the digits that can be typed in one message, and may refuse photos that show contact details. Calls in the app are not recorded.',
       'No off-app deals. Users may not offer, arrange or accept bookings or payments outside the app with someone they met through Ticktap, during or after a booking. Off-app deals are not covered by refunds, support, identity checks, safety tools or insurance.',
@@ -6136,6 +6132,7 @@ function endService(b, auto = false) {
     toast('customer', 'Service ended', `Rate ${p.name.split(' ')[0]} and leave a short review.`);
     if (S.cust.bid === b.id && ['track', 'request'].includes(S.cust.screen)) { S.cust.screen = 'review'; S.cust.review = { stars: 5, tags: ['On time'], text: '', photos: [] }; }
   }
+  famNotify(b, p.name.split(' ')[0] + ' finished the job', 'Finished at ' + fmtT(b.endedAt) + ' · ' + areaOf(b.address) + '.', 'good');
   if (S.prov.id === p.id && auto) toast('provider', "You're back on green", 'The service time ended. Change your status if you need to.');
 }
 function arrive(b) {
@@ -6146,6 +6143,7 @@ function arrive(b) {
   logB(b, `In service ${fmtT(b.arrivedAt)}–${fmtT(b.endAt)}`);
   if (nsOpen(b)) nsDecide(b, 'rejected', 'provider', 'Your provider checked in at your address at ' + fmtT(b.arrivedAt) + ' with a live photo');
   if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.${b.checkin ? ' Check-in photo attached.' : ''}`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
+  famNotify(b, p.name.split(' ')[0] + ' arrived', 'Working in ' + areaOf(b.address) + ' until about ' + fmtT(b.endAt) + '.');
   S.prov.screen = 'job'; S.prov.bid = b.id;
 }
 
@@ -6328,23 +6326,16 @@ const A = {
     toast('customer', 'Thanks for your review', `It now shows on ${p.name.split(' ')[0]}'s profile.`);
     S.cust.screen = 'home';
   },
-  staffCall: arg => { const i = arg.indexOf(':'); staffCallStart(arg.slice(0, i), arg.slice(i + 1) || null); },
-  staffCancel: () => staffHang('cancelled'),
   staffHangup: () => staffHang('hangup'),
   staffClose: () => { endStaffLocal(); STAFF.view = null; },
   staffMute: () => { const c = STAFF.call || STAFF.adm; if (!c || !c.stream) return; c.muted = !c.muted; c.stream.getAudioTracks().forEach(t => t.enabled = !c.muted); },
-  staffAnswer: id => { staffAnswer(id); },
-  staffLater: id => { S.admin.callHide = S.admin.callHide || {}; S.admin.callHide[id] = true; },
+  staffDial: arg => { const [key, bid] = arg.split('|'); staffDial(key, bid || null); },
+  staffPick: arg => { const [id, role] = arg.split('|'); staffPick(id, role); },
+  staffDecline: id => staffDecline(id),
   staffAdmEnd: () => staffHang('hangup', true),
   hcHandled: id => { const r = helpCall(id); if (r) { r.handled = true; r.handledAt = now(); } },
   hcOpen: bid => { S.admin.tab = 'jobs'; S.admin.sel = bid; },
   sos: () => { const b = bk(S.cust.bid); sendSms(S.settings.adminNumbers, `[SOS] Customer pressed SOS on ${b.id}. Call +63 917 555 0142 now.`, 'late'); logB(b, 'Customer pressed SOS'); toast('customer', 'SOS sent', 'Our safety team is calling you now.'); toast('admin', 'SOS · ' + b.id, 'Customer pressed SOS.'); },
-  shareTrip: () => { const b = bk(S.cust.bid); if (!b) return; const p = prov(b.pid);
-    const st = { paid: 'is getting ready', departed: 'is on the way', arrived: 'is with me now' }[b.status] || 'is booked';
-    const txt = `Ticktap trip ${b.id}: ${p.name} (${catName(p.cat)}, ID-verified) ${st}. ${b.status === 'arrived' ? 'Service until about ' + fmtT(b.endAt) : 'Arrives by ' + fmtT(b.promisedAt)}. Address: ${b.address}.`;
-    logB(b, 'Customer shared trip details');
-    if (navigator.share) { navigator.share({ title: 'My Ticktap booking', text: txt }).catch(() => { }); }
-    else { clip(txt); toast('customer', 'Trip details copied', 'Paste them to someone you trust.'); } },
   custHelp: arg => { S.cust.help = { bid: arg === 'acct' ? null : (S.cust.bid || null), topic: '', text: '', reply: '', open: null }; },
   provHelp: arg => { S.prov.help = { bid: arg || null, topic: '', text: '', reply: '', open: null }; },
   helpClose: role => { if (role === 'customer') S.cust.help = false; else S.prov.help = false; },
@@ -6428,7 +6419,7 @@ const A = {
     logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay within ' + S.settings.hold + ' minutes to keep it.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
-  depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
+  depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); famNotify(b, p.name.split(' ')[0] + ' set out for a job', 'To ' + areaOf(b.address) + ' · arrives by about ' + fmtT(b.promisedAt) + '.'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
   arrive: id => { S.prov.cam = id; S.prov.camShot = null; S.prov.camErr = ''; },
   camClose: () => { stopCam(); S.prov.cam = null; S.prov.camShot = null; },
@@ -7080,7 +7071,7 @@ function nsAdminCard(b) {
   const open = nsOpen(b), A0 = S.admin;
   return `<div class="card tight" style="margin-top:8px;gap:8px;border-color:${open ? 'var(--bad)' : 'var(--line)'}" data-ns-admin="${b.id}"><b class="small">No-show report · ${open ? (c.status === 'provider' ? 'waiting for the provider' : 'staff decision needed by ' + fmtT(c.staffDue)) : c.status === 'credited' ? 'confirmed · customer credited' : 'rejected · provider was there'}</b>
     <div class="list">${ev.map(([k, v]) => `<div class="li"><span class="tiny muted" style="width:120px">${k}</span><span class="small grow">${esc(v)}</span></div>`).join('')}</div>
-    ${open ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><span class="small">Provider <b>${esc(p.name || '')}</b> · <span class="num" style="user-select:all">${esc(p.phone || '')}</span></span><button class="btn secondary xs" data-act="nsCall" data-arg="${b.id}|answered">Called · answered</button><button class="btn secondary xs" data-act="nsCall" data-arg="${b.id}|no answer">Called · no answer</button><button class="btn ghost xs" data-act="nsPing" data-arg="${b.id}">Re-send alert</button></div>
+    ${open ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><span class="small">Provider <b>${esc(p.name || '')}</b> · <span class="num" style="user-select:all">${esc(p.phone || '')}</span></span>${staffDialBtn('p:' + b.pid, b.id, 'Call in app')}<button class="btn secondary xs" data-act="nsCall" data-arg="${b.id}|answered">Called · answered</button><button class="btn secondary xs" data-act="nsCall" data-arg="${b.id}|no answer">Called · no answer</button><button class="btn ghost xs" data-act="nsPing" data-arg="${b.id}">Re-send alert</button></div>
       ${c.calls.length ? `<span class="tiny muted">${c.calls.map(x => fmtT(x.at) + ' ' + esc(x.by) + ': ' + esc(x.result)).join(' · ')}</span>` : ''}
       <label class="field">Note (required)<input id="ns-note" class="input" data-bind="admin.nsNote" value="${esc(A0.nsNote || '')}" placeholder="e.g. Provider on call: stuck in traffic, cannot come"></label>
       <div class="row" style="gap:6px"><button class="btn danger sm grow" data-act="nsStaff" data-arg="${b.id}|credited">No-show · credit customer</button><button class="btn secondary sm grow" data-act="nsStaff" data-arg="${b.id}|rejected">Provider was there · reject</button></div>
@@ -7095,6 +7086,109 @@ Object.assign(A, {
   nsCall: arg => { const [id, result] = arg.split('|'), b = bk(id), u = admUser() || {}; if (!b || !b.nsClaim) return; b.nsClaim.calls.push({ at: now(), by: u.name || 'admin', result }); logB(b, 'Ticktap called the provider · ' + result); },
   nsPing: id => { const b = bk(id), p = b && prov(b.pid); if (!p) return; pushAlert('provider:' + p.id, 'URGENT · Answer the no-show report', b.id + ': Ticktap is waiting for your answer.', b.id, 'bad'); sendSms(p.phone, `[Ticktap] URGENT ${b.id}: answer the no-show report in the app now.`, 'late'); toast('admin', 'Alert re-sent', p.name); },
   nsStaff: arg => { const [id, res] = arg.split('|'), b = bk(id), note = String(S.admin.nsNote || '').trim(), u = admUser() || {}; if (!b || !nsOpen(b)) return; if (note.length < 5) { toast('admin', 'Write a note first', 'Say what you checked, e.g. the call with the provider.'); return; } nsDecide(b, res, u.name || 'Ticktap staff', note); S.admin.nsNote = ''; admLog('No-show ' + id + ' · ' + res + ' · ' + note); toast('admin', res === 'credited' ? 'Customer credited' : 'Report rejected', id); }
+});
+/* =============== Provider safety: trusted contacts follow the provider's trip (owner's decision, 2026-11-05) ===============
+   Replaces the customer's "Share trip". A provider registers up to 3 trusted people (family or friends) in advance, or adds
+   one on the spot from a job. Each gets an invite link; they must install the Ticktap app to see anything. In the app they
+   see the provider's trip status (set out, arrived, service until, finished) and the area only. When the provider asks for
+   a pickup, the trusted person also gets the service address and a map link, and answers "On my way" or "I can't". */
+const FAM_MAX = 3, FAM_REL = ['Spouse', 'Parent', 'Child', 'Sibling', 'Relative', 'Friend'];
+const famGetCode = () => { try { const q = (new URL(location.href).searchParams.get('family') || '').replace(/[^A-Za-z0-9]/g, '').slice(0, 12); if (q) { lsSet('tt-family', q); return q; } return lsGet('tt-family') || ''; } catch (e) { return ''; } };
+const FAM = { _c: null, get code() { if (this._c === null) this._c = famGetCode(); return this._c; }, set code(v) { this._c = v; } };   /* read lazily: storage helpers load later */
+const famInstalled = () => !!window.__famForce || pushStandalone();
+const famTrusted = p => (p && Array.isArray(p.trusted)) ? p.trusted : [];
+function famFind(code) { for (const p of S.providers) { const t = famTrusted(p).find(x => x.code === code); if (t) return { p, t }; } return null; }
+const famTrip = p => S.bookings.filter(b => b.pid === p.id && b.famShare !== false && (['paid', 'departed', 'arrived'].includes(b.status) || (['ended', 'reviewed'].includes(b.status) && now() - (b.endedAt || 0) < 3 * HOUR))).sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0))[0] || null;
+function famNotify(b, title, body, kind) {   // alert every trusted contact of this job's provider (lock screen too once they turn alerts on)
+  const p = b && prov(b.pid); if (!p || b.famShare === false) return;
+  famTrusted(p).forEach(t => pushAlert('family:' + t.code, title, body, null, kind || 'info'));
+}
+const famLink = t => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('family', t.code); return u.toString(); } catch (e) { return 'https://ticktap.ph/?family=' + t.code; } };
+
+/* ---------- provider: manage trusted contacts ---------- */
+function famForm(where) {
+  const f = S.prov.fam || (S.prov.fam = { name: '', rel: 'Spouse', phone: '' });
+  return `<div class="col" style="gap:6px"><div class="row" style="gap:6px;flex-wrap:wrap"><input id="fam-n-${where}" class="input grow" style="min-width:120px" data-bind="prov.fam.name" value="${esc(f.name)}" placeholder="Name"><select id="fam-r-${where}" class="select" data-bind="prov.fam.rel" style="width:120px">${FAM_REL.map(r => `<option ${f.rel === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
+    <div class="row" style="gap:6px"><input id="fam-p-${where}" class="input grow" inputmode="tel" data-bind="prov.fam.phone" value="${esc(f.phone)}" placeholder="Mobile, e.g. 0917 123 4567"><button class="btn primary sm" data-act="famAdd">Add</button></div>
+    <span class="tiny muted">They get an invite link by SMS. They must install the Ticktap app to follow your trips. Only you and Ticktap see this number.</span></div>`;
+}
+function famRow(t, compact) {
+  return `<div class="li" data-fam="${t.id}"><div class="col grow" style="min-width:0"><b class="small">${esc(t.name)} <span class="muted" style="font-weight:400">· ${esc(t.rel)}</span></b><span class="tiny muted">${esc(t.phone)} · ${t.linkedAt ? '<span style="color:var(--good)">App installed ✓</span>' : t.invitedAt ? 'Invited ' + fmtD(t.invitedAt) + ' · not installed yet' : 'Not invited yet'}</span></div>
+    ${compact ? '' : `<button class="btn ghost xs" data-act="famInvite" data-arg="${t.id}">${t.invitedAt ? 'Invite again' : 'Send invite'}</button><button class="btn ghost xs" data-act="famDel" data-arg="${t.id}" aria-label="Remove ${esc(t.name)}">${ic('x', 14)}</button>`}</div>`;
+}
+function famCard(me) {   // Account page
+  const L = famTrusted(me);
+  return `<div class="card tight" data-fam-card="1" style="gap:8px"><div class="row between"><b>${ic('users', 16)} Trusted contacts</b><span class="tiny muted">${L.length}/${FAM_MAX}</span></div>
+    <span class="small muted">Family or friends who can follow your trips for your safety, and pick you up after a job. They see the area, not the customer's details, unless you ask for a pickup.</span>
+    ${L.length ? `<div class="list">${L.map(t => famRow(t)).join('')}</div>` : ''}
+    ${L.length < FAM_MAX ? famForm('acc') : ''}
+    ${S.prov.famLink ? `<div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><span class="tiny muted">Invite link for ${esc(S.prov.famLink.name)} (also sent by SMS):</span><span class="small mono" style="user-select:all;word-break:break-all">${esc(S.prov.famLink.url)}</span></div>` : ''}</div>`;
+}
+function famJobCard(b, me) {   // Job page: who follows this trip, add someone now, ask for a pickup
+  if (!['paid', 'departed', 'arrived', 'ended', 'reviewed'].includes(b.status) || (['ended', 'reviewed'].includes(b.status) && now() - (b.endedAt || 0) > 3 * HOUR)) return '';
+  const L = famTrusted(me), pk = b.pickup;
+  if (!L.length) return `<div class="card tight" style="gap:8px"><b class="small">${ic('users', 14)} Let someone follow this trip</b><span class="tiny muted">Add a family member or friend. They install Ticktap and see when you set out, arrive and finish.</span>${famForm('job')}</div>`;
+  const pickT = S.prov.pickAt || 'end';
+  return `<div class="card tight" style="gap:8px" data-fam-job="${b.id}"><div class="row between"><b class="small">${ic('users', 14)} ${b.famShare === false ? 'Not shared with your trusted contacts' : 'Your trusted contacts follow this trip'}</b><button class="btn ghost xs" data-act="famShare" data-arg="${b.id}">${b.famShare === false ? 'Share' : 'Stop sharing'}</button></div>
+    ${b.famShare === false ? '' : `<span class="tiny muted">${L.map(t => esc(t.name) + (t.linkedAt ? '' : ' (not installed)')).join(', ')}</span>`}
+    ${pk ? `<div class="card tight" style="background:var(--accent-soft);border-color:transparent;gap:4px"><b class="small">Pickup asked · ${esc(pk.name)}</b><span class="small">${pk.reply === 'coming' ? `<b style="color:var(--good)">On the way</b> · ${fmtT(pk.replyAt)}` : pk.reply === 'no' ? '<b style="color:var(--bad)">Cannot come</b> · ask someone else' : 'Waiting for an answer'} · ready ${fmtT(pk.readyAt)}</span>${pk.reply === 'no' ? `<button class="btn ghost xs" data-act="famPickCancel" data-arg="${b.id}">Ask someone else</button>` : `<button class="btn ghost xs" data-act="famPickCancel" data-arg="${b.id}">Cancel pickup</button>`}</div>`
+      : b.famShare === false || !['arrived', 'ended', 'reviewed', 'departed'].includes(b.status) ? '' : `<div class="col" style="gap:6px"><span class="eyebrow">Ask for a pickup</span>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${['end', 'now'].map(k => `<button class="chip" data-act="famPickAt" data-arg="${k}" aria-pressed="${pickT === k}">${k === 'now' ? 'Ready now' : 'When the service ends' + (b.endAt ? ' (' + fmtT(b.endAt) + ')' : '')}</button>`).join('')}</div>
+      <div class="row" style="gap:6px;flex-wrap:wrap">${L.map(t => `<button class="btn secondary sm" data-act="famPick" data-arg="${b.id}|${t.id}">${esc(t.name.split(' ')[0])}</button>`).join('')}</div>
+      <span class="tiny muted">They get the address of this job and a map link, only for the pickup.</span></div>`}
+    ${L.length < FAM_MAX && S.prov.famAddJob === b.id ? famForm('job') : L.length < FAM_MAX ? `<button class="btn ghost xs" data-act="famAddJob" data-arg="${b.id}">+ Add someone now</button>` : ''}</div>`;
+}
+
+/* ---------- trusted person's app ---------- */
+function famPane() {
+  const hit = famFind(FAM.code), logo = `<img src="${LOGO_D}" alt="Ticktap" style="height:34px">`;
+  const head = `<header class="fam-h">${logo}<span class="tiny" style="opacity:.8">Family view</span></header>`;
+  if (!hit) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:8px"><b>This invite is no longer active</b><span class="small muted">Ask for a new invite link.</span><button class="btn secondary sm" data-act="famLeave">Close family view</button></div></div></div></div>`;
+  const { p, t } = hit, first = p.name.split(' ')[0];
+  if (!famInstalled()) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:10px;align-items:center;text-align:center">${zav(p, 72)}<h2 style="font-size:20px">Install Ticktap to follow ${esc(first)}</h2><p class="small">${esc(p.name)} added you, ${esc(t.name)}, as a trusted contact. For safety, trips can be seen only in the installed Ticktap app.</p></div>
+    <div class="card tight" style="gap:6px"><b class="small">Android (Chrome)</b><ol class="small" style="margin:0;padding-left:18px"><li>Tap the ⋮ menu.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Open <b>Ticktap</b> from your home screen.</li></ol></div>
+    <div class="card tight" style="gap:6px"><b class="small">iPhone (Safari)</b><ol class="small" style="margin:0;padding-left:18px"><li>Tap <b>Share</b> (square with an arrow).</li><li>Tap <b>Add to Home Screen</b>.</li><li>Open <b>Ticktap</b> from your home screen.</li></ol></div></div></div></div>`;
+  if (!t.linkedAt) { t.linkedAt = now(); t.dev = DEVICE; pushAlert('provider:' + p.id, t.name + ' installed Ticktap', 'They can now follow your trips.', null, 'good'); }
+  const b = famTrip(p), pk = b && b.pickup && b.pickup.tid === t.id ? b.pickup : null;
+  const step = b ? { paid: 0, departed: 1, arrived: 2, ended: 3, reviewed: 3 }[b.status] : -1;
+  const trip = b ? `<div class="card" style="gap:10px" data-fam-trip="${b.status}"><span class="eyebrow">${b.status === 'paid' ? 'Next job' : ['ended', 'reviewed'].includes(b.status) ? 'Finished' : 'Now'}</span>
+      <h2 style="font-size:20px">${b.status === 'paid' ? esc(first) + ' has a job' + (b.slotAt ? ' at ' + fmtWhen(b.slotAt) : ' soon') : b.status === 'departed' ? esc(first) + ' is on the way' : b.status === 'arrived' ? esc(first) + ' is working' : esc(first) + ' finished the job'}</h2>
+      <span class="small muted">${esc(areaOf(b.address))} · ${esc(b.services.map(s => s.name).join(' + '))}</span>
+      <ol class="ns-steps">${[['Set out', b.departedAt], ['Arrived', b.arrivedAt], ['Service until about', b.status === 'arrived' ? b.endAt : null], ['Finished', ['ended', 'reviewed'].includes(b.status) ? b.endedAt : null]].map(([l, at], i) => `<li class="${i < step || (i === step && at) ? 'done' : i === step ? 'now' : ''}"><b>${l}</b><span class="small muted">${at ? fmtT(at) : '—'}</span></li>`).join('')}</ol></div>` : `<div class="card" style="gap:6px"><b>No trip right now</b><span class="small muted">You will be alerted when ${esc(first)} sets out for a job.</span></div>`;
+  const pick = pk ? `<div class="card" style="gap:8px;border-color:var(--accent)" data-fam-pick="1"><span class="eyebrow">Pickup</span><b>${esc(first)} asks you to pick them up ${pk.readyAt > now() ? 'at ' + fmtT(pk.readyAt) : 'now'}</b><span class="small">${esc(b.address)}</span>
+      <a class="btn secondary sm" href="https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}" target="_blank" rel="noopener">${ic('route', 16)} Open in Maps</a>
+      ${pk.reply ? `<span class="small">${pk.reply === 'coming' ? '<b style="color:var(--good)">You said you are on the way.</b>' : '<b>You said you cannot come.</b>'}</span>` : `<div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="famReply" data-arg="${b.id}|coming">I'm on my way</button><button class="btn secondary sm" data-act="famReply" data-arg="${b.id}|no">I can't</button></div>`}</div>` : '';
+  const hist = S.bookings.filter(x => x.pid === p.id && x.famShare !== false && ['ended', 'reviewed'].includes(x.status) && x !== b).sort((a, c) => (c.endedAt || 0) - (a.endedAt || 0)).slice(0, 5);
+  return `<div class="appshell"><div class="screen fam-s" data-pane="family">${head}<div class="scroll">
+    <div class="row" style="gap:12px;align-items:center">${zav(p, 52)}<div class="col"><span class="tiny muted">You follow</span><b style="font-size:18px">${esc(p.name)}</b></div></div>
+    ${pushCard(true)}${pick}${trip}
+    ${hist.length ? `<div class="col" style="gap:6px"><span class="eyebrow">Recent jobs</span><div class="list">${hist.map(x => `<div class="li"><span class="small grow">${fmtD(x.endedAt)} · ${esc(areaOf(x.address))}</span><span class="tiny muted">${fmtT(x.arrivedAt || x.departedAt || x.endedAt)}–${fmtT(x.endedAt)}</span></div>`).join('')}</div></div>` : ''}
+    <p class="tiny muted">For ${esc(first)}'s safety only. Customer details are not shown, except the address when you are asked to pick ${esc(first)} up. In an emergency, call 911.</p>
+    <button class="btn ghost sm" data-act="famLeave">Leave family view</button></div></div></div>`;
+}
+
+Object.assign(A, {
+  famAdd: () => { const me = prov(S.prov.id), f = S.prov.fam || {}; if (!me) return; const name = String(f.name || '').trim(), phone = String(f.phone || '').replace(/[^\d+]/g, '');
+    if (!name || phone.replace(/\D/g, '').length < 10) { toast('provider', 'Name and mobile needed', 'Enter their name and an 11-digit mobile number.'); return; }
+    if (famTrusted(me).length >= FAM_MAX) return; if (!Array.isArray(me.trusted)) me.trusted = [];
+    const t = { id: 'tc' + Date.now().toString(36), name, rel: f.rel || 'Friend', phone, code: Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-3).toUpperCase(), at: now() };
+    me.trusted.push(t); S.prov.fam = { name: '', rel: 'Spouse', phone: '' }; S.prov.famAddJob = null; A.famInvite(t.id); },
+  famInvite: id => { const me = prov(S.prov.id), t = famTrusted(me).find(x => x.id === id); if (!t) return; t.invitedAt = now(); const url = famLink(t);
+    sendSms(t.phone, `${me.name} added you as a trusted contact on Ticktap. Install the app to follow their trips: ${url}`); S.prov.famLink = { name: t.name, url }; clip(url); toast('provider', 'Invite sent to ' + t.name, 'SMS sent · link copied.'); },
+  famDel: id => { const me = prov(S.prov.id); if (!me) return; me.trusted = famTrusted(me).filter(x => x.id !== id); S.prov.famLink = null; },
+  famAddJob: id => { S.prov.famAddJob = id; },
+  famShare: id => { const b = bk(id); if (b) b.famShare = b.famShare === false; },
+  famPickAt: k => { S.prov.pickAt = k; },
+  famPick: arg => { const [id, tid] = arg.split('|'), b = bk(id), me = prov(S.prov.id), t = famTrusted(me).find(x => x.id === tid); if (!b || !t) return;
+    const readyAt = (S.prov.pickAt || 'end') === 'now' || !b.endAt ? now() : Math.max(now(), b.endAt);
+    b.pickup = { tid, name: t.name, at: now(), readyAt, reply: null }; logB(b, 'Provider asked ' + t.name + ' (' + t.rel + ') for a pickup at ' + fmtT(readyAt));
+    pushAlert('family:' + t.code, me.name.split(' ')[0] + ' asks for a pickup', 'Ready ' + (readyAt > now() + MIN ? 'at ' + fmtT(readyAt) : 'now') + ' · ' + areaOf(b.address) + '. Open Ticktap for the address.', null, 'bad');
+    sendSms(t.phone, `[Ticktap] ${me.name.split(' ')[0]} asks you for a pickup, ready ${readyAt > now() + MIN ? 'at ' + fmtT(readyAt) : 'now'}. Open the Ticktap app for the address.`);
+    toast('provider', 'Pickup asked', t.name + ' was alerted.'); },
+  famPickCancel: id => { const b = bk(id); if (b && b.pickup) { logB(b, 'Pickup request cancelled'); b.pickup = null; } },
+  famReply: arg => { const [id, r] = arg.split('|'), b = bk(id); if (!b || !b.pickup) return; b.pickup.reply = r; b.pickup.replyAt = now();
+    pushAlert('provider:' + b.pid, r === 'coming' ? b.pickup.name + ' is on the way' : b.pickup.name + ' cannot come', r === 'coming' ? 'Your pickup is coming.' : 'Ask someone else from the job screen.', b.id, r === 'coming' ? 'good' : 'bad'); },
+  famLeave: () => { lsSet('tt-family', null); FAM.code = ''; if (S.role === 'family') S.role = 'customer'; try { const u = new URL(location.href); u.searchParams.delete('family'); history.replaceState(null, '', u.toString()); } catch (e) { } }
 });
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
@@ -7218,7 +7312,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 133;
+const BUILD = 134;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7270,7 +7364,7 @@ async function firebaseAdapter(cfg, room) {
 /* ---------- lock-screen alerts (Firebase Cloud Messaging) ---------- */
 const PUSH = { busy: false, err: '' };
 const pushKey = () => { const c = fbConfig(); return (c && c.vapidKey) || ''; };
-const pushTarget = () => ({ provider: 'provider:' + S.prov.id, business: 'business:' + S.biz.id, customer: 'customer:' + (S.customer.cid || 'me'), admin: 'admin' })[S.role] || null;
+const pushTarget = () => ({ provider: 'provider:' + S.prov.id, business: 'business:' + S.biz.id, customer: 'customer:' + (S.customer.cid || 'me'), admin: 'admin', family: 'family:' + FAM.code })[S.role] || null;
 const pushIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const pushStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
