@@ -756,6 +756,16 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .pm-badge{width:44px;height:32px;border-radius:8px;display:grid;place-items:center;font-weight:800;font-size:12px;letter-spacing:.02em;flex-shrink:0}
 .pm-dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line)}
 .job-next .btn{height:56px;font-size:17px}
+/* required alerts pop-up */
+.ag-bg{z-index:80}
+.ag-pop{display:flex;flex-direction:column;gap:12px}
+.ag-switch{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;border:1.5px solid var(--accent);background:var(--surface);color:inherit;font:inherit;width:100%}
+.ag-switch[disabled]{opacity:.7}
+.ag-track{width:52px;height:30px;border-radius:15px;background:var(--line-2,#C9CFD8);position:relative;flex-shrink:0;transition:background .2s}
+.ag-knob{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s}
+.ag-switch[disabled] .ag-track{background:var(--good-dot,#3BB273)}.ag-switch[disabled] .ag-knob{left:25px}
+.ag-help ol{margin:4px 0 0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
+.ag-bg[data-ag="provider"]{z-index:60}   /* the demo switch (z 70) stays usable above it */
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -2805,6 +2815,7 @@ function faceSheet() {
     <div class="col" style="gap:8px;margin-top:auto">${f.stage === 'cam' ? (S.prov.camErr ? `<button class="btn secondary block" data-act="apDemoId">Test build only: skip with a demo match</button>` : `<button class="shutter" data-act="faceShot" aria-label="Take selfie"><span></span></button>`) : f.stage === 'done' ? `<button class="btn primary block" data-act="faceUse">Use this verification</button><button class="btn secondary block" data-act="faceStart">Try again</button>` : ''}</div></div></div>`;
 }
 function provOverlays() {
+  if (!S.prov.apply && prov(S.prov.id) && prov(S.prov.id).active !== false && alertsNeeded()) return alertsGate('provider');
   if (S.prov.face) { const fs = faceSheet(); if (S.prov.face.stage !== 'cam' || !S.prov.apply || true) return fs; }
   const cs = callScreen('provider') || staffCallScreen('provider'); if (cs) return cs;
   if (S.prov.chat) { const ch = chatSheet('provider'); if (ch) return ch; }
@@ -3877,6 +3888,7 @@ function missionModal() {
 function modal() {
   const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
   if (m.kind === 'mission') return missionModal();
+  if (m.kind === 'alerts') return alertsNeeded() ? alertsGate(m.role, m.after) : (S.modal = null, '');
   if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
     return `<div class="modal-bg"><div class="modal rate-pop" role="dialog" aria-label="Rate your service" style="width:min(420px,100%)">
       <div class="rate-top"><img src="${LOGO_D}" alt="Ticktap"><button class="rate-x" data-act="rateLater" aria-label="Close">${ic('x', 20)}</button></div>
@@ -5605,6 +5617,10 @@ function termsSheet() {
   </div></div>`;
 }
 // Ask for acceptance of the current version before an action; returns true if already accepted
+function needAlerts(role, after) {   // customer: ask before sending a request; returns true when alerts are on or cannot be used here
+  if (!alertsNeeded()) return true;
+  PUSH.err = ''; S.modal = { kind: 'alerts', role, after }; return false;
+}
 function needTerms(role, who, name, contact, then) {
   if (consentOf(role, who)) return true;
   S.terms = { open: true, ok: false, accept: { role, who, name, contact, then } };
@@ -6075,6 +6091,7 @@ function sendDueReminders(n) {
 function sendRequest() {
   if (!needTerms('customer', S.customer.cid || 'me', S.customer.name, (S.customer.email || '') + ' · ' + (S.customer.phone || ''), { act: 'sendRequest' })) return;
   if (myCust().suspended) { toast('customer', 'Account on hold', 'Please contact Ticktap support to reactivate your account.'); return; }
+  if (!needAlerts('customer', 'sendRequest')) return;
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
   const b = newBooking({ pid: isBiz ? null : src.id, bizId: isBiz ? src.id : (src.biz || null), services: svcs.map(s => ({ ...s })), gross, mins, status: isBiz ? 'business_queue' : 'requested', when: c.when, slotAt: c.when === 'later' ? c.slot : null, respondBy: now() + S.settings.respond * MIN });
   logB(b, 'Customer sent request (no charge)');
@@ -6561,6 +6578,9 @@ const A = {
   admBizOpen: id => { S.admin.bizOpen = S.admin.bizOpen === id ? null : id; },
   syncRetry: () => { location.reload(); },
   pushOn: () => { pushEnable(); },
+  alertsOn: () => { alertsTurnOn(); },
+  alertsCheck: () => { if (pushState() === 'on' || Notification.permission === 'granted') alertsTurnOn(); else toast(S.role, 'Still blocked', 'Allow notifications for Ticktap in settings, then try again.'); },
+  alertsClose: () => { if (S.modal && S.modal.kind === 'alerts') S.modal = null; toast('customer', 'Request not sent', 'Turn on alerts when you are ready to book.'); },
   pushOff: () => { pushDisable(); },
   soundToggle: () => { S.sound = !soundOn(); if (S.sound) chime('note', true); },
   soundTest: k => { chime(k, true); },
@@ -6900,7 +6920,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 129;
+const BUILD = 130;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -6958,6 +6978,7 @@ const pushStandalone = () => { try { return matchMedia('(display-mode: standalon
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
 const pushLsKey = t => 'tt-push:' + SYNC.room + ':' + t;
 function pushState() {
+  if (window.__pushForce) return window.__pushForce;   /* test hook */
   if (window.BALIK_PREVIEW) return 'preview';
   if (!pushSupported()) return pushIOS() && !pushStandalone() ? 'ios-home' : 'unsupported';
   if (!pushKey() || SYNC.mode !== 'live') return 'setup';
@@ -7005,6 +7026,33 @@ async function pushDisable() {
 // keep the token fresh (browsers rotate them) once the live room is ready
 async function pushRefresh() {
   try { const t = pushTarget(); if (!t || pushState() !== 'on') return; const tok = await pushToken(); if (tok) { await pushSave(t, tok); const db = firebase.app().database(); for (const x of pushTargetsAll()) if (x !== t) await db.ref('rooms/' + SYNC.room + '/push/' + encK(x) + '/' + DEVICE).set({ token: tok, at: Date.now(), ua: navigator.userAgent.slice(0, 120) }).catch(() => { }); } } catch (e) { }
+}
+/* Alerts are required: a customer sends a request, and a provider uses the app, only with lock-screen alerts on.
+   Shown when this phone can have them but they are off, blocked, or (iPhone) the app is not on the home screen.
+   Browsers that cannot do push at all, and the offline demo, are not blocked (SMS still goes out). */
+const ALERT_GATE = ['off', 'denied', 'ios-home'];
+const alertsNeeded = () => ALERT_GATE.includes(pushState());
+function alertsGate(role, after) {
+  const st = pushState(), busy = PUSH.busy, prov_ = role === 'provider';
+  const why = prov_ ? 'New requests arrive as lock-screen alerts and must be answered within 6 minutes. Turn alerts on to use Ticktap as a provider.'
+    : 'Your provider\'s reply, arrival time and arrival come as lock-screen alerts. Turn alerts on to send your request.';
+  const sw = `<button class="ag-switch" role="switch" aria-checked="false" data-act="alertsOn" ${busy ? 'disabled' : ''}><span class="col grow" style="text-align:left;gap:2px"><b>Lock-screen alerts</b><span class="small muted">${busy ? 'Turning on…' : 'Off · tap to turn on'}</span></span><span class="ag-track"><span class="ag-knob"></span></span></button>`;
+  const steps = st === 'denied' ? `<div class="card tight ag-help"><b class="small">Alerts are blocked for Ticktap on this phone</b><ol class="small"><li>Tap the ⋮ menu or the icon beside the web address, then <b>Site settings › Notifications</b> (Chrome), or open phone <b>Settings › Apps › Ticktap › Notifications</b>.</li><li>Set to <b>Allow</b>.</li><li>Come back and tap <b>Check again</b>.</li></ol></div><button class="btn primary block" data-act="alertsCheck">Check again</button>`
+    : st === 'ios-home' ? `<div class="card tight ag-help"><b class="small">On iPhone, alerts work from the home-screen app</b><ol class="small"><li>Tap <b>Share</b> (square with arrow) in Safari.</li><li>Tap <b>Add to Home Screen</b>, then open Ticktap from the home screen.</li><li>Turn on the switch there.</li></ol></div>`
+    : sw;
+  return `<div class="modal-bg ag-bg" data-ag="${role}"><div class="modal ag-pop" role="dialog" aria-modal="true" aria-label="Turn on alerts" style="width:min(420px,100%)">
+    <div class="row between"><span class="push-ic">${ic('bell', 20)}</span>${prov_ ? '' : `<button class="iconbtn" data-act="alertsClose" aria-label="Close">${ic('x', 20)}</button>`}</div>
+    <h2 style="font-size:20px">${prov_ ? 'Turn on alerts to use the app' : 'Turn on alerts to send your request'}</h2>
+    <p class="small">${why}</p>
+    ${steps}
+    ${PUSH.err && st !== 'denied' ? `<p class="small" style="color:var(--bad)">${esc(PUSH.err)}</p>` : ''}
+    <p class="tiny muted">Only booking and safety alerts. Promotions are separate and stay off unless you agree to them.</p>
+    ${prov_ ? `<button class="btn ghost sm" data-act="authLogout">Log out</button>` : `<button class="btn ghost sm" data-act="alertsClose">Not now · request is not sent</button>`}
+  </div></div>`;
+}
+async function alertsTurnOn() {
+  await pushEnable();
+  if (pushState() === 'on') { const m = S.modal; if (m && m.kind === 'alerts') { S.modal = null; if (m.after && A[m.after]) A[m.after](); } render(); }
 }
 function pushCard(compact) {
   const st = pushState(); if (st === 'on' && compact) return '';
