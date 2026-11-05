@@ -1418,6 +1418,7 @@ function custPane() {
     case 'alerts': h = custAlerts(); tab = 'alerts'; break;
     case 'account': h = custAccount(); tab = 'account'; break;
     case 'points': h = custPoints(); tab = 'account'; break;
+    default: c.screen = 'home'; h = custHome(); tab = 'home';   /* an unknown screen never shows a blank page */
   }
   return `<div class="screen" data-pane="customer">${modeBar('customer')}${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
 }
@@ -1489,6 +1490,7 @@ function custList() {
       <button class="row" data-act="addrSheet" style="border:0;background:var(--surface-2);border-radius:10px;padding:9px 12px;text-align:left">${ic('pin', 16)}<span class="small grow">Distance from <b>${esc(a.label)} · ${esc(a.short)}</b></span><span class="chg-pill">Change</span></button>
       ${c.cat ? '' : `<label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, massage, pets" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
+      ${c.cat && c.q ? `<button class="chip" aria-pressed="true" data-act="clearQ">${ic('search', 14)} “${esc(c.q)}” ${ic('x', 14)}</button>` : ''}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
       ${c.q && all.length && all[0].close ? `<span class="small" style="color:var(--accent)">No exact match for “${esc(c.q)}” · showing close matches</span>` : ''}
       <span class="small muted">${all.length} result${all.length === 1 ? '' : 's'}${pages > 1 ? ` · showing ${(pg - 1) * PER + 1}–${Math.min(pg * PER, all.length)}` : ''} · sorted by availability, then distance</span>
@@ -1895,6 +1897,7 @@ function provPane() {
     case 'account': h = provAccount(); tab = 'account'; break;
     case 'idcard': h = provIdCard(); tab = 'account'; break;
     case 'alerts': h = `${provHeader('Alerts')}<div class="scroll" data-scroll="p-al"><div class="row between"><h3 style="font-size:16px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${S.prov.id}">Mark all read</button></div>${alertList('provider:' + S.prov.id)}</div>`; tab = 'jobs'; break;
+    default: s.screen = 'jobs'; h = provJobs(); tab = 'jobs';   /* an unknown screen never shows a blank page */
   }
   return `<div class="screen" data-pane="provider">${S.prov.apply ? '' : modeBar('provider')}${h}${f ? `<div class="footer-bar">${f}</div>` : ''}${tab ? provTabs(tab) : ''}${provOverlays()}${toastsFor('provider')}</div>`;
 }
@@ -6249,7 +6252,7 @@ const A = {
   open2307: key => { S.modal = { kind: '2307', key }; },
   // customer
   custTab: t => { S.cust.signup = null; S.cust.screen = t; if (t === 'list') { S.cust.cat = null; } if (t === 'alerts') { } },
-  openCat: id => { S.cust.cat = id; S.cust.screen = 'list'; S.cust.filter = 'nearest'; },
+  openCat: id => { S.cust.cat = id; S.cust.screen = 'list'; S.cust.filter = 'nearest'; S.cust.q = ''; },   /* a category is a fresh browse: an old search must not hide everyone */
   listPage: n => { S.cust.page = Math.max(1, +n || 1); setTimeout(() => { const el = document.querySelector('[data-scroll="c-list"]'); if (el) el.scrollTop = 0; }, 30); },
   clearCat: () => { S.cust.cat = null; },
   setFilter: f => { S.cust.filter = f; },
@@ -7201,7 +7204,7 @@ const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
 const SYNC = { mode: 'off', status: 'Starting…', room: 'demo', adapter: null, last: {}, presence: {}, pushT: 0, ready: false, cfgErr: '' };
-window.__balikGuard = cgCheck; window.__balikWork = { workAdd, workBetween, holsYear, holOf }; window.__ocrTest = photoCheck; window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
+window.__balikGuard = cgCheck; window.__balikActs = () => A; window.__balikWork = { workAdd, workBetween, holsYear, holOf }; window.__ocrTest = photoCheck; window.__balikSync = SYNC; window.__balikState = () => S; window.__balikStaff = () => STAFF; window.__balikRender = () => render(); window.__balikNow = () => now(); window.__balikPaths = () => snapshotPaths(); window.__balikLead = () => [isLeader(), DEVICE, JSON.stringify(SYNC.presence)];
 const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) { } };
 function roomFromUrl() { try { const u = new URL(location.href); return (u.searchParams.get('room') || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 24); } catch (e) { return ''; } }
@@ -7329,7 +7332,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 136;
+const BUILD = 137;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
