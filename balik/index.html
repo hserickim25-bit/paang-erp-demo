@@ -769,6 +769,13 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* "Today" written above today's date in the booking calendar */
 .cal-d.today{position:relative;padding-top:9px}
 .cal-d.today::before{content:'Today';position:absolute;top:3px;left:0;right:0;font-size:9px;line-height:1;font-weight:700;letter-spacing:.02em;color:inherit;text-decoration:none}
+/* no-show report progress and blocking screens */
+.ns-card{border-color:var(--warn)}
+.ns-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.ns-steps li{display:flex;flex-direction:column;gap:2px;padding-left:22px;position:relative;opacity:.55}
+.ns-steps li::before{content:'';position:absolute;left:4px;top:5px;width:10px;height:10px;border-radius:50%;border:2px solid var(--line-2,#C9CFD8)}
+.ns-steps li.now,.ns-steps li.done{opacity:1}.ns-steps li.now::before{border-color:var(--warn);background:var(--warn)}.ns-steps li.done::before{border-color:var(--good-dot,#3BB273);background:var(--good-dot,#3BB273)}
+.ns-gate{z-index:60}   /* below the demo switch (z 70) so testers can change role */
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1713,10 +1720,11 @@ function custTrack() {
         talk: b.status === 'paid' ? `<div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div></div><span class="tiny muted">Messages and calls open when ${esc(first)} departs.</span></div>` : `<div class="card tight"><div class="row">${zav(p, 52)}<div class="col grow"><b>${esc(p.name)}</b><span class="small muted">${esc(b.services.map(s => s.name).join(' + '))}</span></div>${canTalk(b) ? '' : '<span class="pill">Contact closed</span>'}</div>${talkButtons(b, 'customer')}${canTalk(b) ? '<span class="tiny muted">Messages and calls stay in the app and close when the service ends. Phone numbers are never shared.</span>' : ''}</div>`,
         rate: b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : '',
         safe: ['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><button class="btn" style="background:var(--bad-dot);color:#fff;line-height:1.15" data-act="staffCall" data-arg="customer:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button><button class="btn secondary" data-act="shareTrip">${ic('share', 18)} Share trip</button></div><p class="tiny muted"><b>Connect to Ticktap staff</b> opens an in-app voice call with our safety team at once if anything feels wrong during the visit. In an emergency, call 911. <b>Share trip</b> sends who is coming, the arrival time and your address to family or a friend.</p></div>` : '' };
-        const O = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['rate', 'chk', 'talk'] }[b.status] || ['rate', 'chk', 'talk'];   // what the customer acts on now comes first
+        B.ns = ['paid', 'departed'].includes(b.status) ? nsCustCard(b) : '';
+        const O0 = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['rate', 'chk', 'talk'] }[b.status] || ['rate', 'chk', 'talk'], O = B.ns ? ['ns'].concat(O0) : O0;   /* a no-show report in progress, or the button to make one, comes first */   // what the customer acts on now comes first
         return O.map(k => k === O[0] && B[k] ? `<div class="job-next" data-next="${b.status}">${B[k]}</div>` : B[k]).join(''); })()}
       <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
-      ${['paid', 'departed'].includes(b.status) ? provNoShowBtn(b) + (provIsLate(b) ? lateWaitNote(b) : cancelPanel(b)) : ''}
+      ${['paid', 'departed'].includes(b.status) ? (nsOpen(b) ? '' : provIsLate(b) ? lateWaitNote(b) : cancelPanel(b)) : ''}
       ${b.refund ? `<div class="card tight"><span class="eyebrow">Refund</span><div class="row between small"><span>${esc(b.refund.method)} · ${b.refund.days === 5 ? 'within 5 days' : 'within 24 hours'}</span><b class="num">${peso(b.refund.amount, 2)}</b></div><span class="tiny muted">Expected by ${fmtWhen(b.refund.dueBy)}${b.refund.fee ? ' · cancellation fee ' + peso(b.refund.fee, 2) : ''}</span></div>` : ''}
     </div>`;
 }
@@ -1831,6 +1839,7 @@ function custSignup() {
 function custOverlays() {
   const c = S.cust; let o = '';
   const cs = callScreen('customer') || staffCallScreen('customer'); if (cs) return cs;
+  { const ns = nsCustNotice(); if (ns) return ns; }
   if (c.chat) o += chatSheet('customer');
   if (c.zoom && prov(c.zoom)) {
     const p = prov(c.zoom), b = p.biz ? biz(p.biz) : null;
@@ -2818,6 +2827,7 @@ function faceSheet() {
 }
 function provOverlays() {
   if (!S.prov.apply && prov(S.prov.id) && prov(S.prov.id).active !== false && alertsNeeded()) return alertsGate('provider');
+  { const ns = nsProvGate(); if (ns) return S.prov.cam ? camSheet() : ns; }
   if (S.prov.face) { const fs = faceSheet(); if (S.prov.face.stage !== 'cam' || !S.prov.apply || true) return fs; }
   const cs = callScreen('provider') || staffCallScreen('provider'); if (cs) return cs;
   if (S.prov.chat) { const ch = chatSheet('provider'); if (ch) return ch; }
@@ -3063,7 +3073,8 @@ function admJobs() {
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
-      ${(sel.noShow || (sel.provFault && sel.provFault.mode === 'credit')) ? `<div class="card tight" style="margin-top:8px;gap:6px;border-color:var(--warn)"><b class="small">${sel.noShow ? 'Customer no-show (closed by the provider)' : 'Provider no-show (reported by the customer)'}</b><span class="tiny muted">Check the times, the map trail, messages and calls. ${sel.noShow ? 'If the customer was there, cancel the payout and credit the customer.' : 'If the provider did come, reverse the credit through Help desk.'}</span>${sel.nsChecked ? `<span class="pill good">Checked ${fmtD(sel.nsChecked.at)} · ${esc(sel.nsChecked.by)}</span>` : `<button class="btn secondary xs" data-act="admNsOk" data-arg="${sel.id}">Checked · OK</button>`}</div>` : ''}
+      ${nsAdminCard(sel)}
+      ${sel.noShow ? `<div class="card tight" style="margin-top:8px;gap:6px;border-color:var(--warn)"><b class="small">${sel.noShow ? 'Customer no-show (closed by the provider)' : 'Provider no-show (reported by the customer)'}</b><span class="tiny muted">Check the times, the map trail, messages and calls. ${sel.noShow ? 'If the customer was there, cancel the payout and credit the customer.' : 'If the provider did come, reverse the credit through Help desk.'}</span>${sel.nsChecked ? `<span class="pill good">Checked ${fmtD(sel.nsChecked.at)} · ${esc(sel.nsChecked.by)}</span>` : `<button class="btn secondary xs" data-act="admNsOk" data-arg="${sel.id}">Checked · OK</button>`}</div>` : ''}
       ${sel.refund ? `<div class="card tight" style="margin-top:8px"><b class="small">Refund ${peso(sel.refund.amount, 2)} to ${esc(sel.refund.method)}</b><span class="tiny muted">Due by ${fmtWhen(sel.refund.dueBy)}${sel.refund.fee ? ' · cancellation fee ' + peso(sel.refund.fee, 2) : ' · no fee'}</span></div>` : ''}
       ${(sel.chat || []).length ? `<details style="margin-top:8px"><summary class="small" style="cursor:pointer">In-app messages · ${sel.chat.length}</summary><div class="col" style="gap:4px;margin-top:6px">${sel.chat.map(m => `<span class="small"><b>${m.from === 'c' ? 'Customer' : 'Provider'}</b> <span class="tiny muted">${fmtT(m.at)}</span> ${esc(m.text)}</span>`).join('')}</div></details>` : ''}
       <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
@@ -3368,8 +3379,10 @@ function deskItems() {
   add({ id: 'refunds', level: 'now', tab: 'ap', icon: 'wallet', title: 'Refunds to send', n: rf.length, detail: rf.length ? peso(rf.reduce((a, b) => a + (b.refund.amount || 0), 0)) + ' · ' + oldest(rf, b => b.refund.at || b.cancelledAt || t) : 'None waiting', how: 'Send each refund to the original payment method: GCash or Maya within 24 hours, card within 5 days (Terms §7).' });
   const tw = tkWaiting(), tOver = tw.filter(tkOver), tUrg = tw.filter(x => x.urgent);
   add({ id: 'help', level: 'now', tab: 'help', icon: 'chat', title: 'Help reports to answer', n: tw.length, warn: tOver.length > 0, detail: tw.length ? [tUrg.length ? tUrg.length + ' urgent' : '', tOver.length ? tOver.length + ' past due' : '', oldest(tw, x => x.msgs[x.msgs.length - 1].at)].filter(Boolean).join(' · ') : 'No reports waiting', how: 'Urgent (safety, damage, no-show) first. Read the booking record — times, check-in photo, messages, calls — reply in the app within 48 working hours (weekends and holidays do not count), then resolve (Terms §12).' });
-  const ns = S.bookings.filter(b => (b.noShow || (b.provFault && b.provFault.mode === 'credit')) && !b.nsChecked);
-  add({ id: 'noshow', level: 'today', tab: 'jobs', icon: 'alert', title: 'No-show claims to check', n: ns.length, detail: ns.length ? ns.slice(0, 3).map(b => b.id + (b.noShow ? ' customer' : ' provider')).join(' · ') : 'None to check', how: 'Open each job, check times, map, messages and calls, then press Checked. A wrong claim is reversed through Help desk.' });
+  const nc = nsClaims(), ncStaff = nc.filter(b => b.nsClaim.status === 'staff');
+  add({ id: 'nsclaim', level: 'now', tab: 'jobs', icon: 'alert', title: 'No-show reports', n: nc.length, warn: ncStaff.length > 0, detail: nc.length ? nc.map(b => b.id + (b.nsClaim.status === 'staff' ? ' · decide by ' + fmtT(b.nsClaim.staffDue) : ' · provider answering')).slice(0, 3).join(' · ') : 'None open', how: 'Open the job: check the evidence, call the provider, write a note and decide. With no decision in 30 minutes the customer is credited automatically.' });
+  const ns = S.bookings.filter(b => b.noShow && !b.nsChecked);
+  add({ id: 'noshow', level: 'today', tab: 'jobs', icon: 'alert', title: 'Customer no-shows to check', n: ns.length, detail: ns.length ? ns.slice(0, 3).map(b => b.id + (b.noShow ? ' customer' : ' provider')).join(' · ') : 'None to check', how: 'Open each job, check times, map, messages and calls, then press Checked. A wrong claim is reversed through Help desk.' });
   const cg = cgCases().filter(c => c.open && c.n >= 3);
   add({ id: 'guard', level: 'now', tab: 'guard', icon: 'shield', title: 'Contact-sharing cases', n: cg.length, detail: cg.length ? cg.map(c => c.b.id).slice(0, 3).join(', ') : 'Nothing to review', how: 'Read the case, then confirm (provider −3 credits, customer warning) or dismiss (Terms §10).' });
   // today
@@ -5476,7 +5489,7 @@ function admCalls() {
 
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.3',
+  version: '1.4',
   effective: 'November 5, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
@@ -5520,7 +5533,8 @@ const TERMS = {
       'A Customer may cancel a paid booking, or ask to change its date or time, only 24 hours or more before the service time. On cancellation the Customer receives 70% of the amount paid; the Company keeps 20% as its platform fee and 10% is paid to the Provider or Business Partner. A change of time must be confirmed by the Provider; there is no charge and no refund, and if the Provider declines, the booking stays as it was.',
       'Less than 24 hours before the service time there is no refund, except that a Customer who cancels within 5 minutes of paying, and before the Provider has set out, receives 70% as above.',
       'If the Customer neither cancels nor changes the booking and is not at the address at the service time (the Provider waits 15 minutes and the Customer is alerted), there is no refund and the Provider or Business Partner is paid as for a completed service, less the usual platform fee.',
-      'If the Provider does not come, the full amount paid is returned to the Customer as Ticktap Credit. If a Provider or Business Partner cancels a paid booking, or the Company cancels it because of a problem on the provider side, the full amount is returned as Ticktap Credit, and the Customer may instead choose a full refund to the original payment method. In these cases the Provider or Business Partner bears the 5% payment processing fee, which is deducted from its next payout.',
+      'If the Customer reports in the app that the Provider has not come (from 30 minutes after the promised time), the Company first asks the Provider, who must answer in the app within 10 minutes, either by checking in at the address with a live photo or by confirming that they cannot come. If the Provider does not answer, the Company checks the booking record and contacts the Provider. Once the no-show is confirmed, or if no decision is made within 30 minutes of the report, the full amount paid is returned to the Customer as Ticktap Credit. A Customer who makes a false report may have the credit taken back and the account suspended under Section 18.',
+      'If a Provider or Business Partner cancels a paid booking, or the Company cancels it because of a problem on the provider side, the full amount is returned as Ticktap Credit, and the Customer may instead choose a full refund to the original payment method. In these cases the Provider or Business Partner bears the 5% payment processing fee, which is deducted from its next payout.',
       'Ticktap Credit can be used only in the app, for any service with any Provider, and is applied automatically when paying. If a booking costs more than the Customer\'s Ticktap Credit and Ticktap Points, the Customer pays the rest; any unused balance stays for the next booking. Each amount of Ticktap Credit is valid for 2 years from the day it is added, cannot be exchanged for cash, and is used oldest first.',
       'Refunds are sent to the original payment method: GCash or Maya within 24 hours, and credit or debit card within 5 days. These are the times within which the Company sends the refund; the time for funds to appear also depends on the payment partner or bank.',
       'A Provider who cancels after accepting, or after the Customer has paid, or who does not come, also loses reward credits under Section 8.'
@@ -6130,6 +6144,7 @@ function arrive(b) {
   logB(b, `Arrived · ${Math.round((b.arrivedAt - b.promisedAt) / MIN) <= 0 ? 'on time' : Math.round((b.arrivedAt - b.promisedAt) / MIN) + ' min after promise'}`);
   if (b.late) { b.late.resolved = true; if (!b.late.penalty && b.arrivedAt > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; addCredit(p, CR().rules.late, 'Late arrival · ' + b.id, b.id, 'late', 'late:' + b.id); logB(b, 'Reward credit −1 (late arrival)'); } }
   logB(b, `In service ${fmtT(b.arrivedAt)}–${fmtT(b.endAt)}`);
+  if (nsOpen(b)) nsDecide(b, 'rejected', 'provider', 'Your provider checked in at your address at ' + fmtT(b.arrivedAt) + ' with a live photo');
   if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.${b.checkin ? ' Check-in photo attached.' : ''}`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
   S.prov.screen = 'job'; S.prov.bid = b.id;
 }
@@ -6951,7 +6966,7 @@ function lateWaitNote(b) {   // provider is late: the customer is not charged fo
 }
 function provNoShowBtn(b) {   // customer: the provider has not come well after the promised time
   if (!['paid', 'departed'].includes(b.status) || b.arrivedAt || !b.promisedAt || now() < b.promisedAt + MR.provLateMin * MIN) return '';
-  return `<div class="card tight" style="gap:8px;background:var(--bad-soft);border-color:transparent"><b class="small" style="color:var(--bad)">${MR.provLateMin}+ minutes late</b><span class="small">If your provider has not come, you get the full amount back as Ticktap Credit.</span><button class="btn danger sm" data-act="provNoShow" data-arg="${b.id}">My provider did not come</button></div>`;
+  return `<div class="card tight" style="gap:8px;background:var(--bad-soft);border-color:transparent"><b class="small" style="color:var(--bad)">${MR.provLateMin}+ minutes late</b><span class="small">If your provider has not come, tell us. We check with them first; once confirmed you get the full amount back as Ticktap Credit.</span><button class="btn danger sm" data-act="provNoShow" data-arg="${b.id}">My provider did not come</button></div>`;
 }
 function custNoShowCard(b) {   // provider: customer not at the address
   if (b.status !== 'departed' || !b.promisedAt || now() < b.promisedAt - 10 * MIN) return '';
@@ -6970,7 +6985,6 @@ function creditCard() {   // customer account: Ticktap Credit balance
 Object.assign(A, {
   custCancel: id => custCancelNow(bk(id)),
   creditRefund: id => creditToRefund(bk(id)),
-  provNoShow: id => { const b = bk(id); if (!b || b.arrivedAt) return; provFault(b, 'Provider did not come', 'credit'); addCredit(prov(b.pid), CR().rules.paidCancel, 'No-show · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); toast('admin', 'Provider no-show · ' + b.id, 'Customer credited · 5% fee charged to the provider'); },
   waitStart: id => { const b = bk(id); if (!b) return; b.waitFrom = now(); logB(b, 'Provider at the address · customer not here · waiting ' + MR.waitMin + ' min'); if (b.cid) pushAlert('customer', 'Your provider is at the door', `${(prov(b.pid) || {}).name || 'Your provider'} is waiting. After ${MR.waitMin} minutes the booking closes with no refund.`, b.id, 'bad'); },
   custNoShow: id => { const b = bk(id); if (!b || !b.waitFrom || now() - b.waitFrom < MR.waitMin * MIN) return; custNoShow(b); S.prov.screen = 'jobs'; },
   admNsOk: id => { const b = bk(id), u = admUser() || {}; if (!b) return; b.nsChecked = { at: now(), by: u.name || 'admin' }; logB(b, 'No-show claim checked by ' + (u.name || 'admin')); admLog('No-show checked · ' + id); },
@@ -6978,6 +6992,109 @@ Object.assign(A, {
   moveSend: id => { const b = bk(id), m = S.cust.move; if (!b || !m) return; if (reschedAsk(b, m.day + m.tmin * MIN)) S.cust.moveAsk = null; },
   moveYes: id => reschedAnswer(bk(id), true),
   moveNo: id => reschedAnswer(bk(id), false)
+});
+
+/* =============== Provider no-show claims (owner's decision, 2026-11-05) ===============
+   The customer's report does not credit at once. It must be answered before anything moves on:
+   1. Provider (10 min): a blocking screen asks "I'm here · check in now" (live photo → claim rejected) or "I can't come"
+      (→ Ticktap Credit to the customer). The provider app is locked to this question until answered.
+   2. Ticktap staff (until 30 min): if the provider has not answered, the claim goes to Ops desk (act now) with the
+      evidence; staff call the provider, write a note and decide. A decision without a note is refused.
+   3. 30 minutes after the report with no decision, the customer is credited automatically and the provider is treated
+      as a no-show (they can object through Help desk).
+   Both sides must acknowledge the result on a blocking notice before using the app again. */
+const NS = { provMin: 10, staffMin: 30 };
+const nsOpen = b => b.nsClaim && ['provider', 'staff'].includes(b.nsClaim.status);
+const nsClaims = () => S.bookings.filter(nsOpen);
+const nsReports = cid => S.bookings.filter(b => b.cid === cid && b.nsClaim).length;
+function nsStart(b) {
+  if (!b || b.arrivedAt || nsOpen(b) || !['paid', 'departed'].includes(b.status)) return;
+  const t = now(), p = prov(b.pid);
+  b.nsClaim = { at: t, status: 'provider', provDue: t + NS.provMin * MIN, staffDue: t + NS.staffMin * MIN, calls: [] };
+  logB(b, 'Customer reported the provider has not come · provider asked to answer within ' + NS.provMin + ' min');
+  if (p) { pushAlert('provider:' + p.id, 'URGENT · Customer says you have not arrived', `${b.id}: answer within ${NS.provMin} minutes in the app.`, b.id, 'bad'); sendSms(p.phone, `[Ticktap] URGENT ${b.id}: the customer says you have not arrived. Open the app and answer within ${NS.provMin} minutes.`, 'late'); toast('provider', 'URGENT · Answer now', 'The customer says you have not arrived.'); }
+  pushAlert('admin', 'No-show report · ' + b.id, `Customer reports ${p ? p.name : 'the provider'} has not come. Provider has ${NS.provMin} min to answer.`, b.id, 'bad');
+  toast('customer', 'Report received', `We asked your provider. Answer due in ${NS.provMin} minutes.`);
+}
+function nsDecide(b, result, by, note, auto) {
+  const c = b.nsClaim; if (!c || !nsOpen(b)) return;
+  c.status = result; c.decidedAt = now(); c.decidedBy = by; c.note = note || ''; c.auto = !!auto; c.custSeen = false; c.provSeen = by === 'provider';
+  if (result === 'credited') { addCredit(prov(b.pid), CR().rules.paidCancel, 'No-show · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); provFault(b, 'Provider did not come (' + (auto ? 'no answer in ' + NS.staffMin + ' min' : by === 'provider' ? 'provider confirmed' : 'confirmed by Ticktap') + ')', 'credit'); }
+  logB(b, 'No-show report ' + (result === 'credited' ? 'confirmed · customer credited' : 'rejected · provider was there') + ' · ' + (auto ? 'automatic after ' + NS.staffMin + ' min' : by) + (note ? ' · ' + note : ''));
+  if (b.pid && by !== 'provider') pushAlert('provider:' + b.pid, result === 'credited' ? 'No-show recorded' : 'Report closed', result === 'credited' ? `${b.id}: the customer was credited and ${MR.faultPct}% is deducted from your next payout. Object through Help if this is wrong.` : `${b.id}: Ticktap confirmed you were there.`, b.id, result === 'credited' ? 'bad' : 'good');
+  if (b.cid) pushAlert('customer', result === 'credited' ? 'Ticktap Credit added' : 'Your provider is there', result === 'credited' ? `${b.id}: the full amount is now Ticktap Credit.` : `${b.id}: ${note || 'your provider checked in at your address'}.`, b.id, result === 'credited' ? 'good' : 'info');
+}
+function nsTick(b, t) {   // called from the clock; returns true when something changed
+  const c = b.nsClaim; if (!nsOpen(b)) return false;
+  if (c.status === 'provider' && t >= c.provDue) { c.status = 'staff'; logB(b, 'Provider did not answer in ' + NS.provMin + ' min · sent to Ticktap staff'); pushAlert('admin', 'URGENT · No-show report needs staff', `${b.id}: the provider did not answer. Decide by ${fmtT(c.staffDue)}.`, b.id, 'bad'); sendSms(S.settings.adminNumbers, `[Ticktap] URGENT no-show report ${b.id}: provider did not answer. Decide in Ops desk by ${fmtT(c.staffDue)}.`, 'late'); return true; }
+  if (t >= c.staffDue) { nsDecide(b, 'credited', 'Ticktap (automatic)', 'No decision within ' + NS.staffMin + ' minutes', true); return true; }
+  return false;
+}
+/* customer: report button, then a progress card while the claim is open */
+function nsCustCard(b) {
+  const c = b.nsClaim;
+  if (nsOpen(b)) {
+    const step = c.status === 'provider' ? 1 : 2;
+    return `<div class="card tight ns-card" data-ns="open" style="gap:8px"><b>We are checking your report</b>
+      <ol class="ns-steps"><li class="${step === 1 ? 'now' : 'done'}"><b>Asking your provider</b><span class="small muted">${step === 1 ? `Must answer within <b class="num" data-cd="${c.provDue}">${mmss(c.provDue - now())}</b>` : 'No answer'}</span></li>
+      <li class="${step === 2 ? 'now' : ''}"><b>Ticktap staff check</b><span class="small muted">Decision by ${fmtT(c.staffDue)} at the latest</span></li>
+      <li><b>Result</b><span class="small muted">If the no-show is confirmed, the full amount becomes Ticktap Credit</span></li></ol>
+      <span class="tiny muted">Please stay reachable. False reports can lead to the credit being taken back and the account being suspended (Terms §7).</span></div>`;
+  }
+  return provNoShowBtn(b);
+}
+/* provider: locked until they answer */
+function nsProvGate() {
+  if (S.prov.cam) return '';
+  const me = S.prov.id, b = S.bookings.find(x => x.pid === me && nsOpen(x)); if (b) {
+    const c = b.nsClaim;
+    return `<div class="modal-bg ag-bg ns-gate" data-ns-gate="prov"><div class="modal ag-pop" role="alertdialog" aria-modal="true" aria-label="Customer says you have not arrived" style="width:min(440px,100%)">
+      <span class="pill bad" style="align-self:flex-start">${ic('alert', 14)} Answer now · ${b.id}</span>
+      <h2 style="font-size:20px">The customer says you have not arrived</h2>
+      <p class="small">${esc(b.customer)} · ${esc(b.address)}. Promised ${fmtT(b.promisedAt)}.</p>
+      <div class="card tight" style="background:var(--warn-soft);border-color:transparent"><span class="small">${c.status === 'provider' ? `Answer within <b class="num" data-cd="${c.provDue}">${mmss(c.provDue - now())}</b>. If you do not answer, Ticktap staff will call you and decide.` : `Ticktap staff are checking now and will call you. You can still answer here until ${fmtT(c.staffDue)}.`} With no answer by ${fmtT(c.staffDue)}, the customer is credited and this counts as a no-show.</span></div>
+      <button class="btn primary block" data-act="arrive" data-arg="${b.id}">${ic('camera', 18)} I'm here · check in now (live photo)</button>
+      <button class="btn danger block" data-act="nsCant" data-arg="${b.id}">I can't come · credit the customer</button>
+      <span class="tiny muted">Checking in records a live photo and the time at the address. "I can't come" gives the customer the full amount as Ticktap Credit, costs ${Math.abs(CR().rules.paidCancel)} reward credits and ${MR.faultPct}% of the booking from your next payout.</span></div></div>`;
+  }
+  const d = S.bookings.find(x => x.pid === me && x.nsClaim && !nsOpen(x) && x.nsClaim.provSeen === false);
+  return d ? nsResultNotice(d, 'prov') : '';
+}
+function nsResultNotice(b, who) {   // both sides acknowledge the result before going on
+  const c = b.nsClaim, ok = c.status === 'credited', cust = who === 'cust';
+  const head = cust ? (ok ? 'Ticktap Credit added' : 'Your provider is at your address') : (ok ? 'No-show recorded' : 'Report closed · you were there');
+  const body = cust ? (ok ? `The no-show was confirmed${c.auto ? ' (your provider could not be reached)' : ''}. ${peso((b.creditChoice ? b.creditChoice.amount : 0) + (b.creditUsed || 0), 2)} is now Ticktap Credit for your next booking.` : `${esc(c.note || 'Your provider checked in with a live photo.')} If no one is with you, tell Ticktap now.`)
+    : (ok ? `${b.id}: the customer was credited${c.auto ? ' because no answer came within ' + NS.staffMin + ' minutes' : ''}. ${MR.faultPct}% of the booking is deducted from your next payout and ${Math.abs(CR().rules.paidCancel)} reward credits were taken. If this is wrong, object through Help.` : `${b.id}: ${esc(c.note || 'Ticktap confirmed you were there.')} Please continue the service.`);
+  return `<div class="modal-bg ag-bg ns-gate" data-ns-result="${who}"><div class="modal ag-pop" role="alertdialog" aria-modal="true" aria-label="${esc(head)}" style="width:min(420px,100%)">
+    <span class="pill ${ok ? (cust ? 'good' : 'bad') : (cust ? 'warn' : 'good')}" style="align-self:flex-start">${b.id}</span><h2 style="font-size:20px">${head}</h2><p class="small">${body}</p>
+    ${b.checkin && !ok && cust ? `<img src="${b.checkin.photo}" alt="Check-in photo" style="width:100%;max-height:200px;object-fit:contain;border-radius:10px;background:#0E1520">` : ''}
+    <button class="btn primary block" data-act="nsSeen" data-arg="${who}|${b.id}">OK, understood</button>
+    ${(!ok && cust) || (ok && !cust) ? `<button class="btn secondary block" data-act="nsHelp" data-arg="${who}|${b.id}">This is not right · tell Ticktap</button>` : ''}</div></div>`;
+}
+function nsCustNotice() { const cid = S.customer.cid || 'me', b = S.bookings.find(x => x.cid === cid && x.nsClaim && !nsOpen(x) && x.nsClaim.custSeen === false); return b ? nsResultNotice(b, 'cust') : ''; }
+/* admin: evidence and decision, on the job page */
+function nsAdminCard(b) {
+  const c = b.nsClaim; if (!c) return '';
+  const p = prov(b.pid) || {}, msgs = (b.chat || []).length, calls = (b.calls || []).length, rep = nsReports(b.cid);
+  const ev = [['Reported', fmtT(c.at) + ' · ' + Math.max(0, Math.round((c.at - b.promisedAt) / MIN)) + ' min after the promised time'], ['Promised / departed', fmtT(b.promisedAt) + ' / ' + (b.departedAt ? fmtT(b.departedAt) : 'not departed')], ['Check-in photo', b.checkin ? 'Yes · ' + fmtT(b.checkin.at) : 'None'], ['Messages · calls', msgs + ' messages · ' + calls + ' in-app calls'], ['Provider answer', c.status === 'provider' ? 'Waiting · due ' + fmtT(c.provDue) : c.decidedBy === 'provider' ? (c.status === 'credited' ? "I can't come" : 'Checked in') : 'No answer'], ['Customer reports, all time', String(rep)]];
+  const open = nsOpen(b), A0 = S.admin;
+  return `<div class="card tight" style="margin-top:8px;gap:8px;border-color:${open ? 'var(--bad)' : 'var(--line)'}" data-ns-admin="${b.id}"><b class="small">No-show report · ${open ? (c.status === 'provider' ? 'waiting for the provider' : 'staff decision needed by ' + fmtT(c.staffDue)) : c.status === 'credited' ? 'confirmed · customer credited' : 'rejected · provider was there'}</b>
+    <div class="list">${ev.map(([k, v]) => `<div class="li"><span class="tiny muted" style="width:120px">${k}</span><span class="small grow">${esc(v)}</span></div>`).join('')}</div>
+    ${open ? `<div class="row" style="gap:6px;flex-wrap:wrap;align-items:center"><span class="small">Provider <b>${esc(p.name || '')}</b> · <span class="num" style="user-select:all">${esc(p.phone || '')}</span></span><button class="btn secondary xs" data-act="nsCall" data-arg="${b.id}|answered">Called · answered</button><button class="btn secondary xs" data-act="nsCall" data-arg="${b.id}|no answer">Called · no answer</button><button class="btn ghost xs" data-act="nsPing" data-arg="${b.id}">Re-send alert</button></div>
+      ${c.calls.length ? `<span class="tiny muted">${c.calls.map(x => fmtT(x.at) + ' ' + esc(x.by) + ': ' + esc(x.result)).join(' · ')}</span>` : ''}
+      <label class="field">Note (required)<input id="ns-note" class="input" data-bind="admin.nsNote" value="${esc(A0.nsNote || '')}" placeholder="e.g. Provider on call: stuck in traffic, cannot come"></label>
+      <div class="row" style="gap:6px"><button class="btn danger sm grow" data-act="nsStaff" data-arg="${b.id}|credited">No-show · credit customer</button><button class="btn secondary sm grow" data-act="nsStaff" data-arg="${b.id}|rejected">Provider was there · reject</button></div>
+      <span class="tiny muted">With no decision by ${fmtT(c.staffDue)}, the customer is credited automatically.</span>`
+    : `<span class="tiny muted">Decided ${fmtT(c.decidedAt)} by ${esc(c.decidedBy)}${c.note ? ' · ' + esc(c.note) : ''}</span>`}</div>`;
+}
+Object.assign(A, {
+  provNoShow: id => nsStart(bk(id)),
+  nsCant: id => { const b = bk(id); if (!b || !nsOpen(b)) return; nsDecide(b, 'credited', 'provider', 'Provider said they cannot come'); S.prov.screen = 'jobs'; toast('provider', 'Customer credited', `${MR.faultPct}% fee from your next payout · −${Math.abs(CR().rules.paidCancel)} reward credits`); },
+  nsSeen: arg => { const [who, id] = arg.split('|'), b = bk(id); if (b && b.nsClaim) b.nsClaim[who === 'cust' ? 'custSeen' : 'provSeen'] = true; },
+  nsHelp: arg => { const [who, id] = arg.split('|'), b = bk(id); if (b && b.nsClaim) b.nsClaim[who === 'cust' ? 'custSeen' : 'provSeen'] = true; if (who === 'cust') { S.cust.bid = id; A.custHelp(); S.cust.help.topic = 'Safety concern'; } else A.provHelp(id); },
+  nsCall: arg => { const [id, result] = arg.split('|'), b = bk(id), u = admUser() || {}; if (!b || !b.nsClaim) return; b.nsClaim.calls.push({ at: now(), by: u.name || 'admin', result }); logB(b, 'Ticktap called the provider · ' + result); },
+  nsPing: id => { const b = bk(id), p = b && prov(b.pid); if (!p) return; pushAlert('provider:' + p.id, 'URGENT · Answer the no-show report', b.id + ': Ticktap is waiting for your answer.', b.id, 'bad'); sendSms(p.phone, `[Ticktap] URGENT ${b.id}: answer the no-show report in the app now.`, 'late'); toast('admin', 'Alert re-sent', p.name); },
+  nsStaff: arg => { const [id, res] = arg.split('|'), b = bk(id), note = String(S.admin.nsNote || '').trim(), u = admUser() || {}; if (!b || !nsOpen(b)) return; if (note.length < 5) { toast('admin', 'Write a note first', 'Say what you checked, e.g. the call with the provider.'); return; } nsDecide(b, res, u.name || 'Ticktap staff', note); S.admin.nsNote = ''; admLog('No-show ' + id + ' · ' + res + ' · ' + note); toast('admin', res === 'credited' ? 'Customer credited' : 'Report rejected', id); }
 });
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
@@ -7101,7 +7218,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 132;
+const BUILD = 133;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7300,6 +7417,7 @@ function tick(force = false) {
   if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
   if (lead && sendDueReminders(n)) changed = true;
   if (lead) S.bookings.forEach(b => {
+    if (nsTick(b, n)) changed = true;
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true; noReplyCheck(b);
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
     if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; changed = true;
