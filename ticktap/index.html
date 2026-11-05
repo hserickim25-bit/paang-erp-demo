@@ -1559,17 +1559,19 @@ function payCalc(b) {
   let free = null;
   if (ls && ls.avail > 0) { const el = b.services.filter(s => loyEligible(ls.o, s)).sort((x, y) => x.price - y.price); if (el.length) free = { owner: key, item: el[0].name, value: el[0].price }; }
   const useFree = !!free && c.useFree !== false, afterFree = b.gross - (useFree ? free.value : 0);
-  const bal = ptBal(b.cid), P = PTS(), canPts = bal >= P.min && afterFree > 0;
-  const ptsUse = canPts && c.usePts ? Math.min(bal, Math.floor(afterFree / P.value)) : 0;
-  return { free, useFree, afterFree, bal, canPts, ptsUse, ptsValue: ptsUse * P.value, cash: Math.max(0, afterFree - ptsUse * P.value) };
+  const crBal = cashBal(b.cid), useCr = crBal > 0 && c.useCr !== false, crUse = useCr ? r2(Math.min(crBal, afterFree)) : 0, afterCr = r2(afterFree - crUse);
+  const bal = ptBal(b.cid), P = PTS(), canPts = bal >= P.min && afterCr > 0;
+  const ptsUse = canPts && c.usePts ? Math.min(bal, Math.floor(afterCr / P.value)) : 0;
+  return { free, useFree, afterFree, crBal, useCr, crUse, bal, canPts, ptsUse, ptsValue: ptsUse * P.value, cash: Math.max(0, r2(afterCr - ptsUse * P.value)) };
 }
 function payExtras(b) {
   const k = payCalc(b), P = PTS();
   let h = '';
   if (k.free) h += `<label class="row payopt" style="gap:10px"><input type="checkbox" data-act="payToggle" data-arg="useFree" ${k.useFree ? 'checked' : ''}><div class="col grow"><b class="small">${ic('heart', 14)} Use your free service</b><span class="tiny muted">${esc(k.free.item)} is free (loyalty reward)</span></div><b class="num" style="color:var(--good)">−${peso(k.free.value)}</b></label>`;
+  if (k.crBal > 0) h += `<label class="row payopt" style="gap:10px"><input type="checkbox" data-act="payToggle" data-arg="useCr" ${k.useCr ? 'checked' : ''}><div class="col grow"><b class="small">${ic('wallet', 14)} Use Ticktap Credit</b><span class="tiny muted">${peso(k.crBal, 2)} available · from a cancelled or missed booking</span></div><b class="num" style="color:var(--good)">${k.crUse ? '−' + peso(k.crUse, 2) : ''}</b></label>`;
   if (k.bal > 0) h += `<label class="row payopt" style="gap:10px;${k.canPts ? '' : 'opacity:.6'}"><input type="checkbox" data-act="payToggle" data-arg="usePts" ${k.ptsUse ? 'checked' : ''} ${k.canPts ? '' : 'disabled'}><div class="col grow"><b class="small">${ic('sparkle', 14)} Pay with Ticktap Points</b><span class="tiny muted">${k.bal} points available${k.canPts ? ` · 1 point = ${peso(P.value)}` : ` · usable from ${P.min} points`}</span></div><b class="num" style="color:var(--good)">${k.ptsUse ? '−' + peso(k.ptsValue) : ''}</b></label>`;
   { const P2 = PTS(), m = ptMultNow(), e = Math.floor(k.cash / P2.per) * m; if (e > 0) h += `<div class="row" style="gap:6px;padding:0 4px;color:var(--good)">${ic('sparkle', 14)}<span class="small">This booking earns <b>${e} point${e > 1 ? 's' : ''}</b>${m > 1 ? ` (${m}× event)` : ''} when the service ends</span></div>`; }
-  if (k.useFree || k.ptsUse) h += `<div class="row between" style="padding:0 4px"><b>You pay</b><b class="num" data-fit style="font-size:18px">${peso(k.cash)}</b></div>`;
+  if (k.useFree || k.ptsUse || k.crUse) h += `<div class="row between" style="padding:0 4px"><b>You pay</b><b class="num" data-fit style="font-size:18px">${peso(k.cash)}</b></div>`;
   return h;
 }
 function cartInfo() {
@@ -1648,11 +1650,11 @@ function custRequest() {
       <span class="eyebrow" style="color:var(--good)">${esc(first)} accepted</span>
       <span style="font-size:15px">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span>
       <div class="row" style="align-items:baseline;gap:10px"><span class="num" data-fit style="font-size:40px;font-weight:600;letter-spacing:-.03em">${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</span><span class="small muted">${b.when === 'later' ? '' : 'about ' + fmtT(now() + b.eta * MIN) + ' if you pay now'}</span></div>
-      ${b.when === 'later' ? `<span class="small" style="color:var(--warn)">Pay by <b>${fmtWhen(b.offerExpires)}</b> (1 hour before). Unpaid bookings are cancelled automatically.</span>` : `<span class="small muted">Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span>`}</div>
+      <span class="small muted">Pay now to confirm · offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b></span></div>
       ${b.reminders && b.reminders.length ? remindersCard(b) : ''}`;
   else hero = `<div class="card" style="align-items:center;text-align:center;gap:10px;padding:22px 16px"><span class="avatar" style="width:52px;height:52px;background:var(--bad-soft);color:var(--bad)">${ic('x', 26)}</span>
-      <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? (b.autoCancelled ? 'Cancelled · not paid 1 hour before' : 'The arrival time expired') : b.cancelledBy === 'customer' ? 'You cancelled this booking' : 'Request cancelled'}</h2>
-      <p class="small muted">You were not charged. Here are the nearest providers on stand-by.</p><button class="btn primary" data-act="openCat" data-arg="${p ? p.cat : 'massage'}">See nearest available</button></div>`;
+      <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? (b.autoCancelled ? 'Cancelled · not paid in time' : 'The arrival time expired') : b.cancelledBy === 'customer' ? 'You cancelled this booking' : b.noShow === 'customer' ? 'Missed booking' : b.provFault ? (b.provFault.mode === 'credit' ? 'Your provider did not come' : 'Cancelled on the provider side') : 'Request cancelled'}</h2>
+      ${b.paidAt ? cancelSummary(b) : '<p class="small muted">You were not charged. Here are the nearest providers on stand-by.</p>'}<button class="btn primary" data-act="openCat" data-arg="${p ? p.cat : 'massage'}">See nearest available</button></div>`;
   const step = { requested: 0, business_queue: 0, offered: 1 }[b.status] ?? -1;
   const stepsH = ['Request sent', 'Arrival time', 'Pay', 'Departed', 'Service'].map((s, i) => `<li class="${i < step + 1 ? 'done' : i === step + 1 ? 'now' : ''}"><span></span>${s}</li>`).join('');
   return `${bar('Booking ' + b.id, 'toBookings')}
@@ -1714,13 +1716,7 @@ function custTrack() {
         const O = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['rate', 'chk', 'talk'] }[b.status] || ['rate', 'chk', 'talk'];   // what the customer acts on now comes first
         return O.map(k => k === O[0] && B[k] ? `<div class="job-next" data-next="${b.status}">${B[k]}</div>` : B[k]).join(''); })()}
       <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
-      ${['paid', 'departed'].includes(b.status) ? (S.cust.cancelAsk === b.id ? (() => { const q = refundQuote(b); return `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this booking?</b>
-        <div class="row between small"><span>Paid</span><b class="num">${peso(b.gross, 2)}</b></div>
-        <div class="row between small"><span>Cancellation fee ${q.free ? '(free · 24 h+ before)' : `(${POLICY.feePct}% · under 24 h)`}</span><b class="num">${q.fee ? '−' + peso(q.fee, 2) : peso(0, 2)}</b></div>
-        <div class="row between small"><b>Refund to ${esc(q.method)}</b><b class="num">${peso(q.amount, 2)}</b></div>
-        <span class="tiny">Refunded ${q.dueText}.</span>
-        <div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="custCancel" data-arg="${b.id}">Cancel booking</button><button class="btn secondary sm" data-act="custCancelAsk" data-arg="">Keep</button></div></div>`; })()
-        : `<button class="btn ghost sm" style="color:var(--bad);align-self:center" data-act="custCancelAsk" data-arg="${b.id}">Cancel booking</button><p class="tiny muted" style="text-align:center">${policyText()}</p>`) : ''}
+      ${['paid', 'departed'].includes(b.status) ? provNoShowBtn(b) + (provIsLate(b) ? lateWaitNote(b) : cancelPanel(b)) : ''}
       ${b.refund ? `<div class="card tight"><span class="eyebrow">Refund</span><div class="row between small"><span>${esc(b.refund.method)} · ${b.refund.days === 5 ? 'within 5 days' : 'within 24 hours'}</span><b class="num">${peso(b.refund.amount, 2)}</b></div><span class="tiny muted">Expected by ${fmtWhen(b.refund.dueBy)}${b.refund.fee ? ' · cancellation fee ' + peso(b.refund.fee, 2) : ''}</span></div>` : ''}
     </div>`;
 }
@@ -1776,6 +1772,7 @@ function custAccount() {
       ${locRow('c')}${installRow()}${termsRow('customer', S.customer.cid || 'me')}
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
       <button class="li" data-act="custGo" data-arg="points">${ic('sparkle', 20)}<div class="col grow"><b>Ticktap Points</b><span class="small muted">${ptBal(S.customer.cid || 'me')} points · earn 1 for every ${peso(PTS().per)}</span></div><b class="num" style="color:var(--accent)">${ptBal(S.customer.cid || 'me')}</b>${ic('chev', 16)}</button>
+      ${creditCard()}
       <div class="li">${ic('wallet', 20)}<div class="col grow"><b>Payment methods</b><span class="small muted">GCash · Maya · Visa ending 4417</span></div></div>
       <div class="li">${ic('bell', 20)}<div class="col grow"><b>Notifications</b><span class="small muted">App alerts and SMS for every booking update</span></div></div>
       <button class="li" data-act="custHelp" data-arg="acct">${ic('chat', 20)}<div class="col grow"><b>Help & reports</b><span class="small muted">Report a problem · we reply within 48 hours${tkMine('customer').some(x => x.status === 'open' && x.needs === 'member') ? ' · <b style="color:var(--accent)">new reply</b>' : ''}</span></div>${ic('chev', 16)}</button>
@@ -2000,7 +1997,9 @@ function provJob() {
   const h = `${bar('Job ' + b.id, 'provBack', `<button class="btn ghost xs" data-act="provHelp" data-arg="${b.id}">Help</button>`)}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
+    ${b.status === 'paid' ? reschedCardProv(b) : ''}
     ${f ? `<div class="job-next" data-next="${b.status}">${f}</div>` : ''}
+    ${custNoShowCard(b)}
     ${b.status === 'departed' ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
     ${canTalk(b) && b.status !== 'paid' ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
     ${['departed', 'arrived'].includes(b.status) ? `<button class="btn block" style="background:var(--bad-dot);color:#fff" data-act="staffCall" data-arg="provider:${b.id}">${ic('headset', 18)} Connect to Ticktap staff</button>` : ''}
@@ -2316,7 +2315,7 @@ function guideFil(role) {
         ['check', 'Tapos na ang serbisyo', 'I-tap ng provider ang End service, o kusa itong matatapos sa naka-book na oras.'],
         ['heart', 'Mag-rate at mag-review', 'Pagkatapos ng serbisyo, may lalabas na pop-up na "Thank you for choosing Ticktap today!". I-tap ang stars at Write a review, o Later para mag-rate mula sa Bookings. Nakakatulong ang reviews sa ibang customer at sa reward credits ng provider.'],
         ['sparkle', 'Kumita ng points', 'Kumikita ka ng 1 point sa bawat ' + peso(P.per) + ' na binayad' + (ev ? ' (' + ev.mult + '× habang may ' + esc(ev.title || 'event') + ')' : '') + '. Tingnan sa Account › Ticktap Points.'],
-        ['receipt', 'Pagkansela at refund', 'Libre ang pagkansela hanggang ' + POLICY.freeHours + ' oras bago ang booking; pagkatapos nito, may ' + POLICY.feePct + '% na fee. Ibinabalik ang refund sa paraang ginamit mo sa pagbayad.']]]
+        ['receipt', 'Pagkansela, paglipat ng oras at refund', 'Magbayad agad kapag tinanggap ng provider. Hanggang ' + MR.cutoffH + ' oras bago ang serbisyo, puwedeng ilipat ang oras (kumpirmasyon ng provider) o i-cancel na may ' + MR.refundPct + '% refund. Mas mababa sa ' + MR.cutoffH + ' oras o hindi ka nandoon: walang refund. Kung hindi dumating o nag-cancel ang provider, babalik ang buong halaga bilang Ticktap Credit.']]]
     ]
   };
   const PR = {
@@ -2441,7 +2440,7 @@ function guideEn(role) {
         ['check', 'Service ends', 'The provider taps End service, or it ends automatically at the booked time.'],
         ['heart', 'Rate and review', 'A "Thank you for choosing Ticktap today!" pop-up appears. Tap the stars and Write a review, or Later to rate from Bookings. Reviews help other customers and set the provider\'s reward credits.'],
         ['sparkle', 'Collect points', 'You earn 1 point for every ' + peso(P.per) + ' paid' + (ev ? ' (' + ev.mult + '× during ' + esc(ev.title || 'the current event') + ')' : '') + '. See Account › Ticktap Points.'],
-        ['receipt', 'Cancellation and refunds', 'Free cancellation up to ' + POLICY.freeHours + ' hours before the booking; after that a ' + POLICY.feePct + '% fee applies. Refunds go back to the method you paid with.']]]
+        ['receipt', 'Cancellation, changing the time and refunds', 'Pay as soon as the provider accepts. Up to ' + MR.cutoffH + ' hours before the service you can change the time (the provider confirms) or cancel with ' + MR.refundPct + '% back. Less than ' + MR.cutoffH + ' hours, or not there at the time: no refund. If the provider cancels or does not come, the full amount comes back as Ticktap Credit.']]]
     ]
   };
   const PR = {
@@ -2534,7 +2533,7 @@ function guideKo(role) {
         ['check', '서비스 종료', '제공자가 End service를 누르거나, 예약된 시간이 되면 자동으로 끝납니다.'],
         ['heart', '별점과 리뷰', '"Thank you for choosing Ticktap today!" 팝업이 뜹니다. 별을 누르고 Write a review를 누르거나, Later를 눌러 나중에 Bookings에서 평가합니다. 리뷰는 다른 고객과 제공자의 리워드 크레딧에 반영됩니다.'],
         ['sparkle', '포인트 적립', '결제 ' + peso(P.per) + '마다 1포인트가 쌓입니다' + (ev ? ' (' + esc(ev.title || '이벤트') + ' 기간에는 ' + ev.mult + '배)' : '') + '. Account › Ticktap Points에서 확인합니다.'],
-        ['receipt', '취소와 환불', '예약 ' + POLICY.freeHours + '시간 전까지는 무료 취소, 그 이후에는 ' + POLICY.feePct + '% 수수료가 붙습니다. 환불은 결제한 수단으로 돌아갑니다.']]]
+        ['receipt', '취소·일정 변경·환불', '제공자가 수락하면 바로 결제합니다. 서비스 ' + MR.cutoffH + '시간 전까지는 일정 변경(제공자 확인) 또는 취소가 가능하며 취소 시 ' + MR.refundPct + '%가 환불됩니다. ' + MR.cutoffH + '시간 미만이거나 약속 시간에 자리에 없으면 환불되지 않습니다. 제공자가 취소하거나 오지 않으면 전액이 Ticktap Credit으로 돌아옵니다.']]]
     ]
   };
   const PR = {
@@ -3021,7 +3020,7 @@ function adminPane() {
   const openG = S.admin.groups || (S.admin.groups = isPhone() ? { members: false, money: false, rules: false } : { members: true, money: true, rules: true });
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
-  const apDue = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
+  const apDue = S.bookings.filter(b => payDue(b)).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
   const m = { desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, help: admHelp, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
@@ -3064,6 +3063,7 @@ function admJobs() {
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>${sel ? sel.id : 'Select a job'}</h3>${sel ? statusPill(sel.status) : ''}</div><div class="panel-b">${sel ? `<span class="small muted">${esc(sel.customer)} · ${esc(sel.services.map(s => s.name).join(' + '))} · ${peso(sel.gross)}</span>
       ${sel.checkin ? `<img src="${sel.checkin.photo}" alt="Arrival check-in photo" style="width:100%;border-radius:10px;margin-top:8px"><span class="tiny muted">Check-in photo · ${fmtT(sel.checkin.at)} · live camera</span>` : ''}
+      ${(sel.noShow || (sel.provFault && sel.provFault.mode === 'credit')) ? `<div class="card tight" style="margin-top:8px;gap:6px;border-color:var(--warn)"><b class="small">${sel.noShow ? 'Customer no-show (closed by the provider)' : 'Provider no-show (reported by the customer)'}</b><span class="tiny muted">Check the times, the map trail, messages and calls. ${sel.noShow ? 'If the customer was there, cancel the payout and credit the customer.' : 'If the provider did come, reverse the credit through Help desk.'}</span>${sel.nsChecked ? `<span class="pill good">Checked ${fmtD(sel.nsChecked.at)} · ${esc(sel.nsChecked.by)}</span>` : `<button class="btn secondary xs" data-act="admNsOk" data-arg="${sel.id}">Checked · OK</button>`}</div>` : ''}
       ${sel.refund ? `<div class="card tight" style="margin-top:8px"><b class="small">Refund ${peso(sel.refund.amount, 2)} to ${esc(sel.refund.method)}</b><span class="tiny muted">Due by ${fmtWhen(sel.refund.dueBy)}${sel.refund.fee ? ' · cancellation fee ' + peso(sel.refund.fee, 2) : ' · no fee'}</span></div>` : ''}
       ${(sel.chat || []).length ? `<details style="margin-top:8px"><summary class="small" style="cursor:pointer">In-app messages · ${sel.chat.length}</summary><div class="col" style="gap:4px;margin-top:6px">${sel.chat.map(m => `<span class="small"><b>${m.from === 'c' ? 'Customer' : 'Provider'}</b> <span class="tiny muted">${fmtT(m.at)}</span> ${esc(m.text)}</span>`).join('')}</div></details>` : ''}
       <ul class="timeline">${sel.log.map(l => `<li><span class="t">${fmtT(l.t)}</span><span class="d"></span><span>${esc(l.text)}</span></li>`).join('')}</ul>
@@ -3198,7 +3198,7 @@ function admAR() {
       <div class="kpi"><span class="l">Platform fees earned · ${P.label}</span><span class="v">${peso(sum(earned, b => b.ledger.fee), 2)}</span></div>
       <div class="kpi"><span class="l">Held for jobs in progress</span><span class="v">${peso(sum(held, b => b.gross))}</span></div>
       <div class="kpi"><span class="l">Waiting for customer payment</span><span class="v">${peso(sum(unpaid, b => b.gross))}</span></div></div>
-    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Waiting for payment · ${unpaid.length}</h3><span class="small muted">Unpaid scheduled bookings cancel automatically 1 hour before</span></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Customer</th><th>Provider</th><th>Service time</th><th>Pay by</th><th class="num">Amount</th></tr></thead><tbody>
+    <div class="split"><div class="wide panel"><div class="panel-h"><h3>Waiting for payment · ${unpaid.length}</h3><span class="small muted">Customers pay within ${S.settings.hold} minutes of the provider accepting; unpaid offers cancel automatically</span></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Customer</th><th>Provider</th><th>Service time</th><th>Pay by</th><th class="num">Amount</th></tr></thead><tbody>
       ${unpaid.map(b => `<tr><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td>${esc(prov(b.pid) ? prov(b.pid).name : '')}</td><td class="small">${b.slotAt ? fmtWhen(b.slotAt) : 'Now'}</td><td class="small" style="color:${b.offerExpires - n < 3 * HOUR ? 'var(--bad)' : 'inherit'}">${b.offerExpires ? fmtWhen(b.offerExpires) : '—'}</td><td class="num">${peso(b.gross)}</td></tr>`).join('') || '<tr><td colspan="6"><div class="empty">No payments waiting.</div></td></tr>'}
     </tbody></table></div></div>
     <div class="narrow panel"><div class="panel-h"><h3>By payment method · ${P.label}</h3></div><div class="list">${Object.entries(byM).map(([m, v]) => `<div class="li"><b class="grow small">${esc(m)}</b><b class="num">${peso(v)}</b></div>`).join('') || '<div class="empty">No payments yet.</div>'}</div>
@@ -3368,12 +3368,14 @@ function deskItems() {
   add({ id: 'refunds', level: 'now', tab: 'ap', icon: 'wallet', title: 'Refunds to send', n: rf.length, detail: rf.length ? peso(rf.reduce((a, b) => a + (b.refund.amount || 0), 0)) + ' · ' + oldest(rf, b => b.refund.at || b.cancelledAt || t) : 'None waiting', how: 'Send each refund to the original payment method: GCash or Maya within 24 hours, card within 5 days (Terms §7).' });
   const tw = tkWaiting(), tOver = tw.filter(tkOver), tUrg = tw.filter(x => x.urgent);
   add({ id: 'help', level: 'now', tab: 'help', icon: 'chat', title: 'Help reports to answer', n: tw.length, warn: tOver.length > 0, detail: tw.length ? [tUrg.length ? tUrg.length + ' urgent' : '', tOver.length ? tOver.length + ' past due' : '', oldest(tw, x => x.msgs[x.msgs.length - 1].at)].filter(Boolean).join(' · ') : 'No reports waiting', how: 'Urgent (safety, damage, no-show) first. Read the booking record — times, check-in photo, messages, calls — reply in the app within 48 working hours (weekends and holidays do not count), then resolve (Terms §12).' });
+  const ns = S.bookings.filter(b => (b.noShow || (b.provFault && b.provFault.mode === 'credit')) && !b.nsChecked);
+  add({ id: 'noshow', level: 'today', tab: 'jobs', icon: 'alert', title: 'No-show claims to check', n: ns.length, detail: ns.length ? ns.slice(0, 3).map(b => b.id + (b.noShow ? ' customer' : ' provider')).join(' · ') : 'None to check', how: 'Open each job, check times, map, messages and calls, then press Checked. A wrong claim is reversed through Help desk.' });
   const cg = cgCases().filter(c => c.open && c.n >= 3);
   add({ id: 'guard', level: 'now', tab: 'guard', icon: 'shield', title: 'Contact-sharing cases', n: cg.length, detail: cg.length ? cg.map(c => c.b.id).slice(0, 3).join(', ') : 'Nothing to review', how: 'Read the case, then confirm (provider −3 credits, customer warning) or dismiss (Terms §10).' });
   // today
   const apps = S.applications.filter(a => a.status === 'pending'), bapps = (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info');
   add({ id: 'approvals', level: 'today', tab: 'approvals', icon: 'shield', title: 'Applications to approve', n: apps.length + bapps.length, detail: apps.length + bapps.length ? apps.length + ' provider · ' + bapps.length + ' business' + (apps.length ? ' · ' + oldest(apps, a => a.at || t) : '') : 'No one waiting', how: 'Compare the face photo with the ID, check TIN and documents, then approve or ask for more information. Aim for the same day.' });
-  const due = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded), late48 = due.filter(b => t - paidRefOf(b) > 48 * HOUR);
+  const due = S.bookings.filter(b => payDue(b)), late48 = due.filter(b => t - paidRefOf(b) > 48 * HOUR);
   add({ id: 'payouts', level: 'today', tab: 'ap', icon: 'receipt', title: 'Payouts to send', n: due.length, warn: late48.length > 0, detail: due.length ? peso(due.reduce((a, b) => a + b.ledger.net, 0)) + ' to ' + new Set(due.map(payKey)).size + ' payees' + (late48.length ? ' · ' + late48.length + ' past 48 h' : '') : 'All paid', how: 'Pay each provider or business by GCash or bank within 72 hours of the customer payment, then mark it paid with the reference.' });
   const ready = wlCities().filter(r => r.pros > 0 && r.open > 0);
   add({ id: 'waitlist', level: 'today', tab: 'waitlist', icon: 'pin', title: 'Waitlists ready to notify', n: ready.length, detail: ready.length ? ready.map(r => r.city + ' ' + r.open).slice(0, 3).join(' · ') : 'No city ready yet', how: 'A city now has pros: press Notify so waiting customers know they can book.' });
@@ -3474,7 +3476,7 @@ function payeeWallet(b) { const o = payeeOf(b) || {}; if (b.bizId) return o.gcas
 const ageTxt = ms => { const h = Math.floor(ms / HOUR), m = Math.floor((ms % HOUR) / MIN); return h >= 24 ? Math.floor(h / 24) + 'd ' + (h % 24) + 'h' : h + 'h ' + m + 'm'; };
 function payoutQueue() {
   const t = now(), A0 = S.admin, open = A0.poOpen || {};
-  const due = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded);
+  const due = S.bookings.filter(b => payDue(b));
   const groups = {}; due.forEach(b => { const k = payKey(b); const g = groups[k] || (groups[k] = { k, name: b.ledger.payeeName, wallet: payeeWallet(b), jobs: [], total: 0, oldest: Infinity }); g.jobs.push(b); g.total += b.ledger.net; g.oldest = Math.min(g.oldest, paidRefOf(b)); });
   const list = Object.values(groups).sort((a, b) => a.oldest - b.oldest);
   const over = list.filter(g => t - g.oldest > PAY_SLA).length, sum = list.reduce((a, g) => a + g.total, 0);
@@ -3482,8 +3484,8 @@ function payoutQueue() {
     return `<div class="po-row ${cls}"><div class="po-main"><div class="col" style="gap:2px;min-width:0"><b class="ellipsis">${esc(g.name)}</b><span class="small muted mono">${esc(g.wallet)}</span></div>
       <div class="col po-amt"><b class="num">${peso(g.total, 2)}</b><span class="tiny muted">${g.jobs.length} job${g.jobs.length > 1 ? 's' : ''}</span></div></div>
       <div class="po-meta"><span class="pill ${cls}">${left < 0 ? 'Overdue ' + ageTxt(-left) : ageTxt(left) + ' left'}</span><span class="tiny muted">Oldest payment ${fmtWhen(g.oldest)} · ${ageTxt(age)} ago</span><button class="btn ghost xs" data-act="poOpen" data-arg="${g.k}">${open[g.k] ? 'Hide jobs' : 'Jobs'}</button></div>
-      ${open[g.k] ? `<div class="po-jobs">${g.jobs.sort((a, b) => paidRefOf(a) - paidRefOf(b)).map(b => `<div class="row between small"><span class="mono">${b.id}</span><span class="muted">paid ${fmtWhen(paidRefOf(b))} · ${ageTxt(t - paidRefOf(b))} ago</span><b class="num">${peso(b.ledger.net, 2)}</b></div>`).join('')}</div>` : ''}
-      <div class="po-act"><input id="po-ref-${g.k.replace(/[^a-z0-9]/gi, '')}" class="input" data-bind="admin.poRef.${g.k}" value="${esc((A0.poRef || {})[g.k] || '')}" placeholder="GCash reference no. (optional)"><button class="btn primary sm" data-act="poPaid" data-arg="${g.k}">${ic('check', 15)} Paid</button></div></div>`; };
+      ${open[g.k] ? `<div class="po-jobs">${g.jobs.sort((a, b) => paidRefOf(a) - paidRefOf(b)).map(b => `<div class="row between small"><span class="mono">${b.id}</span><span class="muted">${b.ledger.kind === 'debit' ? 'provider-side cancellation · ' + MR.faultPct + '% payment fee' : b.ledger.kind === 'cancel' ? 'customer cancelled · ' + MR.provPct + '% share' : b.ledger.kind === 'noshow' ? 'customer no-show' : 'paid ' + fmtWhen(paidRefOf(b)) + ' · ' + ageTxt(t - paidRefOf(b)) + ' ago'}</span><b class="num">${peso(b.ledger.net, 2)}</b></div>`).join('')}</div>` : ''}
+      ${g.total <= 0 ? `<span class="small" style="color:var(--warn)">Provider-side fee is larger than the jobs due · carried over to the next payout</span>` : ''}<div class="po-act"${g.total <= 0 ? ' hidden' : ''}><input id="po-ref-${g.k.replace(/[^a-z0-9]/gi, '')}" class="input" data-bind="admin.poRef.${g.k}" value="${esc((A0.poRef || {})[g.k] || '')}" placeholder="GCash reference no. (optional)"><button class="btn primary sm" data-act="poPaid" data-arg="${g.k}">${ic('check', 15)} Paid</button></div></div>`; };
   return `<div class="panel" style="${over ? 'border-color:var(--bad)' : ''}"><div class="panel-h" style="flex-wrap:wrap"><div class="col"><h3>Payouts to send · ${list.length} payee${list.length === 1 ? '' : 's'}</h3><span class="small muted">Send each payee by GCash within 72 hours of the customer's payment, then tap Paid. Oldest first.</span></div>
     <div class="row" style="gap:6px"><span class="pill ${over ? 'bad' : 'good'}">${over} overdue</span><span class="pill outline num">${peso(sum, 2)}</span></div></div>
     <div class="panel-b" style="gap:10px">${list.length ? list.map(row).join('') : '<div class="empty">Nothing to pay right now.</div>'}</div></div>`;
@@ -3725,7 +3727,7 @@ function admFinance(mode) {
   const monthKey = y + '-' + String(new Date(n).getMonth() + 1).padStart(2, '0'), qKey = y + '-Q' + q;
   const P = rngP(), month = S.bookings.filter(b => b.ledger && b.endedAt && inRange(ymd(b.endedAt), P.from, P.to));
   const s = k => month.reduce((a, b) => a + (k === 'gross' ? b.gross : b.ledger[k]), 0);
-  const unpaid = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded);
+  const unpaid = S.bookings.filter(b => payDue(b));
   const unpaidInd = unpaid.filter(b => !b.bizId), unpaidBiz = unpaid.filter(b => b.bizId);
   const payees = {};
   S.bookings.filter(b => b.ledger && quarterOf(b.endedAt) === q && new Date(b.endedAt).getFullYear() === y).forEach(b => {
@@ -4711,8 +4713,8 @@ function moneyOf(from, to) {
   const inT = t => t && inRange(ymd(t), from, to);
   const done = S.bookings.filter(b => b.ledger && !b.refunded && inT(b.endedAt));
   const fees = sumBy(done, b => b.ledger.fee), gmv = sumBy(done, 'gross');
-  const canc = S.bookings.filter(b => b.refund && +b.refund.fee > 0 && inT(b.refund.at || b.cancelledAt));
-  const cancel = sumBy(canc, b => +b.refund.fee);
+  const canc = S.bookings.filter(b => b.cancelInfo && b.cancelInfo.kind === 'refund70' ? inT(b.cancelInfo.at) : b.refund && +b.refund.fee > 0 && inT(b.refund.at || b.cancelledAt));
+  const cancel = sumBy(canc, b => b.cancelInfo && b.cancelInfo.kind === 'refund70' ? +b.cancelInfo.plat : +b.refund.fee);   /* platform's 20% kept on customer cancellations */
   const other = (S.incomes || []).filter(x => inRange(x.date, from, to)), otherT = sumBy(other, 'amount');
   const points = sumBy(done.filter(b => b.cashPaid != null && b.cashPaid < b.gross), b => b.gross - b.cashPaid);
   const runs = runsAll().filter(r => { const d = r.kind === '13th' ? r.per.slice(0, 4) + '-12-20' : perRange(r.per).to; return inRange(d, from, to); });
@@ -5227,7 +5229,7 @@ function docData(kind, a) {
       sheets: [{ name: 'Collections', rows: [H].concat(R.map(r => r.map(v => typeof v === 'number' ? r2(v) : v))) }, { name: 'By method', rows: [['Method', 'Collected']].concat(Object.entries(byM).map(([m, v]) => [m, r2(v)])) }] }; }
   if (kind === 'ap') { const Rg = rngOf(a), inn = t => t && inRange(ymd(t), Rg.from, Rg.to);
     const po = S.bookings.filter(b => b.ledger && inn(b.ledger.paidAt)), rf = S.bookings.filter(b => b.refund && inn(b.refund.sentAt)), wr = Object.entries((S.fin || {}).remit || {}).filter(([k, r]) => inn(r.at));
-    const due = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded);
+    const due = S.bookings.filter(b => payDue(b));
     const H = ['Date', 'Time', 'Type', 'Reference', 'Paid to', 'Amount'];
     const R = po.map(b => [ymd(b.ledger.paidAt), fmtT(b.ledger.paidAt), 'Payout', ((b.ledger.paidRef || '') + ' ' + b.id).trim(), b.ledger.payeeName, b.ledger.net, b.ledger.paidAt]).concat(rf.map(b => [ymd(b.refund.sentAt), fmtT(b.refund.sentAt), 'Refund', b.id, b.customer, b.refund.amount, b.refund.sentAt]), wr.map(([k, r]) => [ymd(r.at), fmtT(r.at), 'BIR 0619-E', ((r.ref || '') + ' ' + k).trim(), 'Bureau of Internal Revenue', whtOfMonth(k), r.at])).sort((x, y) => x[6] - y[6]).map(r => r.slice(0, 6));
     return { title: 'Accounts payable · ' + Rg.label, wide: true, html: `<div class="hrd">${docHead('DISBURSEMENTS REPORT · ACCOUNTS PAYABLE', Rg.label)}${kv([['Payouts to providers and businesses', peso(sumBy(po, b => b.ledger.net), 2) + ' · ' + po.length + ' jobs'], ['Customer refunds', peso(sumBy(rf, b => b.refund.amount), 2) + ' · ' + rf.length], ['BIR 0619-E remitted', peso(sumBy(wr, ([k]) => whtOfMonth(k)), 2)], ['Total paid out', '<b>' + peso(sumBy(R, r => r[5]), 2) + '</b>'], ['Still to pay (as of now)', peso(sumBy(due, b => b.ledger.net), 2) + ' · ' + due.length + ' jobs']])}<table class="grid"><thead><tr>${H.map((h, i) => `<th class="${i === 5 ? 'num' : ''}">${h}</th>`).join('')}</tr></thead><tbody>${R.map(r => `<tr>${r.map((v, i) => `<td class="${i === 5 ? 'num' : ''}">${i === 5 ? m2(v) : esc(v)}</td>`).join('')}</tr>`).join('') || '<tr><td colspan="6">Nothing paid out in this period.</td></tr>'}<tr class="t"><td colspan="5">Total</td><td class="num">${m2(sumBy(R, r => r[5]))}</td></tr></tbody></table></div>`,
@@ -5474,8 +5476,8 @@ function admCalls() {
 
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.2',
-  effective: 'November 4, 2026',
+  version: '1.3',
+  effective: 'November 5, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
   sections: [
@@ -5499,7 +5501,7 @@ const TERMS = {
     ]],
     ['5. Bookings', [
       'A Customer can ask for a service "as soon as possible" or schedule one for a date and time up to 72 hours ahead. A Provider accepts a request by choosing an arrival time, or declines it. No contact details are shared before payment.',
-      'For "as soon as possible" bookings, the Customer must confirm and pay within the time shown in the app. For scheduled bookings, payment must be completed no later than 1 hour before the start time. Unpaid bookings are cancelled automatically at that time, without charge.',
+      'For every booking, "as soon as possible" or scheduled, the Customer pays as soon as the Provider accepts, within the time shown in the app. A booking is confirmed only when paid. Unpaid offers are cancelled automatically, without charge.',
       'Each Provider shows usual working days and hours for reference only. The live traffic light (green, yellow, red) shows whether a Provider is available now and always takes priority.',
       'Reminders for scheduled bookings are sent by in-app message to the Customer and the Provider one and two days after the booking, on the day of the service and 1 hour before it, until the booking ends or is cancelled. A reminder for an unpaid booking includes a request to pay.'
     ]],
@@ -5513,12 +5515,15 @@ const TERMS = {
       'Ticktap Points. Customers earn 1 point for every ₱100 paid in the app, credited when the service ends. From 20 points, points can be used to pay part or all of a booking at ₱1 per point; the Company funds point payments and Providers are paid as if the Customer had paid in full. Points have no cash value, cannot be transferred or exchanged for money, and are returned if a booking paid with points is cancelled. Points gained through fraud or abuse may be cancelled. From time to time the Company may run bonus-point events (for example 2 to 5 times the usual points) for bookings paid during the event period. Only one rule applies to a booking: the bonus rate replaces the usual rate and is never added to it, and only one bonus event runs at a time. The Company may pause earning, change the earning rate or end the programme; points already earned are not affected by a pause, and ending the programme requires at least 30 days\' notice in the app, during which earned points stay usable.',
       'Under BIR Revenue Regulations No. 16-2023, the Company withholds 1% of one-half of the gross remittance once payments to a Provider or Business Partner exceed ₱500,000 in a year, and issues BIR Form 2307. Providers and Business Partners remain responsible for registering with the BIR and filing and paying their own taxes.'
     ]],
-    ['7. Cancellations and refunds', [
+    ['7. Cancellations, changes of time and refunds', [
       'A Customer may cancel an unpaid booking at any time without charge.',
-      'If a Customer cancels a paid booking 24 hours or more before the service time, the Customer receives a 100% refund. If the Customer cancels less than 24 hours before the service time, a cancellation fee of 30% of the booking amount is deducted and the rest is refunded.',
+      'A Customer may cancel a paid booking, or ask to change its date or time, only 24 hours or more before the service time. On cancellation the Customer receives 70% of the amount paid; the Company keeps 20% as its platform fee and 10% is paid to the Provider or Business Partner. A change of time must be confirmed by the Provider; there is no charge and no refund, and if the Provider declines, the booking stays as it was.',
+      'Less than 24 hours before the service time there is no refund, except that a Customer who cancels within 5 minutes of paying, and before the Provider has set out, receives 70% as above.',
+      'If the Customer neither cancels nor changes the booking and is not at the address at the service time (the Provider waits 15 minutes and the Customer is alerted), there is no refund and the Provider or Business Partner is paid as for a completed service, less the usual platform fee.',
+      'If the Provider does not come, the full amount paid is returned to the Customer as Ticktap Credit. If a Provider or Business Partner cancels a paid booking, or the Company cancels it because of a problem on the provider side, the full amount is returned as Ticktap Credit, and the Customer may instead choose a full refund to the original payment method. In these cases the Provider or Business Partner bears the 5% payment processing fee, which is deducted from its next payout.',
+      'Ticktap Credit can be used only in the app, for any service with any Provider, and is applied automatically when paying. If a booking costs more than the Customer\'s Ticktap Credit and Ticktap Points, the Customer pays the rest; any unused balance stays for the next booking. Each amount of Ticktap Credit is valid for 2 years from the day it is added, cannot be exchanged for cash, and is used oldest first.',
       'Refunds are sent to the original payment method: GCash or Maya within 24 hours, and credit or debit card within 5 days. These are the times within which the Company sends the refund; the time for funds to appear also depends on the payment partner or bank.',
-      'If a Provider or Business Partner cancels, does not arrive, or the Company cancels a paid booking because of a problem on the provider side, the Customer receives a 100% refund.',
-      'A Provider who cancels after accepting, or after the Customer has paid, loses reward credits under Section 8.'
+      'A Provider who cancels after accepting, or after the Customer has paid, or who does not come, also loses reward credits under Section 8.'
     ]],
     ['8. Reward credits for Providers', [
       'Every Provider starts with 5 reward credits. Credits are counted from Monday to Sunday and updated every Sunday, and are kept between 0 and 20.',
@@ -5896,10 +5901,10 @@ function popReq(b, me) {
 function popOffer(b) {
   const p = b.pid ? prov(b.pid) : null, first = (p ? p.name : 'Your pro').split(' ')[0];
   return popShell('offer', first + ' accepted', `
-    <div class="act-head"><span class="act-badge good">${ic('check', 16)} ${esc(first)} accepted</span>${b.when === 'later' ? '' : `<span class="pill warn num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</span>`}</div>
+    <div class="act-head"><span class="act-badge good">${ic('check', 16)} ${esc(first)} accepted</span><span class="pill warn num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</span></div>
     <div class="row" style="gap:12px;align-items:center">${p ? avatar(p.name, p.hue, 56) : ''}<div class="col" style="gap:2px;min-width:0"><span class="small muted">${b.when === 'later' ? 'Confirmed for' : 'Can arrive in'}</span><b style="font-size:30px;letter-spacing:-.02em" class="num" data-fit>${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}</b></div></div>
     <div class="act-rows"><div><span>Service</span><b>${esc(b.services.map(s => s.name).join(' + '))}</b></div><div><span>Total</span><b class="num">${peso(b.gross)}</b></div></div>
-    <span class="small" style="color:var(--warn)">${b.when === 'later' ? 'Pay by ' + fmtWhen(b.offerExpires) + '. Unpaid bookings are cancelled automatically.' : 'Pay before the timer ends to confirm.'}</span>
+    <span class="small" style="color:var(--warn)">Pay before the timer ends to confirm.</span>
     <div class="act-btns one"><button class="btn primary" data-act="openPay" data-arg="${b.id}">Accept & pay ${peso(b.gross)}</button></div>
     <button class="btn secondary sm" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button>`, 'offer:' + b.id);
 }
@@ -6047,16 +6052,7 @@ function setPath(path, val) { const ks = path.split('.'); let o = S; for (let i 
 function getPath(path) { return path.split('.').reduce((o, k) => o && o[k], S); }
 
 /* ---------- booking reminders (in-app messages to customer and provider until cancelled) ---------- */
-/* ---------- cancellation and refund policy ---------- */
-const POLICY = { freeHours: 24, feePct: 30 };
-function refundQuote(b) {
-  const start = b.promisedAt || b.slotAt || now(), hrs = (start - now()) / HOUR, free = hrs >= POLICY.freeHours;
-  const base = b.cashPaid != null ? b.cashPaid : b.gross;
-  const fee = free ? 0 : Math.round(base * POLICY.feePct) / 100, amount = Math.round((base - fee) * 100) / 100;
-  const m = b.payMethod || S.customer.pay || 'GCash', card = m === 'Card';
-  return { free, fee, amount, method: m, days: card ? 5 : 1, dueText: card ? 'within 5 days' : 'within 24 hours', hrs };
-}
-const policyText = () => `Free cancellation up to ${POLICY.freeHours} hours before the booking. After that, a ${POLICY.feePct}% cancellation fee applies. Refunds: GCash or Maya within 24 hours, credit card within 5 days.`;
+/* cancellation and refund rules live in 18-money-rules.js */
 function planReminders(b) {
   if (b.when !== 'later' || !b.slotAt) { b.reminders = []; return; }
   const base = b.acceptedAt || b.createdAt || now(), svc = b.slotAt, list = [];
@@ -6083,7 +6079,7 @@ function sendDueReminders(n) {
       const pMsg = `${what} for ${b.customer} · ${when} · ${b.address}`;
       const unpaid = b.status === 'offered';
       if (b.cid) pushAlert('customer', 'Ticktap · ' + r.label, cMsg, b.id, 'info');
-      if (b.cid && unpaid) pushAlert('customer', 'Payment request · ' + peso(b.gross), `Your booking for ${when} is not paid yet. Pay by ${fmtWhen(b.offerExpires)} (1 hour before) or it is cancelled automatically. Tap to pay.`, b.id, 'pay');
+      if (b.cid && unpaid) pushAlert('customer', 'Payment request · ' + peso(b.gross), `Your booking for ${when} is not paid yet. Pay by ${fmtWhen(b.offerExpires)} or it is cancelled automatically. Tap to pay.`, b.id, 'pay');
       if (b.pid) pushAlert('provider:' + b.pid, 'Ticktap · ' + r.label, pMsg + (unpaid ? ` · Not paid yet. Cancels automatically at ${fmtWhen(b.offerExpires)} if unpaid.` : ''), b.id, 'info');
       if (b.bizId) pushAlert('business:' + b.bizId, 'Reminder · ' + r.label, pMsg, b.id, 'info');
       logB(b, 'Reminder sent to customer and provider: ' + r.label + (unpaid ? ' · with payment request' : ''));
@@ -6211,8 +6207,8 @@ const A = {
   poOpen: k => { S.admin.poOpen = Object.assign({}, S.admin.poOpen, { [k]: !(S.admin.poOpen || {})[k] }); },
   poView: v => { S.admin.poView = v; S.admin.poDay = null; },
   poDay: k => { S.admin.poDay = S.admin.poDay === k ? null : k; },
-  poPaid: k => { const t = now(), ref = String((S.admin.poRef || {})[k] || '').trim(); const rows = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded && payKey(b) === k); if (!rows.length) return;
-    const amt = rows.reduce((a, b) => a + b.ledger.net, 0); rows.forEach(b => { b.ledger.paidAt = t; b.ledger.paidRef = ref; b.ledger.paidBy = 'admin'; b.ledger.paidMethod = 'GCash'; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName + (ref ? ' · ref ' + ref : '')); });
+  poPaid: k => { const t = now(), ref = String((S.admin.poRef || {})[k] || '').trim(); const rows = S.bookings.filter(b => payDue(b) && payKey(b) === k); if (!rows.length) return;
+    const amt = rows.reduce((a, b) => a + b.ledger.net, 0); if (amt <= 0) { toast('admin', 'Nothing to pay yet', 'The provider-side fee is larger than the jobs due. It carries over to the next payout.'); return; } rows.forEach(b => { b.ledger.paidAt = t; b.ledger.paidRef = ref; b.ledger.paidBy = 'admin'; b.ledger.paidMethod = 'GCash'; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName + (ref ? ' · ref ' + ref : '')); });
     if (S.admin.poRef) delete S.admin.poRef[k];
     const who = k.startsWith('b:') ? 'business:' + k.slice(2) : 'provider:' + k.slice(2); pushAlert(who, 'Payout sent · ' + peso(amt, 2), rows.length + ' job(s) paid by GCash' + (ref ? ' · ref ' + ref : '') + '.', null, 'good');
     toast('admin', 'Marked as paid', rows[0].ledger.payeeName + ' · ' + peso(amt, 2)); },
@@ -6250,13 +6246,6 @@ const A = {
   setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
   custCancelAsk: id => { S.cust.cancelAsk = id || null; },
-  custCancel: id => { const b = bk(id); if (!b || !['paid', 'departed'].includes(b.status)) return; const q = refundQuote(b), p = b.pid ? prov(b.pid) : null;
-    b.status = 'cancelled'; b.cancelledBy = 'customer'; b.cancelledAt = now(); b.refunded = true; b.refund = { amount: q.amount, fee: q.fee, method: q.method, days: q.days, dueBy: now() + q.days * DAY, at: now(), free: q.free };
-    if (b.late) b.late.resolved = true; S.cust.cancelAsk = null;
-    logB(b, `Customer cancelled ${q.free ? '24 h+ before · full refund' : 'under 24 h before · ' + POLICY.feePct + '% fee'} · refund ${peso(q.amount, 2)} to ${q.method} ${q.dueText}`);
-    if (p) { if (['departed'].includes(p.status) || p.status !== 'red') p.status = 'green'; pushAlert('provider:' + p.id, 'Booking cancelled by customer', `${b.id}${b.slotAt ? ' for ' + fmtWhen(b.slotAt) : ''}. No reward credits are affected.`, b.id, 'bad'); toast('provider', 'Booking cancelled by customer', b.id); }
-    pushAlert('customer', 'Booking cancelled · refund on the way', `${peso(q.amount, 2)} back to ${q.method} ${q.dueText}.`, b.id, 'good');
-    toast('customer', 'Booking cancelled', `${peso(q.amount, 2)} refund to ${q.method} ${q.dueText}.`); },
   calToday: () => { S.cust.day = dayStart(now()); S.cust.tmin = null; const d = new Date(now()); S.cust.calMonth = new Date(d.getFullYear(), d.getMonth(), 1).getTime(); },
   calMonth: dir => { const m = new Date(S.cust.calMonth || now()); S.cust.calMonth = new Date(m.getFullYear(), m.getMonth() + Number(dir), 1).getTime(); },
   availDay: arg => { const [path, k] = arg.split('|'); const av = getPath(path); if (av) av.days[Number(k)] = av.days[Number(k)] ? 0 : 1; },
@@ -6288,7 +6277,7 @@ const A = {
   closePay: () => { S.cust.pay = null; },
   custGo: sc => { S.cust.screen = sc; },
   custBackAccount: () => { S.cust.screen = 'account'; },
-  payToggle: k => { const p = S.cust.pay; if (!p) return; if (k === 'useFree') p.useFree = p.useFree === false; else p.usePts = !p.usePts; },
+  payToggle: k => { const p = S.cust.pay; if (!p) return; if (k === 'useFree') p.useFree = p.useFree === false; else if (k === 'useCr') p.useCr = p.useCr === false; else p.usePts = !p.usePts; },
   doPay: () => {
     const c = S.cust; c.pay.stage = 'processing'; render();
     setTimeout(() => {
@@ -6296,6 +6285,7 @@ const A = {
       if (b.status !== 'offered') { c.pay = null; render(); return; }
       const k = payCalc(b);
       if (k.useFree && k.free) { b.listGross = b.gross; b.gross = Math.max(0, b.gross - k.free.value); b.loyaltyFree = k.free; logB(b, 'Loyalty reward used · ' + k.free.item + ' free'); }
+      if (k.crUse) { b.creditUsed = k.crUse; cashUse(b.cid, k.crUse, b.id, 'Paid ' + b.id); logB(b, 'Paid ' + peso(k.crUse, 2) + ' with Ticktap Credit'); }
       if (k.ptsUse) { b.pointsUsed = k.ptsUse; b.pointsValue = k.ptsValue; ptAdd(b.cid, -k.ptsUse, 'use', b.id, 'Paid ' + peso(k.ptsValue) + ' with points'); logB(b, 'Paid ' + peso(k.ptsValue) + ' with ' + k.ptsUse + ' points'); }
       b.cashPaid = k.cash; b.ptMult = ptMultNow();
       b.status = 'paid'; b.paidAt = now(); b.promisedAt = b.when === 'later' ? b.slotAt : b.paidAt + b.eta * MIN; b.payMethod = S.customer.pay; if (!b.reminders || !b.reminders.length) planReminders(b);
@@ -6419,9 +6409,9 @@ const A = {
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} can't take this one`, 'You were not charged. See the nearest providers on stand-by.', b.id, 'bad'); toast('customer', `${p.name.split(' ')[0]} is not available`, 'You were not charged.'); }
     S.prov.screen = 'jobs'; },
   acceptReq: id => { const b = bk(id), p = prov(b.pid); if (!needTerms('provider', p.id, p.name, p.phone || '', { act: 'acceptReq', arg: id })) return;
-    b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = b.when === 'later' ? Math.max(b.slotAt - HOUR, now() + S.settings.hold * MIN) : now() + S.settings.hold * MIN; if (b.when === 'later') { b.payDue = b.offerExpires; planReminders(b); }
+    b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = now() + S.settings.hold * MIN; if (b.when === 'later') { b.payDue = b.offerExpires; planReminders(b); }
     logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
-    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay by ' + fmtWhen(b.offerExpires) + ' (1 hour before) or it is cancelled automatically.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
+    if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay within ' + S.settings.hold + ' minutes to keep it.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
   depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
@@ -6531,10 +6521,8 @@ const A = {
   lateUpdate: arg => { const [id, m] = arg.split(':'); const b = bk(id), p = prov(b.pid); b.late.replies.push(Number(m)); b.late.seen = true; logB(b, `Provider sent late update: +${m} min`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, `New arrival about ${fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is running ${m} min late`, 'Our team is following up.'); }
     toast('admin', 'Provider replied · ' + b.id, '+' + m + ' min'); b.late.dismissedUntil = Date.now() + 1; },
-  lateCancel: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.refunded = true; b.late.resolved = true; b.late.penalty = true; addCredit(p, CR().rules.paidCancel, 'Cancelled after the customer paid · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id);
-    logB(b, 'Provider cancelled after payment · customer refunded · reward credits −5'); p.status = 'green';
-    if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', `${p.name.split(' ')[0]} couldn't make it. ${peso(b.gross)} is being refunded.`, b.id, 'bad'); toast('customer', 'Full refund on the way', `${p.name.split(' ')[0]} couldn't make it.`); }
-    S.prov.screen = 'jobs'; },
+
+  lateCancel: id => { const b = bk(id), p = prov(b.pid); addCredit(p, CR().rules.paidCancel, 'Cancelled after the customer paid · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); provFault(b, 'Provider could not make it (late)', 'choice'); logB(b, 'Reward credits −5'); S.prov.screen = 'jobs'; },
   addSvc: () => { const me = prov(S.prov.id); me.services.push({ name: '', mins: 60, price: 500, on: false }); const j = me.services.length - 1;
     setTimeout(() => { const el = document.getElementById('svc-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
   removeSvc: j => { const me = prov(S.prov.id); if (me.services.length > 1) me.services.splice(Number(j), 1); },
@@ -6626,11 +6614,11 @@ const A = {
   admCredit: arg => { const [id, d] = arg.split(':'); const p = prov(id); const v = Number(d); const before = p.credits; p.credits = clampCr((p.credits == null ? CR().start : p.credits) + v);
     if (p.credits !== before) { p.creditLog.unshift({ id: 'cr' + Math.random().toString(36).slice(2, 9), at: now(), pts: p.credits - before, text: 'Adjusted by Ticktap', kind: 'admin', week: weekKeyOf(now()), applied: true }); pushAlert('provider:' + id, 'Reward credits adjusted', `Ticktap set your credits to ${p.credits}. Platform fee: ${tierRate(p)}%.`, null, v > 0 ? 'good' : 'bad'); toast('admin', 'Credits ' + sgn(v), p.name + ' · ' + p.credits + ' credits'); } },
   provCancelAsk: id => { S.prov.cancelAsk = id; },
-  provCancel: id => { const b = bk(id), p = prov(b.pid); const paid = !!b.paidAt; b.status = 'cancelled'; b.refunded = paid; S.prov.cancelAsk = null; if (b.late) b.late.resolved = true;
+  provCancel: id => { const b = bk(id), p = prov(b.pid); const paid = !!b.paidAt; S.prov.cancelAsk = null; if (paid) provFault(b, 'Provider cancelled after payment', 'choice'); else { b.status = 'cancelled'; b.cancelledBy = 'provider'; b.cancelledAt = now(); if (b.late) b.late.resolved = true; }
     addCredit(p, paid ? CR().rules.paidCancel : CR().rules.acceptCancel, (paid ? 'Cancelled after the customer paid · ' : 'Accepted, then cancelled · ') + b.id, b.id, paid ? 'paidCancel' : 'acceptCancel', (paid ? 'pc:' : 'ac:') + b.id);
-    logB(b, paid ? 'Provider cancelled after payment · full refund · reward credits −5' : 'Provider cancelled after accepting · reward credits −3'); p.status = 'green';
-    if (b.cid) { pushAlert('customer', paid ? 'Booking cancelled · full refund' : 'Provider cancelled', paid ? peso(b.gross) + ' is being refunded. Sorry about this.' : 'Please choose another provider.', b.id, 'bad'); }
-    S.prov.screen = 'jobs'; toast('provider', 'Job cancelled', paid ? 'Customer refunded · −5 reward credits' : '−3 reward credits'); },
+    logB(b, paid ? 'Reward credits −5' : 'Provider cancelled after accepting · reward credits −3'); p.status = 'green';
+    if (b.cid && !paid) pushAlert('customer', 'Provider cancelled', 'Please choose another provider.', b.id, 'bad');
+    S.prov.screen = 'jobs'; toast('provider', 'Job cancelled', paid ? 'Customer credited · −5 reward credits · ' + MR.faultPct + '% payment fee from your next payout' : '−3 reward credits'); },
   shareTo: net => { const p = prov(S.prov.id); const link = shareUrl(p); const txt = 'Book trusted home beauty, massage and pet-grooming pros on Ticktap: ';
     if (net === 'facebook') { try { window.open('https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(link), '_blank', 'noopener'); } catch (e) { } }
     else if (navigator.share) { navigator.share({ title: 'Ticktap', text: txt, url: link }).catch(() => { }); }
@@ -6648,7 +6636,7 @@ const A = {
   admReview: arg => { const [pid, k] = arg.split(':'); const r = prov(pid).reviews[Number(k)]; r.hidden = !r.hidden; toast('admin', r.hidden ? 'Review hidden' : 'Review visible', prov(pid).name); },
   zoomSrc: (label, el) => { const im = el && el.querySelector('img'); if (im) S.modal = { kind: 'photo', src: im.getAttribute('src'), name: label }; },
   askInfo: id => { const a = S.applications.find(x => x.id === id); a.asked = true; sendSms(a.name, 'Ticktap: please send a clearer ID photo and your past employer contact.'); toast('admin', 'Info requested', a.name); },
-  runPayout: who => { const t = now(); const rows = S.bookings.filter(b => b.ledger && !b.ledger.paidAt && !b.refunded && (who === 'ind' ? !b.bizId : b.bizId === who)); rows.forEach(b => { b.ledger.paidAt = t; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName); });
+  runPayout: who => { const t = now(); let rows = S.bookings.filter(b => payDue(b) && (who === 'ind' ? !b.bizId : b.bizId === who)); { const tot = {}; rows.forEach(b => { tot[payKey(b)] = (tot[payKey(b)] || 0) + b.ledger.net; }); rows = rows.filter(b => tot[payKey(b)] > 0); } rows.forEach(b => { b.ledger.paidAt = t; logB(b, 'Paid out ' + peso(b.ledger.net, 2) + ' to ' + b.ledger.payeeName); });
     const tot = rows.reduce((a, b) => a + b.ledger.net, 0); toast('admin', 'Payout batch sent', rows.length + ' jobs · ' + peso(tot, 2));
     if (who !== 'ind') toast('business', 'Payout received', peso(tot, 2) + ' to ' + biz(who).bank); else { const me = prov(S.prov.id); if (rows.some(b => b.pid === me.id)) toast('provider', 'Payout sent', 'Check Earnings.'); } },
   finRemit: k => { S.fin.remit[k] = { at: now(), ref: S.fin.ref.trim() }; S.fin.ref = ''; toast('admin', '0619-E recorded', k); },
@@ -6666,13 +6654,13 @@ const A = {
   admNotify: id => { const b = bk(id), p = prov(b.pid); logB(b, 'Admin notified customer'); if (b.cid) { pushAlert('customer', 'Update from Ticktap', `${p.name.split(' ')[0]} is delayed. We are with them and will update you shortly.`, b.id); toast('customer', 'Update from Ticktap', 'Your provider is delayed. We are following up.'); } toast('admin', 'Customer notified', b.id); },
   admReassign: id => { const b = bk(id), p = prov(b.pid);
     const alt = S.providers.filter(x => x.id !== p.id && x.cat === p.cat && x.status === 'green' && !S.bookings.some(y => y.pid === x.id && ['offered', 'paid', 'departed', 'arrived'].includes(y.status))).sort((x, y) => haversine(x, b) - haversine(y, b))[0];
-    b.status = 'cancelled'; b.late.resolved = true; b.late.penalty = true; addCredit(p, CR().rules.paidCancel, 'Paid job cancelled and reassigned · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); logB(b, 'Admin reassigned · original job cancelled and refunded · reward credits −5'); p.status = 'green';
-    if (!alt) { toast('admin', 'No one on stand-by nearby', 'Refunded the customer instead.'); if (b.cid) pushAlert('customer', 'Booking cancelled · full refund', 'No one else was free nearby. You were refunded.', b.id, 'bad'); return; }
+    addCredit(p, CR().rules.paidCancel, 'Paid job cancelled and reassigned · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); provFault(b, 'Ticktap reassigned a late job', 'choice'); logB(b, 'Admin reassigned · reward credits −5');
+    if (!alt) { toast('admin', 'No one on stand-by nearby', 'The customer got the full amount as Ticktap Credit.'); return; }
     const nb = newBooking({ customer: b.customer, cid: b.cid, address: b.address, lat: b.lat, lng: b.lng, pid: alt.id, bizId: alt.biz, services: b.services.map(s => ({ ...s })), gross: b.gross, mins: b.mins, status: 'requested', respondBy: now() + S.settings.respond * MIN });
     logB(nb, 'Created by admin as a reassignment of ' + b.id); notifyProviderOfRequest(nb, alt);
-    if (b.cid) { if (b.cid === (S.customer.cid || 'me')) { S.cust.bid = nb.id; S.cust.screen = 'request'; } pushAlert('customer', 'We found someone closer', `${alt.name} was asked to take over. Your first payment is refunded.`, nb.id); toast('customer', 'Reassigned to ' + alt.name, 'Your first payment is refunded.'); }
+    if (b.cid) { if (b.cid === (S.customer.cid || 'me')) { S.cust.bid = nb.id; S.cust.screen = 'request'; } pushAlert('customer', 'We found someone closer', `${alt.name} was asked to take over. Your first payment is back as Ticktap Credit and is used when you pay.`, nb.id); toast('customer', 'Reassigned to ' + alt.name, 'Your first payment is back as Ticktap Credit.'); }
     S.prov.id = alt.id; S.prov.screen = 'jobs'; toast('admin', 'Reassigned to ' + alt.name, fmtKm(haversine(alt, b)) + ' from the customer'); },
-  admRefund: id => { const b = bk(id), p = prov(b.pid); b.status = 'cancelled'; b.late.resolved = true; b.late.penalty = true; addCredit(p, CR().rules.paidCancel, 'Paid job cancelled for lateness · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); p.status = 'green'; logB(b, 'Admin cancelled and refunded'); if (b.cid) { pushAlert('customer', 'Booking cancelled · full refund', peso(b.gross) + ' is being refunded.', b.id, 'bad'); toast('customer', 'Full refund on the way', peso(b.gross)); } toast('admin', 'Refunded', b.id); },
+  admRefund: id => { const b = bk(id), p = prov(b.pid); addCredit(p, CR().rules.paidCancel, 'Paid job cancelled for lateness · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); provFault(b, 'Ticktap cancelled a late job', 'choice'); toast('admin', 'Customer credited', b.id + ' · ' + MR.faultPct + '% fee charged to the provider'); },
   approve: id => { const a = S.applications.find(x => x.id === id); a.status = 'approved'; const nid = 'p' + (Math.max(...S.providers.map(x => parseInt(x.id.slice(1)) || 0)) + 1); const sb = a.staffOf ? biz(a.staffOf) : null;
     const base = { cubao: [14.6196, 121.0536] }; const ll = base.cubao;
     S.providers.push(mkProv({ id: nid, photo: a.photo || null, photoKey: a.photoKey || null, name: a.name.replace(/".*?"\s*/, ''), cat: a.cat, area: a.area || 'Metro Manila', lat: ll[0] - Math.random() * 0.02, lng: ll[1] - Math.random() * 0.02, years: a.years, past: a.past, story: a.why || 'New on Ticktap.', returning: true, cert: a.cert, rating: 5.0, count: 0, dist: [0, 0, 0, 0, 0], status: 'red', week: [0, 0, 0, 0, 0, 0, 0], ytd: 0, phone: '+63 917 555 01' + (10 + S.providers.length), tin: a.tin || 'Pending', hue: 30 + S.providers.length * 37, services: [{ name: catName(a.cat) + ' service', mins: 60, price: 500, on: true }], reviews: [] }));
@@ -6801,6 +6789,196 @@ document.addEventListener('touchstart', e => {
   btn.addEventListener('touchmove', move, { passive: true }); btn.addEventListener('touchend', end); btn.addEventListener('touchcancel', end);
 }, { passive: true });
 window.addEventListener('blur', () => peekEnd(false));
+/* =============== Money rules (owner's decision, 2026-11-05) ===============
+   1. Pay at once when the provider accepts (scheduled bookings too).
+   2. Cancel or reschedule only 24 hours or more before the service: 70% back to the customer, 20% platform, 10% provider.
+      Less than 24 hours: 70% back only within 5 minutes of paying and before the provider departs.
+   3. Reschedule (24 h+ before): the customer asks a new time, the provider confirms; no refund, no charge.
+   4. Customer does not cancel or reschedule and is not there: no refund; the provider is paid as usual (own fee rate).
+   5. Provider-side failure: provider no-show → the full amount comes back as Ticktap Credit; provider cancels → Ticktap
+      Credit, or the customer may switch it to a full refund. Either way the provider is charged the 5% payment fee,
+      taken from the next payout.
+   Ticktap Credit: used only in the app, each amount valid 2 years, applied automatically at payment (oldest first). */
+const MR = { cutoffH: 24, refundPct: 70, platPct: 20, provPct: 10, graceMin: 5, faultPct: 5, creditDays: 730, waitMin: 15, provLateMin: 30, reschedHours: 6 };
+const startOf = b => b.slotAt || b.promisedAt || now();
+
+/* ---------- Ticktap Credit (cash credit) ---------- */
+function cashLots(cid, t = now()) {
+  const r = custRec(cid), L = ((r && r.cashLog) || []).slice().sort((a, b) => a.at - b.at), lots = [];
+  L.forEach(e => {
+    if (e.amt > 0) { lots.push({ at: e.at, exp: e.exp, left: e.amt, bid: e.bid }); return; }
+    let need = -e.amt; lots.filter(l => l.exp > e.at && l.left > 0).sort((a, b) => a.exp - b.exp).forEach(l => { const k = Math.min(need, l.left); l.left -= k; need -= k; });
+  });
+  return lots.filter(l => l.left > 0.004 && l.exp > t);
+}
+const cashBal = cid => r2(cashLots(cid).reduce((a, l) => a + l.left, 0));
+const cashNextExp = cid => { const L = cashLots(cid).sort((a, b) => a.exp - b.exp); return L.length ? L[0].exp : null; };
+function cashAdd(cid, amt, kind, bid, note) { const r = custRec(cid); if (!r || !(amt > 0)) return; r.cashLog = r.cashLog || []; r.cashLog.unshift({ at: now(), amt: r2(amt), kind, bid: bid || null, note: note || '', exp: now() + MR.creditDays * DAY }); }
+function cashUse(cid, amt, bid, note) { const r = custRec(cid); if (!r || !(amt > 0)) return; r.cashLog = r.cashLog || []; r.cashLog.unshift({ at: now(), amt: -r2(amt), kind: 'use', bid: bid || null, note: note || '' }); }
+
+/* ---------- what a customer cancellation returns ---------- */
+function cancelQuote(b) {
+  const t = now(), hrs = (startOf(b) - t) / HOUR, early = hrs >= MR.cutoffH;
+  const grace = !!b.paidAt && t - b.paidAt <= MR.graceMin * MIN && !b.departedAt, ok = early || grace, k = MR.refundPct / 100;
+  const cash = b.cashPaid != null ? b.cashPaid : b.gross, m = b.payMethod || 'GCash', card = m === 'Card';
+  return { ok, early, grace, hrs, graceLeft: b.paidAt ? MR.graceMin * MIN - (t - b.paidAt) : 0,
+    cashBack: ok ? r2(cash * k) : 0, creditBack: ok ? r2((b.creditUsed || 0) * k) : 0, ptsBack: ok ? Math.floor((b.pointsUsed || 0) * k) : 0,
+    plat: r2(b.gross * MR.platPct / 100), provPart: r2(b.gross * MR.provPct / 100), method: m, days: card ? 5 : 1, dueText: card ? 'within 5 days' : 'within 24 hours',
+    canMove: b.when === 'later' && early && b.status === 'paid' };
+}
+const policyText = () => `Cancel or change the time up to ${MR.cutoffH} hours before the service: ${MR.refundPct}% is refunded (${MR.platPct}% platform fee and ${MR.provPct}% to the provider are kept). Less than ${MR.cutoffH} hours: no refund, except within ${MR.graceMin} minutes of paying and before the provider leaves. If you are not there at the service time, there is no refund. If the provider cancels or does not come, you get the full amount back as Ticktap Credit.`;
+const payDue = b => !!b.ledger && !b.ledger.paidAt && (!b.refunded || b.ledger.kind === 'debit');   /* payouts still to send; a provider-fault debit (negative) is netted into the next payout */
+function ledgerFor(b, kind, net, note) { const py = payeeOf(b); return { kind, rate: 0, fee: 0, wht: 0, applies: false, net: r2(net), payee: b.bizId ? 'business' : 'provider', payeeName: py.name, payeeTin: py.tin, at: now(), staff: null, note: note || '' }; }
+
+function custCancelNow(b) {
+  if (!b || !['paid', 'departed'].includes(b.status)) return;
+  const q = cancelQuote(b), p = b.pid ? prov(b.pid) : null, t = now();
+  b.status = 'cancelled'; b.cancelledBy = 'customer'; b.cancelledAt = t; S.cust.cancelAsk = null; if (b.late) b.late.resolved = true; if (b.resched && b.resched.status === 'pending') b.resched.status = 'void';
+  if (q.ok) {
+    b.cancelInfo = { kind: 'refund70', cashBack: q.cashBack, creditBack: q.creditBack, ptsBack: q.ptsBack, plat: q.plat, provPart: q.provPart, at: t, grace: !q.early };
+    if (q.cashBack > 0) b.refund = { amount: q.cashBack, fee: q.plat, provPart: q.provPart, method: q.method, days: q.days, dueBy: t + q.days * DAY, at: t, pct: MR.refundPct };
+    if (q.creditBack > 0) cashAdd(b.cid, q.creditBack, 'refund', b.id, MR.refundPct + '% of Ticktap Credit used on ' + b.id);
+    if (q.ptsBack > 0) ptAdd(b.cid, q.ptsBack, 'refund', b.id, MR.refundPct + '% of points used on ' + b.id);
+    b.ledger = ledgerFor(b, 'cancel', q.provPart, 'Customer cancelled ' + (q.early ? MR.cutoffH + ' h+ before' : 'within ' + MR.graceMin + ' min of paying') + ' · ' + MR.provPct + '% to the provider');
+    logB(b, `Customer cancelled ${q.early ? MR.cutoffH + ' h+ before' : 'within ' + MR.graceMin + ' min of paying'} · ${MR.refundPct}% back (${peso(q.cashBack, 2)} to ${q.method}${q.creditBack ? ', ' + peso(q.creditBack, 2) + ' credit' : ''}) · platform ${peso(q.plat, 2)} · provider ${peso(q.provPart, 2)}`);
+    pushAlert('customer', 'Booking cancelled · ' + MR.refundPct + '% refund', (q.cashBack ? `${peso(q.cashBack, 2)} back to ${q.method} ${q.dueText}.` : '') + (q.creditBack ? ` ${peso(q.creditBack, 2)} back as Ticktap Credit.` : ''), b.id, 'good');
+    toast('customer', 'Booking cancelled', `${MR.refundPct}% refund: ${peso(q.cashBack + q.creditBack, 2)}.`);
+  } else {
+    b.cancelInfo = { kind: 'norefund', at: t }; b.endedAt = t; postLedger(b); b.ledger.kind = 'late-cancel'; b.ledger.at = t;
+    logB(b, `Customer cancelled less than ${MR.cutoffH} h before · no refund · provider paid as usual`);
+    pushAlert('customer', 'Booking cancelled · no refund', `Cancelled less than ${MR.cutoffH} hours before the service.`, b.id, 'bad');
+    toast('customer', 'Booking cancelled', 'No refund under the 24-hour rule.');
+  }
+  if (p) { if (p.status !== 'red') p.status = 'green'; pushAlert('provider:' + p.id, 'Booking cancelled by customer', `${b.id}${b.slotAt ? ' for ' + fmtWhen(b.slotAt) : ''}. You receive ${q.ok ? peso(q.provPart, 2) + ' (' + MR.provPct + '%)' : 'the usual payout'}. No reward credits are affected.`, b.id, 'bad'); toast('provider', 'Booking cancelled by customer', b.id); }
+}
+
+/* ---------- provider-side failure: credit (or refund) + 5% payment fee charged to the provider ---------- */
+function provFault(b, why, mode) {   // mode 'credit' = provider no-show (credit only); 'choice' = provider or Ticktap cancelled (credit, or switch to refund)
+  const p = prov(b.pid), t = now(), paid = !!b.paidAt;
+  b.status = 'cancelled'; b.cancelledBy = 'provider'; b.cancelledAt = t; b.refunded = paid; b.provFault = { why, at: t, mode };
+  if (b.late) { b.late.resolved = true; b.late.penalty = true; } if (b.resched && b.resched.status === 'pending') b.resched.status = 'void';
+  if (p) p.status = 'green';
+  if (!paid) return;
+  const cash = b.cashPaid != null ? b.cashPaid : b.gross;
+  if (b.creditUsed) cashAdd(b.cid, b.creditUsed, 'return', b.id, 'Ticktap Credit used on ' + b.id + ' returned');
+  if (b.pointsUsed && !b.ptsBack) { b.ptsBack = true; ptAdd(b.cid, b.pointsUsed, 'refund', b.id, 'Points used on ' + b.id + ' returned'); }
+  if (cash > 0) { cashAdd(b.cid, cash, mode === 'credit' ? 'noshow' : 'provcancel', b.id, (mode === 'credit' ? 'Provider did not come · ' : 'Provider cancelled · ') + b.id); b.creditChoice = { amount: r2(cash), at: t, mode, refundable: mode !== 'credit' }; }
+  const fee = r2(b.gross * MR.faultPct / 100);
+  b.ledger = ledgerFor(b, 'debit', -fee, `Payment fee (${MR.faultPct}%) charged to the provider · ${why}`);
+  logB(b, `${why} · ${peso(cash + (b.creditUsed || 0), 2)} back to the customer as Ticktap Credit · ${MR.faultPct}% payment fee (${peso(fee, 2)}) deducted from the provider's next payout`);
+  if (b.cid) { pushAlert('customer', mode === 'credit' ? 'Provider did not come · credit added' : 'Booking cancelled · credit added', `${peso(cash + (b.creditUsed || 0), 2)} is now Ticktap Credit, ready for your next booking.${mode === 'credit' ? '' : ' You can switch it to a refund to ' + (b.payMethod || 'GCash') + ' on the booking.'}`, b.id, 'bad'); toast('customer', 'Ticktap Credit added', peso(cash + (b.creditUsed || 0), 2)); }
+  if (p) pushAlert('provider:' + p.id, 'Payment fee charged', `${b.id}: ${peso(fee, 2)} (${MR.faultPct}%) is deducted from your next payout.`, b.id, 'bad');
+}
+function creditToRefund(b) {
+  const c = b && b.creditChoice; if (!c || !c.refundable || c.refundedAt) return;
+  if (cashBal(b.cid) + 0.004 < c.amount) { toast('customer', 'Credit already used', 'Only unused credit can be refunded.'); return; }
+  const t = now(), m = b.payMethod || 'GCash', card = m === 'Card';
+  cashUse(b.cid, c.amount, b.id, 'Switched to refund to ' + m); c.refundedAt = t;
+  b.refund = { amount: c.amount, fee: 0, method: m, days: card ? 5 : 1, dueBy: t + (card ? 5 : 1) * DAY, at: t, pct: 100 };
+  logB(b, `Customer chose a full refund to ${m} instead of Ticktap Credit · ${peso(c.amount, 2)}`);
+  toast('customer', 'Refund on the way', `${peso(c.amount, 2)} to ${m} ${card ? 'within 5 days' : 'within 24 hours'}.`);
+}
+
+/* ---------- customer no-show (provider waited 15 minutes at the address) ---------- */
+function custNoShow(b) {
+  const p = prov(b.pid), t = now();
+  b.status = 'cancelled'; b.cancelledBy = 'noshow'; b.cancelledAt = t; b.noShow = 'customer'; if (b.late) b.late.resolved = true;
+  b.endedAt = t; postLedger(b); b.ledger.kind = 'noshow'; b.ledger.at = t; if (p) p.status = 'green';
+  logB(b, `Customer not at the address · provider waited ${MR.waitMin} min · no refund · provider paid as usual`);
+  if (b.cid) pushAlert('customer', 'Missed booking · no refund', `${p ? p.name.split(' ')[0] : 'Your provider'} waited ${MR.waitMin} minutes at your address. Under the booking rules there is no refund.`, b.id, 'bad');
+  toast('provider', 'Job closed', 'Customer no-show · you are paid as usual.');
+}
+
+/* ---------- reschedule (24 h+ before; provider confirms) ---------- */
+function reschedAsk(b, slotAt) {
+  const q = cancelQuote(b), t = now(); if (!q.canMove) { toast('customer', 'Too late to change', `Changes are possible up to ${MR.cutoffH} hours before the service.`); return false; }
+  if (!(slotAt > t + 2 * HOUR)) { toast('customer', 'Pick a later time', 'Choose a time at least 2 hours from now.'); return false; }
+  b.resched = { slotAt, at: t, by: 'customer', status: 'pending', expires: Math.min(t + MR.reschedHours * HOUR, startOf(b) - MR.cutoffH * HOUR), from: b.slotAt };
+  logB(b, 'Customer asked to move the booking to ' + fmtWhen(slotAt));
+  pushAlert('provider:' + b.pid, 'Change of time requested', `${b.id}: ${fmtWhen(b.slotAt)} → ${fmtWhen(slotAt)}. Accept or decline in the job.`, b.id, 'bad');
+  toast('provider', 'Change of time requested', b.id + ' → ' + fmtWhen(slotAt));
+  toast('customer', 'Request sent', 'Your provider will confirm the new time.'); return true;
+}
+function reschedAnswer(b, yes) {
+  const r = b && b.resched; if (!r || r.status !== 'pending') return;
+  r.status = yes ? 'accepted' : 'declined'; r.answeredAt = now();
+  if (yes) { b.slotAt = r.slotAt; b.promisedAt = r.slotAt; b.reminders = []; planReminders(b); logB(b, 'Provider accepted the new time · ' + fmtWhen(r.slotAt)); }
+  else logB(b, 'Provider declined the new time · booking stays ' + fmtWhen(b.slotAt));
+  pushAlert('customer', yes ? 'New time confirmed' : 'New time declined', yes ? `${b.id} is now ${fmtWhen(r.slotAt)}.` : `${b.id} stays ${fmtWhen(b.slotAt)}. You can cancel (${MR.refundPct}% back) until ${fmtWhen(startOf(b) - MR.cutoffH * HOUR)}.`, b.id, yes ? 'good' : 'bad');
+}
+
+/* ---------- screen parts ---------- */
+function cancelSummary(b) {   // what happened to the money on a cancelled booking (customer side)
+  const ci = b.cancelInfo, cc = b.creditChoice;
+  if (cc) return `<div class="card tight mr-card"><b>${peso(cc.amount + (b.creditUsed || 0), 2)} ${cc.refundedAt ? 'refund' : 'Ticktap Credit'}</b><span class="small">${b.provFault && b.provFault.mode === 'credit' ? 'Your provider did not come.' : 'The booking was cancelled on the provider side.'} ${cc.refundedAt ? `Refunded to ${esc(b.refund.method)} ${b.refund.days === 5 ? 'within 5 days' : 'within 24 hours'}.` : 'The full amount is in your Ticktap Credit, ready for your next booking with any provider. Valid 2 years.'}</span>
+      ${cc.refundable && !cc.refundedAt ? `<button class="btn secondary sm" data-act="creditRefund" data-arg="${b.id}">Refund ${peso(cc.amount, 2)} to ${esc(b.payMethod || 'GCash')} instead</button>` : ''}</div>`;
+  if (ci && ci.kind === 'refund70') return `<div class="card tight mr-card"><b>${MR.refundPct}% refunded · ${peso(ci.cashBack + ci.creditBack, 2)}</b><span class="small">${ci.cashBack ? peso(ci.cashBack, 2) + ' to ' + esc(b.refund ? b.refund.method : b.payMethod || 'GCash') + '. ' : ''}${ci.creditBack ? peso(ci.creditBack, 2) + ' back as Ticktap Credit. ' : ''}Kept: platform fee ${peso(ci.plat, 2)} (${MR.platPct}%) and provider ${peso(ci.provPart, 2)} (${MR.provPct}%).</span></div>`;
+  if (ci && ci.kind === 'norefund') return `<div class="card tight mr-card"><b>No refund</b><span class="small">Cancelled less than ${MR.cutoffH} hours before the service.</span></div>`;
+  if (b.noShow === 'customer') return `<div class="card tight mr-card"><b>Missed booking · no refund</b><span class="small">Your provider waited ${MR.waitMin} minutes at the address.</span></div>`;
+  return '';
+}
+function cancelPanel(b) {   // the cancel / change-time controls on a paid booking (customer side)
+  const q = cancelQuote(b), first = (prov(b.pid) || { name: 'your provider' }).name.split(' ')[0];
+  const r = b.resched, pend = r && r.status === 'pending';
+  const move = q.canMove ? (S.cust.moveAsk === b.id ? reschedForm(b) : `<button class="btn secondary sm" data-act="moveAsk" data-arg="${b.id}" ${pend ? 'disabled' : ''}>${ic('cal', 16)} ${pend ? 'Waiting for ' + esc(first) + ' to confirm ' + fmtWhen(r.slotAt) : 'Change date or time · no charge'}</button>`) : '';
+  const lastOk = startOf(b) - MR.cutoffH * HOUR;
+  const ask = S.cust.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this booking?</b>
+      ${q.ok ? `<div class="row between small"><span>Refund (${MR.refundPct}%)</span><b class="num">${peso(q.cashBack + q.creditBack, 2)}</b></div><div class="row between small"><span>Kept · platform ${MR.platPct}% + provider ${MR.provPct}%</span><b class="num">${peso(q.plat + q.provPart, 2)}</b></div><span class="tiny">${q.cashBack ? peso(q.cashBack, 2) + ' to ' + esc(q.method) + ' ' + q.dueText + '. ' : ''}${q.creditBack ? peso(q.creditBack, 2) + ' back as Ticktap Credit.' : ''}</span>`
+        : `<span class="small"><b>No refund.</b> It is less than ${MR.cutoffH} hours before the service. ${esc(first)} is paid as usual.</span>`}
+      <div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="custCancel" data-arg="${b.id}">Cancel booking</button><button class="btn secondary sm" data-act="custCancelAsk" data-arg="">Keep</button></div></div>`
+    : `<button class="btn ghost sm" style="color:var(--bad);align-self:center" data-act="custCancelAsk" data-arg="${b.id}">Cancel booking${q.ok ? ' · ' + MR.refundPct + '% back' : ' · no refund'}</button>`;
+  const note = q.early ? `Change or cancel with ${MR.refundPct}% back until ${fmtWhen(lastOk)}.` : q.grace ? `Paid just now: you can still cancel with ${MR.refundPct}% back for <b class="num" data-cd="${b.paidAt + MR.graceMin * MIN}">${mmss(q.graceLeft)}</b>, before ${esc(first)} leaves.` : `Less than ${MR.cutoffH} hours to go: no refund if you cancel or are not there.`;
+  return `<div class="col" style="gap:8px">${move}${ask}<p class="tiny muted" style="text-align:center">${note}</p></div>`;
+}
+function reschedForm(b) {
+  const p = prov(b.pid), d0 = dayStart(now()), days = Array.from({ length: 30 }, (_, i) => d0 + (i + 1) * DAY), m = S.cust.move || (S.cust.move = { day: dayStart(b.slotAt), tmin: new Date(b.slotAt).getHours() * 60 + new Date(b.slotAt).getMinutes() });
+  const times = Array.from({ length: 29 }, (_, i) => 7 * 60 + i * 30);
+  return `<div class="card tight" style="gap:8px"><b class="small">Ask ${esc(p ? p.name.split(' ')[0] : 'your provider')} for a new time</b>
+    <div class="row" style="gap:8px"><label class="field grow">Day<select id="mv-d" class="select" data-bind="cust.move.day" data-type="num">${days.map(d => `<option value="${d}" ${m.day === d ? 'selected' : ''}>${new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</option>`).join('')}</select></label>
+    <label class="field">Time<select id="mv-t" class="select" data-bind="cust.move.tmin" data-type="num">${times.map(x => `<option value="${x}" ${m.tmin === x ? 'selected' : ''}>${fmtT(d0 + x * MIN)}</option>`).join('')}</select></label></div>
+    <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="moveSend" data-arg="${b.id}">Send to provider</button><button class="btn secondary sm" data-act="moveAsk" data-arg="">Back</button></div>
+    <span class="tiny muted">No charge and no refund. If ${esc(p ? p.name.split(' ')[0] : 'the provider')} declines, your booking stays as it is.</span></div>`;
+}
+function reschedCardProv(b) {   // provider: answer a change-of-time request
+  const r = b.resched; if (!r || r.status !== 'pending') return '';
+  return `<div class="card tight" style="gap:8px;border-color:var(--warn)"><b>Customer asks for a new time</b><span class="small">${fmtWhen(r.from || b.slotAt)} → <b>${fmtWhen(r.slotAt)}</b>. Answer by ${fmtWhen(r.expires)}.</span>
+    <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="moveYes" data-arg="${b.id}">Accept new time</button><button class="btn secondary sm" data-act="moveNo" data-arg="${b.id}">Decline</button></div></div>`;
+}
+const provIsLate = b => !!b.promisedAt && !b.arrivedAt && now() > b.promisedAt;
+function lateWaitNote(b) {   // provider is late: the customer is not charged for cancelling; they wait or report a no-show
+  if (now() >= b.promisedAt + MR.provLateMin * MIN) return '';
+  return `<p class="tiny muted" style="text-align:center">Your provider is late. If they have not come by ${fmtT(b.promisedAt + MR.provLateMin * MIN)}, you can report it here and get the full amount back as Ticktap Credit.</p>`;
+}
+function provNoShowBtn(b) {   // customer: the provider has not come well after the promised time
+  if (!['paid', 'departed'].includes(b.status) || b.arrivedAt || !b.promisedAt || now() < b.promisedAt + MR.provLateMin * MIN) return '';
+  return `<div class="card tight" style="gap:8px;background:var(--bad-soft);border-color:transparent"><b class="small" style="color:var(--bad)">${MR.provLateMin}+ minutes late</b><span class="small">If your provider has not come, you get the full amount back as Ticktap Credit.</span><button class="btn danger sm" data-act="provNoShow" data-arg="${b.id}">My provider did not come</button></div>`;
+}
+function custNoShowCard(b) {   // provider: customer not at the address
+  if (b.status !== 'departed' || !b.promisedAt || now() < b.promisedAt - 10 * MIN) return '';
+  const w = b.waitFrom;
+  if (!w) return `<button class="btn ghost sm" data-act="waitStart" data-arg="${b.id}">I'm at the address · customer not here</button>`;
+  const left = w + MR.waitMin * MIN - now();
+  return `<div class="card tight" style="gap:8px;border-color:var(--warn)"><b class="small">Waiting for the customer</b><span class="small">The customer was alerted. Wait ${MR.waitMin} minutes${left > 0 ? `: <b class="num" data-cd="${w + MR.waitMin * MIN}">${mmss(left)}</b> left` : ''}. Call them in the app if you can.</span>
+    <button class="btn secondary sm" data-act="custNoShow" data-arg="${b.id}" ${left > 0 ? 'disabled' : ''}>Close job · customer did not show (you are paid)</button></div>`;
+}
+function creditCard() {   // customer account: Ticktap Credit balance
+  const cid = S.customer.cid || 'me', bal = cashBal(cid); if (!(bal > 0)) return '';
+  const exp = cashNextExp(cid);
+  return `<div class="li">${ic('wallet', 20)}<div class="col grow"><b>Ticktap Credit</b><span class="small muted">${peso(bal, 2)} · used automatically when you pay${exp ? ' · next expiry ' + fmtD(exp) + ' ' + new Date(exp).getFullYear() : ''}</span></div><b class="num" style="color:var(--good)">${peso(bal, 2)}</b></div>`;
+}
+
+Object.assign(A, {
+  custCancel: id => custCancelNow(bk(id)),
+  creditRefund: id => creditToRefund(bk(id)),
+  provNoShow: id => { const b = bk(id); if (!b || b.arrivedAt) return; provFault(b, 'Provider did not come', 'credit'); addCredit(prov(b.pid), CR().rules.paidCancel, 'No-show · ' + b.id, b.id, 'paidCancel', 'pc:' + b.id); toast('admin', 'Provider no-show · ' + b.id, 'Customer credited · 5% fee charged to the provider'); },
+  waitStart: id => { const b = bk(id); if (!b) return; b.waitFrom = now(); logB(b, 'Provider at the address · customer not here · waiting ' + MR.waitMin + ' min'); if (b.cid) pushAlert('customer', 'Your provider is at the door', `${(prov(b.pid) || {}).name || 'Your provider'} is waiting. After ${MR.waitMin} minutes the booking closes with no refund.`, b.id, 'bad'); },
+  custNoShow: id => { const b = bk(id); if (!b || !b.waitFrom || now() - b.waitFrom < MR.waitMin * MIN) return; custNoShow(b); S.prov.screen = 'jobs'; },
+  admNsOk: id => { const b = bk(id), u = admUser() || {}; if (!b) return; b.nsChecked = { at: now(), by: u.name || 'admin' }; logB(b, 'No-show claim checked by ' + (u.name || 'admin')); admLog('No-show checked · ' + id); },
+  moveAsk: id => { S.cust.moveAsk = id || null; S.cust.move = null; },
+  moveSend: id => { const b = bk(id), m = S.cust.move; if (!b || !m) return; if (reschedAsk(b, m.day + m.tmin * MIN)) S.cust.moveAsk = null; },
+  moveYes: id => reschedAnswer(bk(id), true),
+  moveNo: id => reschedAnswer(bk(id), false)
+});
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -6923,7 +7101,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 131;
+const BUILD = 132;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7125,9 +7303,9 @@ function tick(force = false) {
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true; noReplyCheck(b);
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
     if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; changed = true;
-      if (b.when === 'later') { b.autoCancelled = true; logB(b, 'Not paid 1 hour before · booking cancelled automatically');
+      if (b.when === 'later') { b.autoCancelled = true; logB(b, 'Not paid in time · booking cancelled automatically');
         pushAlert('provider:' + b.pid, 'Booking cancelled · not paid', `${b.id} for ${fmtWhen(b.slotAt)} was not paid in time.`, b.id, 'bad');
-        if (b.cid) pushAlert('customer', 'Booking cancelled · not paid', `Your booking for ${fmtWhen(b.slotAt)} was cancelled because payment was not made 1 hour before. You were not charged.`, b.id, 'bad'); }
+        if (b.cid) pushAlert('customer', 'Booking cancelled · not paid', `Your booking for ${fmtWhen(b.slotAt)} was cancelled because it was not paid in time. You were not charged.`, b.id, 'bad'); }
       else { logB(b, 'Customer did not confirm in time'); pushAlert('provider:' + b.pid, 'Offer expired', b.id + ' · the customer did not confirm.', b.id); } }
     if (['paid', 'departed'].includes(b.status) && !b.arrivedAt && b.promisedAt && n > b.promisedAt + S.settings.lateTrigger * MIN && !b.late) {
       const p = prov(b.pid);
@@ -7160,7 +7338,7 @@ function landOnBooking() {
   const b = mine.find(x => x.status === 'offered') || mine.find(x => ['requested', 'business_queue', 'paid', 'departed', 'arrived'].includes(x.status));
   if (!b) return; LANDED = true;
   A.openBooking(b.id);
-  if (b.status === 'offered' && b.when === 'later') toast('customer', 'Payment needed', `Pay by ${fmtWhen(b.offerExpires)} to keep your booking.`, false, b.id);
+  if (b.status === 'offered' && b.when === 'later') toast('customer', 'Payment needed', `Pay by ${fmtT(b.offerExpires)} to keep your booking.`, false, b.id);
   render();
 }
 let LANDED = false;
