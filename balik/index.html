@@ -1011,7 +1011,7 @@ const S = {
   settings: {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
-      bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 30 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }],
+      bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 25 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 20 }, { label: 'Silver', min: 7, max: 8, rate: 17 }, { label: 'Gold', min: 9, max: 20, rate: 15 }],
       rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1, contact: -3 } },
     respond: 6, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
@@ -4306,8 +4306,14 @@ function addTestPros() {
 }
 function normalizeCredits() {
   addTestPros();
-  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 30 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 25 }, { label: 'Silver', min: 7, max: 8, rate: 23 }, { label: 'Gold', min: 9, max: 20, rate: 22 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
+  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 25 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 20 }, { label: 'Silver', min: 7, max: 8, rate: 17 }, { label: 'Gold', min: 9, max: 20, rate: 15 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
   { const bs = S.settings.credit.bands; if (bs && bs[1] && (bs[1].label === 'Standard' || bs[1].label === 'Starter')) { bs[1].label = 'Starter · Standard'; if (bs[0] && bs[0].label === 'Starter') bs[0].label = 'Kaya Mo!'; } }
+  if (!S.settings.credit || !S.settings.credit.feeV2) {   /* owner's decision 2026-11-06: individual fee 15–25% (was 22–30%); moves default rates only, custom rates stay */
+    const bs = S.settings.credit && S.settings.credit.bands, was = [30, 25, 23, 22], to = [25, 20, 17, 15];
+    if (Array.isArray(bs)) bs.forEach((b, i) => { if (b && Number(b.rate) === was[i]) b.rate = to[i]; });
+    if (S.settings.credit) S.settings.credit.feeV2 = true;
+    if (Array.isArray(S.notices) && !S.notices.some(n => n.id === 'nt-fee-v2')) S.notices.unshift({ id: 'nt-fee-v2', title: 'Lower platform fees from November 6, 2026', body: 'Platform fees for individual providers are now 15% to 25%: Gold 15%, Silver 17%, Starter · Standard 20%, Kaya Mo! 25%. Your band still follows your reward credits, updated every Sunday. Jobs that ended before today keep the fee shown on them.', aud: ['provider'], level: 'important', pin: true, from: '', until: '2026-12-31', at: Date.now(), by: 'Ticktap' });
+  }
   if (!S.settings.respondV6) { if (Number(S.settings.respond) === 5) S.settings.respond = 6; S.settings.respondV6 = true; }
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
   S.businesses.forEach(b => { if (!Array.isArray(b.photos)) b.photos = []; });
@@ -5489,8 +5495,8 @@ function admCalls() {
 }
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.5',
-  effective: 'November 5, 2026',
+  version: '1.6',
+  effective: 'November 6, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
   sections: [
@@ -5522,7 +5528,7 @@ const TERMS = {
       'Providers and Business Partners set their own prices. The price shown at booking is the total the Customer pays for the service.',
       'All payments must be made in the app through the Company\'s BSP-registered payment partners (such as GCash, Maya or card). The Company collects the payment on behalf of the Provider or Business Partner and holds it until the service ends. Paying, or asking to be paid, outside the app is not allowed and removes any refund or support from the Company.',
       'After the service, the Company pays the Provider or Business Partner the amount received less the Platform Fee and any tax the Company must withhold. Individual Providers are paid to their registered GCash or bank account; Business Partners are paid on their chosen schedule (weekly, twice a month or monthly).',
-      'The Platform Fee depends on the Provider\'s reward credits under Section 8 (currently 22% to 30% for individual Providers and 10% to 20% for staff of Business Partners). The Company may change fee rates with at least 7 days\' notice in the app.',
+      'The Platform Fee depends on the Provider\'s reward credits under Section 8 (currently 15% to 25% for individual Providers and 10% to 20% for staff of Business Partners). The Company may change fee rates with at least 7 days\' notice in the app.',
       'Providers and Business Partners may run time-limited discount events on all or selected services (5% to 70%, up to 60 days). The discounted price shown at booking is the price the Customer pays, and the Platform Fee is calculated on that price. An event ends automatically on its last day and is then removed from the app. Discounts must be genuine: raising prices before a discount, fake "original" prices or other misleading offers are not allowed, and the Company may stop any event at any time and tell the Provider why.',
       'Individual Providers and Business Partners (not their staff separately) may also run loyalty events in which a Customer who completes a set number of visits receives one service free. The Provider or Business Partner funds the free service and no Platform Fee is charged on it. A free service already earned stays valid if the event ends. Loyalty rewards have no cash value and cannot be transferred.',
       'Ticktap Points. Customers earn 1 point for every ₱100 paid in the app, credited when the service ends. From 20 points, points can be used to pay part or all of a booking at ₱1 per point; the Company funds point payments and Providers are paid as if the Customer had paid in full. Points have no cash value, cannot be transferred or exchanged for money, and are returned if a booking paid with points is cancelled. Points gained through fraud or abuse may be cancelled. From time to time the Company may run bonus-point events (for example 2 to 5 times the usual points) for bookings paid during the event period. Only one rule applies to a booking: the bonus rate replaces the usual rate and is never added to it, and only one bonus event runs at a time. The Company may pause earning, change the earning rate or end the programme; points already earned are not affected by a pause, and ending the programme requires at least 30 days\' notice in the app, during which earned points stay usable.',
@@ -5543,7 +5549,7 @@ const TERMS = {
       'Every Provider starts with 5 reward credits. Credits are counted from Monday to Sunday and updated every Sunday, and are kept between 0 and 20.',
       'A Provider earns 1 credit for: 30 or more hours on green (stand-by) in the week; completing 2 or more services a day as set by the Company; sharing Ticktap on Facebook, Instagram or TikTok (once a week); and each customer or provider who joins with the Provider\'s referral code.',
       'A Provider loses 1 credit for each late arrival and for a week with fewer than 30 hours on green, 3 credits for cancelling after accepting a request, 3 credits for each confirmed attempt to share contact details or arrange an off-app deal (Section 10), and 5 credits for cancelling after the Customer has paid.',
-      'The Platform Fee is set by the credits held after each Sunday update: 0 to 4 credits, 30%; 5 to 6 credits, 25%; 7 to 8 credits, 23%; 9 or more credits, 22%. The Company may review a Provider\'s record and adjust credits or the fee band where it finds an error or abuse.',
+      'The Platform Fee is set by the credits held after each Sunday update: 0 to 4 credits, 25%; 5 to 6 credits, 20%; 7 to 8 credits, 17%; 9 or more credits, 15%. The Company may review a Provider\'s record and adjust credits or the fee band where it finds an error or abuse.',
       'Reward credits are not money, cannot be transferred and have no cash value.'
     ]],
     ['9. Independent providers', [
@@ -7332,7 +7338,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 137;
+const BUILD = 138;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
