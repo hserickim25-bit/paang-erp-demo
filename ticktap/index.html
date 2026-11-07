@@ -780,6 +780,25 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .fam-s{background:var(--bg)}.fam-s .scroll{display:flex;flex-direction:column;gap:12px}
 .fam-h{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px max(16px,env(safe-area-inset-left,0px));padding-top:calc(12px + env(safe-area-inset-top,0px));background:#12355B;color:#fff}
 .web .callscreen{position:fixed;z-index:95}   /* business console: full window */
+/* First screen after install (build 139): pink start page */
+.st-screen{position:relative;background:linear-gradient(180deg,#FFF5F7,#FFF9F8 45%,#FFF4F1);color:#14202E;overflow:hidden}
+.st-bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.st-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:14px;padding:44px 22px 28px;text-align:center}
+.st-logo{width:min(250px,64vw);height:auto;margin:6px 0 2px}
+.st-safe{display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:600;color:#1E8E4E}
+.st-feat{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:100%;max-width:380px;margin:4px 0 10px}
+.st-f{display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12.5px;line-height:1.35;color:#5A6472}
+.st-f b{font-size:15px;color:#14202E}
+.st-ic{width:62px;height:62px;border-radius:50%;background:#FFE3EA;display:grid;place-items:center;margin-bottom:3px}
+.st-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;max-width:380px;min-height:54px;border-radius:999px;border:1.5px solid #F1D6DD;background:#fff;color:#14202E;font:inherit;font-size:16px;font-weight:600;cursor:pointer;position:relative}
+.st-btn>svg{position:absolute;left:18px}
+.st-g{background:#2F6FEB;border-color:#2F6FEB;color:#fff}
+.st-gl{position:absolute;left:6px;width:42px;height:42px;border-radius:50%;background:#fff;display:grid;place-items:center}
+.st-who{font-size:13.5px;color:#5A6472;max-width:340px;margin:2px 0 0}
+.st-who b{color:#14202E}
+.st-trouble{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;font:inherit;font-size:14px;font-weight:600;color:#14202E;cursor:pointer}
+.st-tr{display:flex;flex-direction:column;gap:8px;width:100%;max-width:380px}
+.st-terms{font-size:12px;color:#5A6472;margin-top:4px}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -5738,18 +5757,44 @@ function authShell(title, back, body, cta) {
   return `<div class="screen" data-pane="auth">${title ? bar(title, back) : ''}<div class="scroll" data-scroll="auth">${body}</div>${cta ? `<div class="footer-bar">${cta}</div>` : ''}${toastsFor('auth')}</div>`;
 }
 function authPane() {
-  const A0 = S.auth || (S.auth = { screen: 'welcome' });
+  const A0 = S.auth || (S.auth = { screen: 'start' });
+  if (A0.screen === 'start') return authStart();
   if (A0.screen === 'login') return authLogin();
   if (A0.screen === 'forgot') return authForgot();
   if (A0.screen === 'activate') return authActivate();
   if (A0.screen === 'signup') return authSignup();
   return authWelcome();
 }
+/* First screen after installing (owner-approved design, 2026-11-07): logo, two promises, sign-in options.
+   Email leads to the existing chooser (customer / provider / business). Google and Facebook need the live sign-in service
+   (Stage 2); until then they explain that and continue with email. */
+function authStart() {
+  const tr = S.auth.trouble;
+  const G = `<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.4-4.6 7l7.2 5.6c4.2-3.9 7.1-9.6 7.1-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.2-5.6c-2 1.4-4.7 2.3-8.7 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>`;
+  const FB = `<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#1877F2"/><path fill="#fff" d="M13.4 19.5v-6.1h2.1l.3-2.4h-2.4V9.5c0-.7.2-1.2 1.2-1.2h1.3V6.2c-.2 0-1-.1-1.9-.1-1.9 0-3.2 1.2-3.2 3.3V11H8.7v2.4h2.1v6.1h2.6z"/></svg>`;
+  const MAIL = `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#14202E" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="M4 7l8 6 8-6"/></svg>`;
+  const SHIELD = `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#12355B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.3-7 10-4-1.7-7-5.5-7-10V6l7-3z"/><path d="M8.8 12.2l2.2 2.2 4.3-4.6"/></svg>`;
+  const HOUSE = `<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#12355B" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 10.5L12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/><rect x="9" y="12.5" width="6" height="5" rx="1"/><path d="M10.5 12.5v-1.2a1.5 1.5 0 013 0v1.2"/></svg>`;
+  return `<div class="screen st-screen" data-pane="auth"><svg class="st-bg" viewBox="0 0 412 900" preserveAspectRatio="none" aria-hidden="true"><path d="M412 0 L412 150 C 360 120 320 60 250 40 C 300 30 340 10 360 0Z" fill="#FCE3EA"/><path d="M0 0 L0 90 C 40 60 70 20 120 0Z" fill="#FFEFD9"/><path d="M0 760 C 90 700 170 760 260 730 C 330 705 380 740 412 720 L412 900 L0 900Z" fill="#FFEBDD"/><path d="M0 800 C 120 760 200 830 412 790 L412 900 L0 900Z" fill="#FBDDE6" opacity=".85"/></svg>
+    <div class="scroll st-wrap" data-scroll="auth">
+      <img class="st-logo" src="${LOGO_T}" alt="Ticktap">
+      <div class="st-safe"><svg width="16" height="16" viewBox="0 0 24 24" fill="#1E8E4E" aria-hidden="true"><path d="M7 10V7a5 5 0 0110 0v3h1a1 1 0 011 1v9a1 1 0 01-1 1H6a1 1 0 01-1-1v-9a1 1 0 011-1h1zm2 0h6V7a3 3 0 00-6 0v3z"/></svg>Your data is protected</div>
+      <div class="st-feat"><div class="st-f"><span class="st-ic">${SHIELD}</span><b>Verified pros</b><span>ID and skills checked<br>before they join</span></div><div class="st-f"><span class="st-ic">${HOUSE}</span><b>Safe at your door</b><span>Paid in the app, held<br>until the service ends</span></div></div>
+      <button class="st-btn st-g" data-act="authSocial" data-arg="Google"><span class="st-gl">${G}</span>Continue with Google</button>
+      <button class="st-btn" data-act="authSocial" data-arg="Facebook">${FB}Continue with Facebook</button>
+      <button class="st-btn" data-act="authWelcome">${MAIL}Continue with Email</button>
+      <p class="st-who">For <b>customers</b>, <b>pros</b> and <b>spas &amp; salons</b>. You choose on the next step.</p>
+      <button class="st-trouble" data-act="authTrouble" aria-expanded="${tr ? 'true' : 'false'}"><span style="display:inline-flex;transform:rotate(${tr ? -90 : 90}deg)">${ic('chev', 22)}</span>Trouble signing in?</button>
+      ${tr ? `<div class="st-tr"><button class="btn secondary block" data-act="authGo" data-arg="login">Log in with my Login ID</button><button class="btn ghost block" data-act="authGo" data-arg="forgot">Forgot my password</button><button class="btn ghost block" data-act="authGo" data-arg="activate">Staff of a business? Activate your account</button></div>` : ''}
+      <p class="st-terms">By continuing, you agree to our <button type="button" class="inlinelink" data-act="termsOpen">Terms of Use</button> and <button type="button" class="inlinelink" data-act="termsOpen">Privacy Policy</button>.</p>
+    </div>${toastsFor('auth')}</div>`;
+}
 function authWelcome() {
   const card = (type, icn, t, sub) => `<button class="opt" data-act="authType" data-arg="${type}" style="align-items:center;padding:16px">${`<span class="avatar" style="width:46px;height:46px;border-radius:14px;background:var(--accent-soft);color:var(--accent)">${ic(icn, 24)}</span>`}<div class="col grow"><b style="font-size:16px">${t}</b><span class="small muted">${sub}</span></div>${ic('chev', 18)}</button>`;
   return `<div class="screen" data-pane="auth"><div class="scroll" data-scroll="auth" style="gap:14px;padding-top:calc(18px + env(safe-area-inset-top,0px))">
-    <div class="logo-plain" style="align-self:center;width:min(260px,66vw)">${brandPic(LOGO_T, LOGO_D, 'Ticktap')}</div>
-    <div class="col" style="gap:2px;text-align:center"><h2 style="font-size:21px">Welcome to Ticktap</h2><span class="small muted">Choose how you want to join</span></div>
+    <button class="btn ghost sm" style="align-self:flex-start" data-act="authStart"><span style="display:inline-flex;transform:rotate(180deg)">${ic('chev', 16)}</span> Back</button>
+    <div class="logo-plain" style="align-self:center;width:min(220px,60vw)">${brandPic(LOGO_T, LOGO_D, 'Ticktap')}</div>
+    <div class="col" style="gap:2px;text-align:center"><h2 style="font-size:21px">Join with email</h2><span class="small muted">Choose how you want to join</span></div>
     ${card('customer', 'user', 'Customer', 'Book verified pros for home beauty, massage and pet care')}
     ${card('provider', 'bag', 'Individual provider', 'Run your own business with your skills · ID, TIN and face check')}
     ${card('business', 'building', 'Business', 'Register your salon or spa · permit and BIR documents')}
@@ -6465,6 +6510,9 @@ const A = {
   authType: t => { S.pwShow = null; S.auth = { screen: 'signup', type: t, step: 1, f: { ref: urlRef(), bcat: 'massage', docs: {} } }; },
   authGo: sc => { S.pwShow = null; S.auth = { screen: sc, step: 1, f: {} }; },
   authWelcome: () => { S.auth = { screen: 'welcome' }; },
+  authStart: () => { S.auth = { screen: 'start' }; },
+  authTrouble: () => { S.auth.trouble = !S.auth.trouble; },
+  authSocial: who => { S.auth = { screen: 'welcome' }; toast('auth', who + ' sign-in is coming soon', 'It opens with the live app. For now, join with your email.'); },
   auBack: () => { const a = S.auth; if (a.step > 1) a.step--; else S.auth = { screen: 'welcome' }; },
   auSend: () => { const f = S.auth.f; f.eCode = String(100000 + Math.floor(Math.random() * 900000)); f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.eOtp = f.pOtp = ''; S.auth.step = 2; toast('auth', 'Codes sent', 'Email to ' + f.email + ' and SMS to +63 ' + f.phone); },
   auFill: () => { const f = S.auth.f; f.eOtp = f.eCode; f.pOtp = f.pCode; },
@@ -6495,7 +6543,7 @@ const A = {
     if (a.status === 'closed') { S.auth.err = 'This account was closed by Ticktap (Terms, Section 18). Contact support if you think this is a mistake.'; return; }
     if (a.suspended) { S.auth.err = 'This account is on hold. Please contact Ticktap support.'; return; }
     startSession(a); toast(S.role === 'business' ? 'business' : S.role, 'Welcome back', a.name); landOnBooking(); },
-  authLogout: () => { S.demoOpen = false; S.session = null; S.auth = { screen: 'welcome' }; S.customer.signedIn = false; S.prov.apply = null; S.cust.screen = 'home'; if (S.role === 'admin') S.role = 'customer'; },
+  authLogout: () => { S.demoOpen = false; S.session = null; S.auth = { screen: 'start' }; S.customer.signedIn = false; S.prov.apply = null; S.cust.screen = 'home'; if (S.role === 'admin') S.role = 'customer'; },
   demoLogin: id => { const a = acctByLogin(id); if (a) { startSession(a); S.demoOpen = false; } },
   fpSend: () => { const f = S.auth.f; f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.pOtp = ''; },
   fpFill: () => { const f = S.auth.f; f.pOtp = f.pCode; },
@@ -7247,7 +7295,7 @@ function diffPaths() {
   const paths = {};
   SHARED_LIST.concat(SHARED_MAP).forEach(n => {
     const cur = recordsOf(n), last = SYNC.last[n] || {};
-    Object.keys(cur).forEach(k => { if (cur[k] !== last[k]) { paths[n + '/' + k] = cur[k]; markDirty(n, k, last[k], cur[k]); } });
+    Object.keys(cur).forEach(k => { if (cur[k] !== last[k]) { const bk = n + '/' + k; ftStamp(n, k, bk in FT_BASE ? FT_BASE[bk] : last[k], cur[k]); FT_BASE[bk] = cur[k]; paths[n + '/' + k] = ftWith(n, k, cur[k]); } });
     Object.keys(last).forEach(k => { if (!(k in cur)) paths[n + '/' + k] = null; });
     SYNC.last[n] = cur;
   });
@@ -7277,18 +7325,27 @@ function pushNow() {
 function schedulePush() { if (!SYNC.adapter || !SYNC.ready) return; clearTimeout(SYNC.pushT); SYNC.pushT = setTimeout(pushNow, 60); }
 function myTargets() { return { ['customer:' + (S.customer.cid || 'me')]: 'customer', ['provider:' + S.prov.id]: 'provider', ['business:' + S.biz.id]: 'business' }; }
 /* Concurrent edits of the same record on two devices (e.g. the leader updating a provider's hours while the provider adds a
-   service) are merged field by field: fields this device changed and has not yet seen come back from the server are kept
-   on top of the other device's version. A field stays "dirty" for 30 seconds after this device last changed it. */
-const DIRTY = {};
-function markDirty(n, k, lastStr, curStr) {
-  try { const a = lastStr ? JSON.parse(lastStr) : {}, b = JSON.parse(curStr), t = Date.now(), d = DIRTY[n + '/' + k] || (DIRTY[n + '/' + k] = {});
-    Object.keys(b).forEach(f => { const v = JSON.stringify(b[f]); if (v !== JSON.stringify(a[f])) d[f] = { v, at: t }; }); } catch (e) { }
+   service) are merged field by field, last writer wins per field: every record sent carries "_ft", the time each field was
+   last changed. Whichever device changed a field later keeps it, whatever order the updates arrive in, so all devices end
+   with the same record (build 139; replaces the 30-second "dirty" window, which could lose an edit). */
+const FT = {}, FT_BASE = {};   /* FT_BASE: this device's copy right after the last send or merge, so only edits made here get a new time */
+const ftObj = v => v && typeof v === 'object' && !Array.isArray(v);
+function ftStamp(n, k, lastStr, curStr) {
+  try { const a = lastStr ? JSON.parse(lastStr) : {}, b = JSON.parse(curStr); if (!ftObj(b)) return; const t = Date.now(), d = FT[n + '/' + k] || (FT[n + '/' + k] = {});
+    new Set(Object.keys(a || {}).concat(Object.keys(b))).forEach(f => { if (JSON.stringify(b[f]) !== JSON.stringify((a || {})[f])) d[f] = t; }); } catch (e) { }
 }
-function overlayDirty(n, k, remoteStr, localStr, lastStr) {   // remote record + this device's recent and unsent field changes
-  try { const r = JSON.parse(remoteStr), d = DIRTY[n + '/' + k] || {}, t = Date.now(); let keep = false;
-    Object.keys(d).forEach(f => { if (t - d[f].at > 30000) delete d[f]; else { r[f] = JSON.parse(d[f].v); keep = true; } });
-    if (localStr && lastStr && localStr !== lastStr) { const lo = JSON.parse(localStr), b = JSON.parse(lastStr); Object.keys(lo).forEach(f => { if (JSON.stringify(lo[f]) !== JSON.stringify(b[f])) { r[f] = lo[f]; keep = true; } }); }
-    return keep ? JSON.stringify(r) : remoteStr; } catch (e) { return remoteStr; }
+function ftWith(n, k, str) {
+  try { const v = JSON.parse(str); if (!ftObj(v) || !FT[n + '/' + k]) return str; v._ft = FT[n + '/' + k]; return JSON.stringify(v); } catch (e) { return str; }
+}
+function ftStrip(str, into, k) {
+  if (typeof str !== 'string' || str.indexOf('"_ft"') < 0) return str;
+  try { const v = JSON.parse(str); if (!ftObj(v) || !v._ft) return str; into[k] = v._ft; delete v._ft; return JSON.stringify(v); } catch (e) { return str; }
+}
+function ftMerge(n, k, remoteStr, localStr, rft) {
+  try { const r = JSON.parse(remoteStr), l = JSON.parse(localStr); if (!ftObj(r) || !ftObj(l)) return null;
+    const lf = FT[n + '/' + k] || (FT[n + '/' + k] = {}), rf = rft || {}, out = {};
+    new Set(Object.keys(r).concat(Object.keys(l))).forEach(f => { const useL = (lf[f] || 0) > (rf[f] || 0); const v = useL ? l[f] : r[f]; if (v !== undefined) out[f] = v; const m = Math.max(lf[f] || 0, rf[f] || 0); if (m) lf[f] = m; });
+    const s = JSON.stringify(out); return s === JSON.stringify(r) ? remoteStr : s; } catch (e) { return null; }
 }
 function applyRemote(root) {
   if (!root) return false;
@@ -7296,14 +7353,16 @@ function applyRemote(root) {
   const mine = myTargets();
   const myPhone = (prov(S.prov.id) || {}).phone;
   SHARED_LIST.concat(SHARED_MAP).forEach(n => {
-    const remote = root[n] || {}, last = SYNC.last[n] || {}, local = recordsOf(n);
+    const raw = root[n] || {}, rft = {}, remote = {}, last = SYNC.last[n] || {}, local = recordsOf(n);
+    Object.keys(raw).forEach(k => { remote[k] = ftStrip(raw[k], rft, k); });
     const keys = new Set(Object.keys(remote).concat(Object.keys(local)));
     let differs = false; const merged = {};
     keys.forEach(k => {
       const localChanged = local[k] !== last[k] || !!(SYNC.inflight && SYNC.inflight[n + '/' + k]);       // edited here and not confirmed by the server yet
+      const bk = n + '/' + k; if (local[k] != null && local[k] !== (bk in FT_BASE ? FT_BASE[bk] : last[k])) { ftStamp(n, k, bk in FT_BASE ? FT_BASE[bk] : last[k], local[k]); FT_BASE[bk] = local[k]; }   /* edits made here and not sent yet */
       let v = localChanged ? local[k] : remote[k];
-      if (remote[k] != null && local[k] != null && remote[k] !== local[k] && (DIRTY[n + '/' + k] || localChanged)) v = overlayDirty(n, k, remote[k], local[k], last[k]);   /* another device changed it too: keep both */
-      if (v != null) merged[k] = v;
+      if (remote[k] != null && local[k] != null && remote[k] !== local[k]) { const m = ftMerge(n, k, remote[k], local[k], rft[k]); if (m != null) v = m; }   /* both sides have it: newest change of each field wins */
+      if (v != null) merged[k] = v; FT_BASE[bk] = v;
       if (v !== local[k]) differs = true;
       if (!localChanged && remote[k] != null && last[k] == null && local[k] == null) {   // brand-new record from another device
         try {
@@ -7338,7 +7397,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 138;
+const BUILD = 139;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
