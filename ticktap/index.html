@@ -799,6 +799,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .st-trouble{display:flex;flex-direction:column;align-items:center;gap:2px;background:none;border:0;font:inherit;font-size:14px;font-weight:600;color:#14202E;cursor:pointer}
 .st-tr{display:flex;flex-direction:column;gap:8px;width:100%;max-width:380px}
 .st-terms{font-size:12px;color:#5A6472;margin-top:4px}
+/* Customer email confirmation (build 140) */
+.ev-card{gap:10px;border-color:var(--accent-soft)}
+.ev-card.ev-late{border-color:var(--warn)}
+.ev-card .btn{align-self:flex-start}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1451,7 +1455,7 @@ function custHome() {
         <span class="eyebrow ellipsis" style="display:block">Distances from ${esc(a.label)}</span>
         <span class="row" style="gap:4px;font-weight:600;font-size:14px;min-width:0"><span class="ellipsis">${esc(a.short)}</span> ${ic('down', 16)}</span></button>
       <button class="iconbtn" data-act="custTab" data-arg="alerts" aria-label="Alerts">${ic('bell', 22)}${unread('customer') ? `<span class="badge-n">${unread('customer')}</span>` : ''}</button></header>
-    <div class="scroll" data-scroll="c-home">${noticeBanner('customer')}
+    <div class="scroll" data-scroll="c-home">${noticeBanner('customer')}${evBanner()}
       ${guideTip('customer')}${ptBanner()}
       ${act ? activeCard(act) : ''}
       <label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
@@ -1794,7 +1798,7 @@ function custPoints() {
 }
 function custAccount() {
   const c = S.customer, a = addr();
-  return `${bar('Account')}<div class="scroll" data-scroll="c-acc">
+  return `${bar('Account')}<div class="scroll" data-scroll="c-acc">${evBanner()}
     <div class="card" style="flex-direction:row;align-items:center">${avatar(c.name, 220, 56)}<div class="col grow"><b style="font-size:17px">${esc(c.name)}</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">${c.idOk ? 'ID verified' : 'Email & phone verified'}</span></div>
     <div class="list">
       <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div><span class="pill good">Verified</span></div>
@@ -3056,7 +3060,7 @@ function adminPane() {
   const openG = S.admin.groups || (S.admin.groups = isPhone() ? { members: false, money: false, rules: false } : { members: true, money: true, rules: true });
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
-  const apDue = S.bookings.filter(b => payDue(b)).length + S.bookings.filter(b => b.refund && !b.refund.sentAt).length;
+  const apDue = S.bookings.filter(b => payDue(b)).length + S.bookings.filter(b => b.refund && !b.refund.sentAt && !b.refund.hold).length;
   const m = { desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, help: admHelp, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
@@ -3248,13 +3252,13 @@ function admAR() {
     ${dailyPanel('Money in', [['Collected', r => r.collections], ['Bookings completed', r => r.jobs, 1], ['Bookings value', r => r.gmv], ['Platform fees earned', r => r.fees]], P)}`;
 }
 function admAP() {
-  const refunds = S.bookings.filter(b => b.refund && !b.refund.sentAt).sort((a, b) => a.refund.dueBy - b.refund.dueBy);
-  const recent = S.bookings.filter(b => b.refund && b.refund.sentAt).slice(0, 5);
+  const refunds = S.bookings.filter(b => b.refund && !b.refund.sentAt && !b.refund.hold).sort((a, b) => a.refund.dueBy - b.refund.dueBy);
+  const recent = S.bookings.filter(b => b.refund && b.refund.sentAt).slice(0, 5), held = S.bookings.filter(b => b.refund && !b.refund.sentAt && b.refund.hold);
   return `<div class="page-h"><div><h1>Accounts payable</h1><p>Money going out: payouts to providers and businesses, customer refunds, and the tax withheld that Ticktap remits to BIR.</p></div></div>
     ${rngBar(docBtn('daily', rngArg(rngP()), 'Daily report', 'secondary') + docBtn('ap', rngArg(rngP()), 'Disbursements report', 'primary'))}
     <div class="panel" style="${refunds.length ? 'border-color:var(--warn)' : ''}"><div class="panel-h"><h3>Customer refunds to send · ${refunds.length}</h3><span class="small muted">GCash / Maya within 24 hours · card within 5 days</span></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Customer</th><th>Method</th><th>Due by</th><th class="num">Refund</th><th class="num">Cancellation fee kept</th><th></th></tr></thead><tbody>
       ${refunds.map(b => `<tr><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td class="small">${esc(b.refund.method || '')}</td><td class="small" style="color:${b.refund.dueBy < now() ? 'var(--bad)' : 'inherit'}">${fmtWhen(b.refund.dueBy)}</td><td class="num"><b>${peso(b.refund.amount, 2)}</b></td><td class="num">${peso(b.refund.fee || 0, 2)}</td><td><button class="btn primary xs" data-act="admRefundSent" data-arg="${b.id}">Mark sent</button></td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No refunds waiting.</div></td></tr>'}
-    </tbody></table></div>${recent.length ? `<div class="panel-b"><span class="tiny muted">Recently sent: ${recent.map(b => b.id + ' ' + peso(b.refund.amount, 2)).join(' · ')}</span></div>` : ''}</div>
+    </tbody></table></div>${recent.length ? `<div class="panel-b"><span class="tiny muted">Recently sent: ${recent.map(b => b.id + ' ' + peso(b.refund.amount, 2)).join(' · ')}</span></div>` : ''}${held.length ? `<div class="panel-b"><span class="tiny muted">On hold until the customer confirms their email (do not send yet): ${held.map(b => b.id + ' ' + esc(b.customer) + ' ' + peso(b.refund.amount, 2)).join(' · ')}</span></div>` : ''}</div>
     ${admFinance('ap').replace(/^<div class="page-h">[\s\S]*?<\/div><\/div>/, '')}
     ${dailyPanel('Paid out', [['Payouts', r => r.payouts], ['Refunds', r => r.refunds], ['BIR 0619-E', r => r.whtRem], ['Total', r => r.payouts + r.refunds + r.whtRem]], rngP())}`;
 }
@@ -3402,8 +3406,9 @@ function deskItems() {
   add({ id: 'calls', level: 'now', tab: 'calls', icon: 'headset', title: 'Calls not answered', n: missed.length, detail: missed.length ? missed.slice(0, 3).map(r => r.who).join(', ') : 'Every call was answered', how: 'Members did not pick up your in-app call: phone them on the number shown, then mark the call handled.' });
   const late = S.bookings.filter(b => b.late && !b.late.resolved);
   add({ id: 'late', level: 'now', tab: 'late', icon: 'alert', title: 'Late arrivals', n: late.length, detail: late.length ? oldest(late, b => b.late.at) : 'No one is late', how: 'Call the provider, tell the customer the new arrival time, and resolve the alert. Reassign or refund if they cannot come.' });
-  const rf = S.bookings.filter(b => b.refund && !b.refund.sentAt);
+  const rf = S.bookings.filter(b => b.refund && !b.refund.sentAt && !b.refund.hold), rh = S.bookings.filter(b => b.refund && !b.refund.sentAt && b.refund.hold);
   add({ id: 'refunds', level: 'now', tab: 'ap', icon: 'wallet', title: 'Refunds to send', n: rf.length, detail: rf.length ? peso(rf.reduce((a, b) => a + (b.refund.amount || 0), 0)) + ' · ' + oldest(rf, b => b.refund.at || b.cancelledAt || t) : 'None waiting', how: 'Send each refund to the original payment method: GCash or Maya within 24 hours, card within 5 days (Terms §7).' });
+  add({ id: 'refhold', level: 'watch', tab: 'ap', icon: 'wallet', title: 'Refunds waiting for customer email', n: rh.length, detail: rh.length ? peso(rh.reduce((a, b) => a + (b.refund.amount || 0), 0)) + ' · ' + oldest(rh, b => b.refund.at || t) : 'None', how: 'Do not send yet. The refund moves to "Refunds to send" when the customer confirms their email. After 3 days, remind the customer in the app.' });
   const tw = tkWaiting(), tOver = tw.filter(tkOver), tUrg = tw.filter(x => x.urgent);
   add({ id: 'help', level: 'now', tab: 'help', icon: 'chat', title: 'Help reports to answer', n: tw.length, warn: tOver.length > 0, detail: tw.length ? [tUrg.length ? tUrg.length + ' urgent' : '', tOver.length ? tOver.length + ' past due' : '', oldest(tw, x => x.msgs[x.msgs.length - 1].at)].filter(Boolean).join(' · ') : 'No reports waiting', how: 'Urgent (safety, damage, no-show) first. Read the booking record — times, check-in photo, messages, calls — reply in the app within 48 working hours (weekends and holidays do not count), then resolve (Terms §12).' });
   const nc = nsClaims(), ncStaff = nc.filter(b => b.nsClaim.status === 'staff');
@@ -3933,6 +3938,7 @@ function missionModal() {
 function modal() {
   const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
   if (m.kind === 'mission') return missionModal();
+  if (m.kind === 'emailv') return S.ev ? evModal() : (S.modal = null, '');
   if (m.kind === 'alerts') return alertsNeeded() ? alertsGate(m.role, m.after) : (S.modal = null, '');
   if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
     return `<div class="modal-bg"><div class="modal rate-pop" role="dialog" aria-label="Rate your service" style="width:min(420px,100%)">
@@ -5514,8 +5520,8 @@ function admCalls() {
 }
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.6',
-  effective: 'November 6, 2026',
+  version: '1.7',
+  effective: 'November 7, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
   sections: [
@@ -5533,7 +5539,7 @@ const TERMS = {
     ]],
     ['4. Eligibility and accounts', [
       'You must be at least 18 years old and able to enter into a binding contract under Philippine law.',
-      'Customers sign up with a verified email address and mobile number. Adding a government ID is optional and shows a Verified badge to providers.',
+      'Customers sign up with a verified mobile number and confirm their email address within 7 days of signing up; until it is confirmed, refunds are held, and after 7 days it must be confirmed before a new booking. Providers and Business Partners verify both their email address and mobile number at sign-up. Adding a government ID is optional and shows a Verified badge to providers.',
       'Providers must give a valid government ID, a selfie that matches the ID, a Tax Identification Number (TIN), a recent clear photo of themselves and truthful work experience. Business Partners must give their business registration details and must make sure their staff meet the same requirements.',
       'You are responsible for keeping your login and device secure and for everything done through your account. Information you give must be true, complete and kept up to date. One person or business may hold only one account per role.'
     ]],
@@ -5561,7 +5567,7 @@ const TERMS = {
       'If the Customer reports in the app that the Provider has not come (from 30 minutes after the promised time), the Company first asks the Provider, who must answer in the app within 10 minutes, either by checking in at the address with a live photo or by confirming that they cannot come. If the Provider does not answer, the Company checks the booking record and contacts the Provider. Once the no-show is confirmed, or if no decision is made within 30 minutes of the report, the full amount paid is returned to the Customer as Ticktap Credit. A Customer who makes a false report may have the credit taken back and the account suspended under Section 18.',
       'If a Provider or Business Partner cancels a paid booking, or the Company cancels it because of a problem on the provider side, the full amount is returned as Ticktap Credit, and the Customer may instead choose a full refund to the original payment method. In these cases the Provider or Business Partner bears the 5% payment processing fee, which is deducted from its next payout.',
       'Ticktap Credit can be used only in the app, for any service with any Provider, and is applied automatically when paying. If a booking costs more than the Customer\'s Ticktap Credit and Ticktap Points, the Customer pays the rest; any unused balance stays for the next booking. Each amount of Ticktap Credit is valid for 2 years from the day it is added, cannot be exchanged for cash, and is used oldest first.',
-      'Refunds are sent to the original payment method: GCash or Maya within 24 hours, and credit or debit card within 5 days. These are the times within which the Company sends the refund; the time for funds to appear also depends on the payment partner or bank.',
+      'Refunds are sent to the original payment method: GCash or Maya within 24 hours, and credit or debit card within 5 days, counted from when the Customer\'s email address is confirmed if it was not yet confirmed. These are the times within which the Company sends the refund; the time for funds to appear also depends on the payment partner or bank.',
       'A Provider who cancels after accepting, or after the Customer has paid, or who does not come, also loses reward credits under Section 8.'
     ]],
     ['8. Reward credits for Providers', [
@@ -5815,13 +5821,13 @@ const credOk = f => LOGIN_RE.test(f.loginId || '') && !acctByLogin(f.loginId) &&
 const DOCS = [['permit', "Business permit / Mayor's permit", true], ['bir', 'BIR Certificate of Registration (Form 2303)', true], ['reg', 'DTI or SEC registration', true], ['brgy', 'Barangay clearance', false]];
 function authSignup() {
   const a = S.auth, f = a.f, t = a.type;
-  const total = t === 'customer' ? 4 : t === 'business' ? 5 : 3;
+  const total = t === 'business' ? 5 : 3;   /* customer: details · phone + login · address (email confirmed later, 20-email-verify.js) */
   const steps = `<div class="row" style="gap:6px">${Array.from({ length: total }, (_, i) => `<div class="progress grow"><span style="width:${i + 1 <= a.step ? 100 : 0}%"></span></div>`).join('')}</div>`;
   const head = (h, sub) => `<span class="pill accent" style="align-self:flex-start">${ROLE_NAME[t]} sign-up</span><h2 style="font-size:22px">${h}</h2><p class="small muted">Step ${a.step} of ${total}${t === 'provider' && a.step === 3 ? ' · then your provider profile' : ''} · ${sub}</p>`;
   let body = '', cta = '';
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email || ''), phoneOk = String(f.phone || '').replace(/\D/g, '').length >= 10;
   if (a.step === 1) {
-    body = head(t === 'business' ? 'Owner or authorized person' : 'Your details', t === 'business' ? 'Use your own email and mobile number.' : 'We verify your email and mobile number.') + `
+    body = head(t === 'business' ? 'Owner or authorized person' : 'Your details', t === 'business' ? 'Use your own email and mobile number.' : t === 'customer' ? 'We verify your mobile number now. You confirm your email later.' : 'We verify your email and mobile number.') + `
       <label class="field">Full name<input id="au-name" class="input" autocomplete="name" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
       <label class="field">Email<input id="au-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@example.com"></label>
       <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="au-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="auth.f.phone" value="${esc(f.phone || '')}" placeholder="917 555 0142"></div></label>
@@ -5830,13 +5836,18 @@ function authSignup() {
       ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
       ${mktSignup(f)}
       <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms.</span></label>`;
-    cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>Send verification codes</button>`;
+    cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>${t === 'customer' ? 'Send SMS code' : 'Send verification codes'}</button>`;
+  } else if (t === 'customer' && a.step === 2) {
+    const pDone = f.pOtp && f.pOtp === f.pCode;
+    body = head('Verify phone and create login', 'In this test build the code appears on screen.') + codeBox('SMS', '+63 ' + f.phone, f.pCode, 'auth.f.pOtp', f.pOtp, pDone) +
+      `<div class="row" style="gap:8px"><button class="btn ghost xs" data-act="auSend">Resend code</button><button class="btn ghost xs" data-act="auFill">Fill code (demo)</button></div>` + credFields(f);
+    cta = `<button class="btn primary block" data-act="auNext" ${pDone && credOk(f) ? '' : 'disabled'}>Continue</button>`;
   } else if (a.step === 2) {
     const eDone = f.eOtp === f.eCode, pDone = f.pOtp === f.pCode;
     body = head('Verify email and phone', 'In this test build the codes appear on screen.') + codeBox('Email', f.email, f.eCode, 'auth.f.eOtp', f.eOtp, eDone) + codeBox('SMS', '+63 ' + f.phone, f.pCode, 'auth.f.pOtp', f.pOtp, pDone) +
       `<div class="row" style="gap:8px"><button class="btn ghost xs" data-act="auSend">Resend codes</button><button class="btn ghost xs" data-act="auFill">Fill codes (demo)</button></div>`;
     cta = `<button class="btn primary block" data-act="auNext" ${!(eDone && pDone) ? 'disabled' : ''}>Continue</button>`;
-  } else if (a.step === 3) {
+  } else if (a.step === 3 && t !== 'customer') {
     body = head('Create your login', 'You will log in with this ID and password.') + credFields(f);
     cta = `<button class="btn primary block" data-act="${t === 'provider' ? 'auProvider' : 'auNext'}" ${credOk(f) ? '' : 'disabled'}>${t === 'provider' ? 'Create account and continue' : 'Continue'}</button>`;
   } else if (t === 'customer') {
@@ -6157,6 +6168,7 @@ function sendRequest() {
   if (!needTerms('customer', S.customer.cid || 'me', S.customer.name, (S.customer.email || '') + ' · ' + (S.customer.phone || ''), { act: 'sendRequest' })) return;
   if (myCust().suspended) { toast('customer', 'Account on hold', 'Please contact Ticktap support to reactivate your account.'); return; }
   if (!needAlerts('customer', 'sendRequest')) return;
+  if (!needEmail('sendRequest')) return;
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
   const b = newBooking({ pid: isBiz ? null : src.id, bizId: isBiz ? src.id : (src.biz || null), services: svcs.map(s => ({ ...s })), gross, mins, status: isBiz ? 'business_queue' : 'requested', when: c.when, slotAt: c.when === 'later' ? c.slot : null, respondBy: now() + S.settings.respond * MIN });
   logB(b, 'Customer sent request (no charge)');
@@ -6514,13 +6526,13 @@ const A = {
   authTrouble: () => { S.auth.trouble = !S.auth.trouble; },
   authSocial: who => { S.auth = { screen: 'welcome' }; toast('auth', who + ' sign-in is coming soon', 'It opens with the live app. For now, join with your email.'); },
   auBack: () => { const a = S.auth; if (a.step > 1) a.step--; else S.auth = { screen: 'welcome' }; },
-  auSend: () => { const f = S.auth.f; f.eCode = String(100000 + Math.floor(Math.random() * 900000)); f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.eOtp = f.pOtp = ''; S.auth.step = 2; toast('auth', 'Codes sent', 'Email to ' + f.email + ' and SMS to +63 ' + f.phone); },
+  auSend: () => { const f = S.auth.f; if (S.auth.type === 'customer') { f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.pOtp = ''; S.auth.step = 2; toast('auth', 'Code sent', 'SMS to +63 ' + f.phone); return; } f.eCode = String(100000 + Math.floor(Math.random() * 900000)); f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.eOtp = f.pOtp = ''; S.auth.step = 2; toast('auth', 'Codes sent', 'Email to ' + f.email + ' and SMS to +63 ' + f.phone); },
   auFill: () => { const f = S.auth.f; f.eOtp = f.eCode; f.pOtp = f.pCode; },
   auNext: () => { S.auth.step++; },
   auAddr: id => { S.auth.f.addr = id; S.customer.addr = id; },
   auCustomer: () => { const f = S.auth.f, c = S.customer; const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
-    Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: true, phoneOk: true, idOk: false, signedIn: true });
-    S.customers[cid] = custRecordFromLocal(); S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; if (f.mkt) mktSet('c:' + cid, 'all', true, 'Ticked “Promos & news” at sign-up'); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
+    Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: false, phoneOk: true, idOk: false, signedIn: true });
+    S.customers[cid] = custRecordFromLocal(); S.customers[cid].emailDue = now() + EV_DAYS * DAY; S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; if (f.mkt) mktSet('c:' + cid, 'all', true, 'Ticked “Promos & news” at sign-up'); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
     { const rp = provByRef(f.ref); if (rp) { S.customers[cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + cid); } }
     const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
     S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to Ticktap', 'Your account ' + a.loginId + ' is ready.');
@@ -6973,7 +6985,8 @@ function reschedAnswer(b, yes) {
 }
 
 /* ---------- screen parts ---------- */
-function cancelSummary(b) {   // what happened to the money on a cancelled booking (customer side)
+function cancelSummary(b) { const s = cancelSummary0(b); return s ? evHoldNote(b) + s : s; }
+function cancelSummary0(b) {   // what happened to the money on a cancelled booking (customer side)
   const ci = b.cancelInfo, cc = b.creditChoice;
   if (cc) return `<div class="card tight mr-card"><b>${peso(cc.amount + (b.creditUsed || 0), 2)} ${cc.refundedAt ? 'refund' : 'Ticktap Credit'}</b><span class="small">${b.provFault && b.provFault.mode === 'credit' ? 'Your provider did not come.' : 'The booking was cancelled on the provider side.'} ${cc.refundedAt ? `Refunded to ${esc(b.refund.method)} ${b.refund.days === 5 ? 'within 5 days' : 'within 24 hours'}.` : 'The full amount is in your Ticktap Credit, ready for your next booking with any provider. Valid 2 years.'}</span>
       ${cc.refundable && !cc.refundedAt ? `<button class="btn secondary sm" data-act="creditRefund" data-arg="${b.id}">Refund ${peso(cc.amount, 2)} to ${esc(b.payMethod || 'GCash')} instead</button>` : ''}</div>`;
@@ -7033,8 +7046,8 @@ function creditCard() {   // customer account: Ticktap Credit balance
 }
 
 Object.assign(A, {
-  custCancel: id => custCancelNow(bk(id)),
-  creditRefund: id => creditToRefund(bk(id)),
+  custCancel: id => { custCancelNow(bk(id)); evHold(bk(id)); },
+  creditRefund: id => { creditToRefund(bk(id)); evHold(bk(id)); },
   waitStart: id => { const b = bk(id); if (!b) return; b.waitFrom = now(); logB(b, 'Provider at the address · customer not here · waiting ' + MR.waitMin + ' min'); if (b.cid) pushAlert('customer', 'Your provider is at the door', `${(prov(b.pid) || {}).name || 'Your provider'} is waiting. After ${MR.waitMin} minutes the booking closes with no refund.`, b.id, 'bad'); },
   custNoShow: id => { const b = bk(id); if (!b || !b.waitFrom || now() - b.waitFrom < MR.waitMin * MIN) return; custNoShow(b); S.prov.screen = 'jobs'; },
   admNsOk: id => { const b = bk(id), u = admUser() || {}; if (!b) return; b.nsChecked = { at: now(), by: u.name || 'admin' }; logB(b, 'No-show claim checked by ' + (u.name || 'admin')); admLog('No-show checked · ' + id); },
@@ -7249,6 +7262,71 @@ Object.assign(A, {
     pushAlert('provider:' + b.pid, r === 'coming' ? b.pickup.name + ' is on the way' : b.pickup.name + ' cannot come', r === 'coming' ? 'Your pickup is coming.' : 'Ask someone else from the job screen.', b.id, r === 'coming' ? 'good' : 'bad'); },
   famLeave: () => { lsSet('tt-family', null); FAM.code = ''; if (S.role === 'family') S.role = 'customer'; try { const u = new URL(location.href); u.searchParams.delete('family'); history.replaceState(null, '', u.toString()); } catch (e) { } }
 });
+/* ---------- Customer email confirmation (build 140, owner decision 2026-11-07) ----------
+   Customers sign up with a verified mobile number only; the email is confirmed afterwards, within 7 days.
+   - A banner on Home and Account asks for it until it is done.
+   - Refunds to a customer whose email is not confirmed are kept on hold until it is (Ops desk › "Refunds waiting for email").
+   - After 7 days, sending a new request asks for it first.
+   Providers and businesses still confirm email during sign-up (payouts, tax forms, notices go there). */
+const EV_DAYS = 7;
+function evRec(cid) { const k = cid || S.customer.cid || 'me'; return (S.customers && S.customers[k]) || null; }
+function evOk(cid) {
+  const r = evRec(cid);
+  if (r) return r.emailOk !== false;
+  return !cid || cid === (S.customer.cid || 'me') ? S.customer.emailOk !== false : true;
+}
+function evLeft(cid) { const r = evRec(cid) || {}; const due = r.emailDue || ((r.createdAt || now()) + EV_DAYS * DAY); return Math.ceil((due - now()) / DAY); }
+function evBanner() {
+  if (S.role !== 'customer' || !S.customer.signedIn || evOk()) return '';
+  const left = evLeft(), held = S.bookings.filter(b => b.cid === (S.customer.cid || 'me') && b.refund && b.refund.hold === 'email' && !b.refund.sentAt);
+  const late = left <= 0;
+  return `<div class="card tight ev-card${late || held.length ? ' ev-late' : ''}" role="status"><div class="row" style="gap:10px;align-items:flex-start">${ic('send', 20)}<div class="col grow" style="gap:2px;min-width:0">
+    <b class="small">Confirm your email</b>
+    <span class="small muted">${held.length ? `Your refund of ${peso(held.reduce((a, b) => a + (b.refund.amount || 0), 0), 2)} is waiting for this. ` : ''}${late ? 'Needed before your next booking.' : `Within ${left} day${left === 1 ? '' : 's'} · needed for refunds and receipts.`}</span></div></div>
+    <button class="btn primary sm" data-act="evOpen">Confirm ${esc(S.customer.email || 'email')}</button></div>`;
+}
+function evHoldNote(b) {
+  return b && b.refund && b.refund.hold === 'email' && !b.refund.sentAt && b.cid === (S.customer.cid || 'me')
+    ? `<div class="card tight ev-card ev-late"><b class="small">Refund on hold · confirm your email</b><span class="small muted">${peso(b.refund.amount, 2)} is sent to ${esc(b.refund.method || 'your payment method')} as soon as your email is confirmed.</span><button class="btn primary sm" data-act="evOpen">Confirm email</button></div>` : '';
+}
+function evHold(b) {   // called after a refund is created for a customer
+  if (!b || !b.refund || b.refund.sentAt || !b.cid || evOk(b.cid)) return;
+  b.refund.hold = 'email'; logB(b, 'Refund on hold until the customer confirms their email');
+  toast('customer', 'Confirm your email to get the refund', 'We send it as soon as your email is confirmed. Tap "Confirm email" on Home.');
+}
+function evRelease(cid) {
+  const t = now();
+  S.bookings.filter(b => b.cid === cid && b.refund && b.refund.hold === 'email' && !b.refund.sentAt).forEach(b => {
+    delete b.refund.hold; b.refund.dueBy = t + (b.refund.days || 1) * DAY; logB(b, 'Customer confirmed email · refund released to send');
+  });
+}
+function needEmail(after) {   // before a new request: required once the 7 days are over
+  if (evOk() || evLeft() > 0) return true;
+  A.evOpen(after); return false;
+}
+function evModal() {
+  const v = S.ev || {}, done = v.code && v.otp === v.code, mailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email || '');
+  return `<div class="modal-bg"><div class="modal" role="dialog" aria-modal="true" aria-label="Confirm your email" style="width:min(420px,100%);display:flex;flex-direction:column;gap:12px">
+    <div class="row between"><span class="push-ic">${ic('send', 20)}</span><button class="iconbtn" data-act="evClose" aria-label="Close">${ic('x', 20)}</button></div>
+    <h2 style="font-size:20px">Confirm your email</h2>
+    <p class="small">Receipts, refunds and account recovery go to this address.${v.after ? ' Confirm it to send your request.' : ''}</p>
+    <label class="field">Email<input id="ev-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="ev.email" value="${esc(v.email || '')}"></label>
+    ${v.code ? codeBox('Email', v.sentTo, v.code, 'ev.otp', v.otp, done) + `<div class="row" style="gap:8px"><button class="btn ghost xs" data-act="evSend">Resend</button><button class="btn ghost xs" data-act="evFill">Fill code (demo)</button></div>` : ''}
+    ${v.code && v.sentTo === v.email ? `<button class="btn primary block" data-act="evDone" ${done ? '' : 'disabled'}>Confirm</button>` : `<button class="btn primary block" data-act="evSend" ${mailOk ? '' : 'disabled'}>Send code</button>`}
+  </div></div>`;
+}
+Object.assign(A, {
+  evOpen: after => { S.ev = { email: S.customer.email || '', code: '', otp: '', after: typeof after === 'string' && A[after] ? after : null }; S.modal = { kind: 'emailv' }; },
+  evClose: () => { S.modal = null; S.ev = null; },
+  evSend: () => { const v = S.ev; if (!v) return; v.email = String(v.email || '').trim(); v.code = String(100000 + Math.floor(Math.random() * 900000)); v.otp = ''; v.sentTo = v.email; toast('customer', 'Code sent', 'Check ' + v.email + ' (in this test build the code appears on screen).'); },
+  evFill: () => { if (S.ev) S.ev.otp = S.ev.code; },
+  evDone: () => { const v = S.ev; if (!v || !v.code || v.otp !== v.code) return; const cid = S.customer.cid || 'me', r = evRec(cid), after = v.after;
+    S.customer.email = v.email; S.customer.emailOk = true;
+    if (r) { r.email = v.email; r.emailOk = true; r.emailOkAt = now(); }
+    const acc = S.accounts.find(a => a.role === 'customer' && a.link && a.link.cid === cid); if (acc) acc.email = v.email;
+    evRelease(cid); S.modal = null; S.ev = null; toast('customer', 'Email confirmed', 'Thank you. Receipts and refunds will go to ' + v.email + '.');
+    if (after && A[after]) A[after](); }
+});
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7397,7 +7475,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 139;
+const BUILD = 140;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7577,7 +7655,7 @@ async function startSync() {
   } catch (e) { SYNC.status = 'Offline: ' + (e && e.message || e); SYNC.err = String(e && e.message || e); SYNC.mode = SYNC.mode === 'live' ? 'error' : SYNC.mode; SYNC.adapter = null; render();
     SYNC.tries = (SYNC.tries || 0) + 1; if (SYNC.mode === 'error' && SYNC.tries < 6) setTimeout(() => { SYNC.err = null; startSync(); }, Math.min(30000, 4000 * SYNC.tries)); }
 }
-function custRecordFromLocal() { const c = S.customer; return { cid: c.cid || 'me', name: c.name, email: c.email, phone: c.phone, addr: c.addr, idOk: !!c.idOk, suspended: false, createdAt: now() }; }
+function custRecordFromLocal() { const c = S.customer; return { cid: c.cid || 'me', name: c.name, email: c.email, phone: c.phone, addr: c.addr, idOk: !!c.idOk, emailOk: c.emailOk !== false, suspended: false, createdAt: now() }; }
 const myCust = () => S.customers[S.customer.cid || 'me'] || {};
 function uniqueId(prefix, exists) { let id; do { id = prefix + (2000 + Math.floor(Math.random() * 7999)); } while (exists(id)); return id; }
 
