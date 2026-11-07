@@ -1801,7 +1801,7 @@ function custAccount() {
   return `${bar('Account')}<div class="scroll" data-scroll="c-acc">${evBanner()}
     <div class="card" style="flex-direction:row;align-items:center">${avatar(c.name, 220, 56)}<div class="col grow"><b style="font-size:17px">${esc(c.name)}</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">${c.idOk ? 'ID verified' : 'Email & phone verified'}</span></div>
     <div class="list">
-      <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div><span class="pill good">Verified</span></div>
+      <div class="li">${ic('send', 20)}<div class="col grow"><b>Email</b><span class="small muted">${esc(c.email)}</span></div>${evOk() ? '<span class="pill good">Verified</span>' : '<button class="btn primary xs" data-act="evOpen">Confirm</button>'}</div>
       <div class="li">${ic('phone', 20)}<div class="col grow"><b>Mobile</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">Verified</span></div>
       <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
       ${modeRowCust()}
@@ -1832,7 +1832,7 @@ function custSplash() {
       <button class="btn ghost-light block" data-act="goPro">I'm a pro · start earning</button>
       <button class="btn link-light" data-act="demoSignIn">I already have an account</button>
       ${!isStandalone() && installEvt ? `<button class="btn link-light" data-act="installApp">${ic('phone', 16)} Install the app</button>` : ''}
-      <span class="tiny" style="text-align:center;opacity:.65">Verified customers and providers · Pay in app · <button type="button" class="inlinelink" style="color:inherit" data-act="termsOpen">Terms and Conditions</button></span>
+      <span class="tiny" style="text-align:center;opacity:.65">Verified customers and providers · Pay in app · <button type="button" class="inlinelink" style="color:inherit" data-act="termsOpen">Terms and Conditions</button> · <button type="button" class="inlinelink" style="color:inherit" data-act="privacyOpen">Privacy Policy</button></span>
     </div></div>`;
 }
 function custSignup() {
@@ -4250,7 +4250,7 @@ function locSheet() {
 }
 function termsRow(role, who) {
   const c = consentOf(role, who);
-  return `<button class="li" data-act="termsOpen">${ic('shield', 20)}<div class="col grow"><b>Terms and Conditions</b><span class="small muted">${c ? `You agreed to v${c.version} on ${fmtD(c.at)} ${fmtT(c.at)}` : `Version ${TERMS.version} · not accepted yet`}</span></div>${ic('chev', 16)}</button>`;
+  return `<button class="li" data-act="termsOpen">${ic('shield', 20)}<div class="col grow"><b>Terms and Conditions</b><span class="small muted">${c ? `You agreed to v${c.version} on ${fmtD(c.at)} ${fmtT(c.at)}` : `Version ${TERMS.version} · not accepted yet`}</span></div>${ic('chev', 16)}</button><button class="li" data-act="privacyOpen">${ic('eye', 20)}<div class="col grow"><b>Privacy Policy</b><span class="small muted">What we collect, who sees it, your rights · v${PRIVACY.version}</span></div>${ic('chev', 16)}</button>`;
 }
 function locRow(who) {
   const st = S.loc.status, on = st === 'granted' && (who === 'p' ? S.loc.shareProv : true);
@@ -4524,8 +4524,8 @@ function callScreen(role) {
 /*MGMT-BEGIN*/
 /* =============== Help desk: members report a problem in the app; staff reply within 48 hours (Terms §12). Tickets live in S.tickets (shared). =============== */
 const HELP_TOPICS = {
-  customer: [['Provider is late', 1], ['Service was not as described', 0], ['Charged the wrong amount', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Change the address', 0], ['Cancel this booking', 0], ['Refund', 0], ['Account or app problem', 0], ['Something else', 0]],
-  provider: [['Customer is not at the address', 1], ['Customer asked to pay outside the app', 0], ['Payout is missing or wrong', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Account or app problem', 0], ['Something else', 0]]
+  customer: [['Provider is late', 1], ['Service was not as described', 0], ['Charged the wrong amount', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Change the address', 0], ['Cancel this booking', 0], ['Refund', 0], ['Account or app problem', 0], ['Privacy request (my personal data)', 0], ['Something else', 0]],
+  provider: [['Customer is not at the address', 1], ['Customer asked to pay outside the app', 0], ['Payout is missing or wrong', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Account or app problem', 0], ['Privacy request (my personal data)', 0], ['Something else', 0]]
 };
 const HELP_SLA = 48 * HOUR;   // counted on working days only: Saturdays, Sundays and holidays (Payroll › Holidays list) do not count
 const PH_OFF = 8 * HOUR, phDate = t => new Date(t + PH_OFF).toISOString().slice(0, 10), phDayEnd = t => Math.floor((t + PH_OFF) / DAY) * DAY + DAY - PH_OFF;
@@ -5619,7 +5619,8 @@ const TERMS = {
       'The Company processes personal data in line with Republic Act No. 10173 (Data Privacy Act of 2012) and the rules of the National Privacy Commission. We collect the data needed to run Ticktap: account and contact details, identity and tax documents (Providers and Business Partners), addresses, booking and payment records, location while a booking is active, check-in photos, in-app messages and call logs.',
       'We use this data to verify Users, arrange and support bookings, process payments, refunds and taxes, keep Users safe, handle disputes and meet legal duties. We share only what is needed: for example, a Provider sees the Customer\'s name and address after payment, and payment partners receive payment details. We do not sell personal data.',
       'Promotions, events and news are sent only with your separate, optional consent, which you can give at sign-up and change for each channel (in-app notice, SMS, email) at any time in Account › Promos & news. Saying no does not affect your bookings; booking, payment and safety messages are always sent. We record each choice with its date and device.',
-      'You may ask to access, correct or delete your data, or object to its processing, by contacting our Data Protection Officer in the app. Some records must be kept for the periods required by tax and other laws.'
+      'You may ask to access, correct or delete your data, or object to its processing, by contacting our Data Protection Officer in the app. Some records must be kept for the periods required by tax and other laws.',
+      'Full details, including what we collect, who we share it with, how long we keep it and your rights, are in the Ticktap Privacy Policy, which forms part of these Terms.'
     ]],
     ['18. Suspension, forced withdrawal and closing an account', [
       'The Company may warn, restrict, suspend or close an account if a User breaks these Terms or the law, gives false information, receives serious or repeated complaints, or puts others at risk. Where it is safe and lawful to do so, we will tell the User why. Amounts owed for completed services will still be paid, less any refunds or amounts owed to the Company.',
@@ -5657,14 +5658,14 @@ function recordConsent(role, who, name, contact) {
 }
 function termsSheet() {
   const t = S.terms; if (!t || !t.open) return '';
-  const acc = t.accept;   // { role, who, name, contact, then }
+  const pv = t.doc === 'privacy', D = pv ? PRIVACY : TERMS, acc = t.accept;   // accept: { role, who, name, contact, then }
   return `<div class="demo-sheet" data-ov="terms" style="z-index:130"><div class="sheet terms" data-stop="1">
-    <div class="row between"><div class="col" style="gap:2px"><b style="font-size:18px">${esc(TERMS.title)}</b><span class="tiny muted">Version ${TERMS.version} · effective ${TERMS.effective} · one agreement for customers, businesses and providers</span></div><button class="iconbtn" data-act="termsClose" aria-label="Close">${ic('x', 20)}</button></div>
+    <div class="row between"><div class="col" style="gap:2px"><b style="font-size:18px">${esc(D.title)}</b><span class="tiny muted">Version ${D.version} · effective ${D.effective} · ${pv ? 'how Ticktap handles personal data' : 'one agreement for customers, businesses and providers'}</span></div><button class="iconbtn" data-act="termsClose" aria-label="Close">${ic('x', 20)}</button></div>
     <div class="terms-body" data-scroll="terms">
-      <p>${esc(TERMS.intro)}</p>
-      <div class="terms-toc">${TERMS.sections.map(([h], i) => `<button class="link" data-act="termsGo" data-arg="${i}">${esc(h)}</button>`).join('')}</div>
-      ${TERMS.sections.map(([h, ps], i) => `<section id="terms-s${i}"><h4>${esc(h)}</h4>${ps.map(p => `<p>${esc(p)}</p>`).join('')}</section>`).join('')}
-      <p class="tiny muted">${esc(TERMS.note)}</p>
+      <p>${esc(D.intro)}</p><div class="row" style="gap:8px" role="tablist"><button class="btn ${pv ? 'ghost' : 'secondary'} xs" role="tab" aria-selected="${!pv}" data-act="termsDoc" data-arg="terms">Terms and Conditions</button><button class="btn ${pv ? 'secondary' : 'ghost'} xs" role="tab" aria-selected="${pv}" data-act="termsDoc" data-arg="privacy">Privacy Policy</button></div>
+      <div class="terms-toc">${D.sections.map(([h], i) => `<button class="link" data-act="termsGo" data-arg="${i}">${esc(h)}</button>`).join('')}</div>
+      ${D.sections.map(([h, ps], i) => `<section id="terms-s${i}"><h4>${esc(h)}</h4>${ps.map(p => `<p>${esc(p)}</p>`).join('')}</section>`).join('')}
+      <p class="tiny muted">${esc(D.note)}</p>
     </div>
     ${acc ? `<label class="check"><input type="checkbox" id="terms-agree" data-bind="terms.ok" ${t.ok ? 'checked' : ''}>I have read and agree to the Ticktap Terms and Conditions (v${TERMS.version}), including the Disclaimer and Limitation of Liability (Sections 13–14) and the Privacy terms (Section 17).</label>
       <button class="btn primary block" data-act="termsAccept" ${t.ok ? '' : 'disabled'}>Agree and continue</button>` : `<button class="btn secondary block" data-act="termsClose">Close</button>`}
@@ -5792,7 +5793,7 @@ function authStart() {
       <p class="st-who">For <b>customers</b>, <b>pros</b> and <b>spas &amp; salons</b>. You choose on the next step.</p>
       <button class="st-trouble" data-act="authTrouble" aria-expanded="${tr ? 'true' : 'false'}"><span style="display:inline-flex;transform:rotate(${tr ? -90 : 90}deg)">${ic('chev', 22)}</span>Trouble signing in?</button>
       ${tr ? `<div class="st-tr"><button class="btn secondary block" data-act="authGo" data-arg="login">Log in with my Login ID</button><button class="btn ghost block" data-act="authGo" data-arg="forgot">Forgot my password</button><button class="btn ghost block" data-act="authGo" data-arg="activate">Staff of a business? Activate your account</button></div>` : ''}
-      <p class="st-terms">By continuing, you agree to our <button type="button" class="inlinelink" data-act="termsOpen">Terms of Use</button> and <button type="button" class="inlinelink" data-act="termsOpen">Privacy Policy</button>.</p>
+      <p class="st-terms">By continuing, you agree to our <button type="button" class="inlinelink" data-act="termsOpen">Terms of Use</button> and <button type="button" class="inlinelink" data-act="privacyOpen">Privacy Policy</button>.</p>
     </div>${toastsFor('auth')}</div>`;
 }
 function authWelcome() {
@@ -5835,7 +5836,7 @@ function authSignup() {
       ${t === 'customer' ? `<label class="check"><input type="checkbox" id="au-also-p" data-bind="auth.f.alsoProv" ${f.alsoProv ? 'checked' : ''}><span>I also want to <b>work as a provider</b> (apply after sign-up)</span></label>` : t === 'provider' ? `<label class="check"><input type="checkbox" id="au-also-c" data-bind="auth.f.alsoCust" ${f.alsoCust ? 'checked' : ''}><span>I also want to <b>book services as a customer</b></span></label>` : ''}
       ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
       ${mktSignup(f)}
-      <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability and the Privacy terms.</span></label>`;
+      <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability, and the <button type="button" class="inlinelink" data-act="privacyOpen">Privacy Policy</button>.</span></label>`;
     cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>${t === 'customer' ? 'Send SMS code' : 'Send verification codes'}</button>`;
   } else if (t === 'customer' && a.step === 2) {
     const pDone = f.pOtp && f.pOtp === f.pCode;
@@ -6515,6 +6516,8 @@ const A = {
   toastOpen: id => { const t = S.toasts.find(x => x.id === id); if (!t) return; S.toasts = S.toasts.filter(x => x.id !== id); openFromToast(t.pane, t.bid); },
   termsOpen: () => { S.terms = { open: true, ok: false, accept: null }; },
   termsClose: () => { S.terms = null; },
+  privacyOpen: () => { S.terms = { open: true, ok: false, accept: null, doc: 'privacy' }; },
+  termsDoc: d => { if (!S.terms) return; S.terms.doc = d === 'privacy' ? 'privacy' : 'terms'; setTimeout(() => { const el = document.querySelector('[data-scroll="terms"]'); if (el) el.scrollTop = 0; }, 0); },
   termsGo: i => { const el = document.getElementById('terms-s' + i); if (el) el.scrollIntoView({ block: 'start', behavior: 'smooth' }); },
   termsAccept: () => { const t = S.terms; if (!t || !t.accept || !t.ok) return; const a = t.accept; recordConsent(a.role, a.who, a.name, a.contact); S.terms = null;
     toast(a.role === 'business' ? 'business' : a.role, 'Terms accepted', 'Version ' + TERMS.version + ' · your consent is saved.'); if (a.then && A[a.then.act]) A[a.then.act](a.then.arg); },
@@ -7327,6 +7330,90 @@ Object.assign(A, {
     evRelease(cid); S.modal = null; S.ev = null; toast('customer', 'Email confirmed', 'Thank you. Receipts and refunds will go to ' + v.email + '.');
     if (after && A[after]) A[after](); }
 });
+/* =============== Privacy Policy (build 141, 2026-11-07) ===============
+   Drawn from Terms §17 and the app's actual data flows, written to the Data Privacy Act of 2012 (RA 10173), its IRR and
+   NPC circulars. Opened from the first screen, sign-up, Terms §17 and Account. Draft for review by Philippine counsel. */
+const PRIVACY = {
+  version: '1.0',
+  effective: 'November 7, 2026',
+  title: 'Ticktap Privacy Policy',
+  intro: 'This Privacy Policy explains what personal data Ticktap collects, why, who it is shared with, how long it is kept and the rights you have. It applies to Customers, Providers, Business Partners and their staff, trusted contacts of Providers, and anyone who contacts us. It forms part of the Ticktap Terms and Conditions; words such as "Customer", "Provider" and "Business Partner" have the meaning given there.',
+  sections: [
+    ['1. Who is responsible for your data', [
+      'Ticktap is operated by its operating company in the Philippines (the "Company", "we" or "us"), which is the personal information controller for the data described here. The Company\'s registered name, SEC registration number and address will be shown in Section 14 once registration is complete.',
+      'We have appointed a Data Protection Officer (DPO) who oversees how we handle personal data and answers privacy requests and complaints (Section 14).'
+    ]],
+    ['2. What we collect', [
+      'Account details: name, mobile number, email address, login ID, password (stored only in scrambled, hashed form), gender and birth year if you choose to give them, referral code, and your choices about promotions.',
+      'Identity and qualification records (Providers and Business Partner staff): government ID, a selfie matched against the ID, a recent photo, Tax Identification Number (TIN), certificates (for example TESDA) and work experience. Business Partners: business permit, BIR Certificate of Registration (Form 2303), DTI or SEC registration, barangay clearance, business TIN and the name of the authorised person. Customers may add a government ID to get a Verified badge; this is optional.',
+      'Booking records: services, prices, addresses where services are given, dates and times, booking status, cancellations, reschedules, reviews and ratings, help reports, no-show reports and how they were decided.',
+      'Payment records: amounts, payment method (GCash, Maya or card), refunds, Ticktap Credit, payouts to Providers and Business Partners, platform fees and tax withheld. Card and e-wallet log-in details are entered with the payment partner; the Company does not store full card numbers.',
+      'Location: the address you choose for a booking; and, only while a booking is active, the Provider\'s location so the Customer can follow arrival. Location is not tracked outside an active booking.',
+      'Messages, photos and calls: in-app chat messages and photos, check-in photos, and records of in-app calls with Ticktap staff (time, length and result). Calls between users and staff are not recorded unless you are told at the start of the call.',
+      'Device and usage data: device type, app version, alert (notification) settings, sign-in times, and error reports needed to keep the app working.',
+      'Data about other people: if a Provider adds a family member or trusted contact to follow their trips, we keep that person\'s name and contact. Please add someone only with their agreement.'
+    ]],
+    ['3. Sensitive personal information', [
+      'Government-issued ID numbers, TIN and similar identifiers are sensitive personal information under the Data Privacy Act. We process them only to verify identity, keep Users safe and meet tax law, keep them encrypted and limit who can see them to authorised staff.',
+      'We do not ask for health, religious, political or similar information. Please do not put it in messages or reviews.'
+    ]],
+    ['4. Why we use your data, and on what basis', [
+      'To create and run your account, arrange bookings, take payments, send refunds and pay out earnings: needed to perform our contract with you (the Terms).',
+      'To verify Providers, Business Partners and, if they choose, Customers; to keep Users safe at the door; to detect contact-sharing, fraud and misuse; and to decide disputes and no-show reports: our legitimate interest in a safe marketplace and, for sensitive information, as allowed by law to protect lawful rights and for the safety of Users.',
+      'To keep tax, accounting and transaction records, withhold and remit tax, issue BIR forms, and answer lawful requests from authorities: legal obligations, including under the National Internal Revenue Code and Republic Act No. 11967 (Internet Transactions Act of 2023).',
+      'To send booking, payment, safety and account messages (in-app, push alerts, SMS and email): needed to perform the contract. These cannot be turned off while you have an account.',
+      'To send promotions, events and news: only with your separate consent, which you can give or withdraw for each channel at any time in Account › Promos & news.',
+      'To improve the app and plan the service: using records in summarised or de-identified form where possible.'
+    ]],
+    ['5. Automated checks and AI tools', [
+      'The app automatically checks messages and photos for shared phone numbers, social media handles and similar contact details, and may block them. It also calculates fee bands and reward credits from your records. These checks follow fixed rules set out in the Terms.',
+      'We may use AI tools, under contract with the tool provider, to sort help reports, summarise cases and draft replies for our staff. Decisions about refunds, credits, penalties, approvals and suspensions are always made by a person. Our AI tool providers may not use your data to train their models. You may ask for a person to review any decision about you (Section 9).'
+    ]],
+    ['6. Who we share data with', [
+      'Other Users, only as needed for a booking: a Provider sees the Customer\'s name, booking details and service address after payment, and the Customer sees the Provider\'s name, photo, ratings and arrival. Phone numbers are not shown; users talk through in-app chat. A Provider\'s trusted contacts see only that Provider\'s trip status and pickup details.',
+      'Service providers who work for us under written agreements that require them to protect the data: payment partners (GCash, Maya, card processors), cloud hosting and database services, SMS and email delivery, push alert services, maps and routing, identity-check tools, AI tools (Section 5), and professional advisers such as auditors and lawyers.',
+      'Authorities: the Bureau of Internal Revenue, the Department of Trade and Industry, the National Privacy Commission, courts and law enforcement, when the law requires it or to protect the safety of a person.',
+      'A buyer or successor, if the business is sold or merged, under the same protections.',
+      'We do not sell personal data.'
+    ]],
+    ['7. Transfers outside the Philippines', [
+      'Some of our service providers (for example cloud hosting and AI tools) store or process data on servers outside the Philippines. We stay responsible for that data, choose providers with adequate security, and bind them by contract to protect it at the level the Data Privacy Act requires.'
+    ]],
+    ['8. How long we keep data', [
+      'Account data: while your account is open, and then up to 1 year to handle refunds, disputes and claims.',
+      'Booking, payment, refund, payout and tax records: for the period required by tax and commercial law (books and records are kept for up to 10 years).',
+      'Identity documents of Providers and Business Partners: while the account is open and up to 3 years after it closes, for safety and legal claims; then deleted.',
+      'Chat messages and check-in photos: up to 1 year after the booking, or longer if they are part of a report, dispute or legal case.',
+      'Live location during a booking: up to 30 days after the booking, unless needed for a report or dispute.',
+      'Consent records (Terms and promotions): as long as the account exists and for the period needed to prove the consent.',
+      'When a period ends, the data is deleted or made anonymous.'
+    ]],
+    ['9. Your rights', [
+      'Under the Data Privacy Act you have the right to be informed; to access your personal data; to object to processing, including for marketing; to have inaccurate data corrected; to have data erased or blocked when it is no longer needed or was processed unlawfully; to data portability (a copy in a common electronic format); and to claim damages.',
+      'To use these rights, send a request through Help in the app or to our DPO (Section 14). We will confirm who you are before acting, and answer within 15 working days. Using your rights is free, except that we may charge a reasonable fee for repeated or excessive requests.',
+      'Some data cannot be erased while the law requires us to keep it (Section 8), or while it is needed for an open booking, refund, dispute or legal claim. We will tell you if this applies.',
+      'If you are not satisfied with our answer, you may file a complaint with the National Privacy Commission (privacy.gov.ph).'
+    ]],
+    ['10. Security', [
+      'We use encryption in transit, hashed passwords, access limited by staff role and area, activity logs for staff actions, and regular reviews. Staff who handle personal data are bound by confidentiality.',
+      'No system is perfectly secure. If a personal data breach is likely to put you at real risk of serious harm, we will notify you and the National Privacy Commission within 72 hours of learning of it, as the law requires.'
+    ]],
+    ['11. Your phone and the app', [
+      'The app saves some data on your phone (for example your sign-in, settings and drafts) so it works quickly and offline. It does not use advertising trackers.',
+      'Location, camera, photos and alerts are used only after your phone asks your permission. Lock-screen alerts are required to send a booking request (Customers) or to work (Providers), because replies and arrival times arrive that way.'
+    ]],
+    ['12. Age', [
+      'Ticktap is for people aged 18 and over. We do not knowingly collect data from anyone under 18; if we learn that we have, we delete it. A Customer may book a service for a child or a pet, and is responsible for giving only the details the Provider needs.'
+    ]],
+    ['13. Changes to this Policy', [
+      'We will show any change in the app before it applies. If a change affects how we use data you have already given, we will ask for your consent where the law requires it.'
+    ]],
+    ['14. Contact and Data Protection Officer', [
+      'Data Protection Officer, Ticktap: use Help in the app and choose "Privacy request (my personal data)", or call Ticktap support at +63 2 8888 2254. The DPO\'s email address, the Company name, SEC registration number and business address will be shown here after registration with the National Privacy Commission.'
+    ]]
+  ],
+  note: 'Draft for review by Philippine counsel and the Data Protection Officer before launch, including registration with the National Privacy Commission.'
+};
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7475,7 +7562,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 140;
+const BUILD = 141;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
