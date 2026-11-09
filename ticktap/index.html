@@ -1495,7 +1495,7 @@ function custHome() {
       <label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:16px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile${CAT_IMG[k.id] ? ' img' : ''}">${catIcon(k.id, k.icon, 64)}</span>${k.name}</button>`).join('')}</div>
-      <button class="mission-btn" data-act="missionOpen" aria-label="Why Ticktap: open the story"><img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348"></button>
+      ${msHiddenToday() ? '' : `<button class="mission-btn" data-act="missionOpen" aria-label="Why Ticktap: open the story"><img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348"></button>`}
       ${covered() ? `<div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
       ${near.map(e => entryCard(e, true)).join('')}` : comingSoon()}
     </div>`;
@@ -3975,7 +3975,7 @@ function missionModal() {
             <li>${ic('check', 16)}Payment held in the app (GCash, Maya, card) until the service ends</li>
             <li>${ic('check', 16)}Pros set their own prices and hours, and are paid within 72 hours</li></ul></div>
         <div class="ms-join">${ic('hand', 28)}<b>Are you a skilled stylist, therapist or groomer?</b><p>Join Ticktap as an individual provider, or register your spa or salon and list your staff.</p>
-          <button class="btn primary block" data-act="missionJoin" data-arg="provider">Apply as a provider</button><button class="btn secondary block" data-act="missionJoin" data-arg="business">Register a business</button></div></div></section>
+          <button class="btn primary block" data-act="missionJoin" data-arg="provider">Apply as a provider</button><button class="btn secondary block" data-act="missionJoin" data-arg="business">Register your business</button></div></div></section>
       ${rv ? `<section class="ms-sec ms-quote"><div class="ms-stars">★★★★★</div><blockquote>“${esc(rv.r.text)}”</blockquote><span>— ${esc(rv.r.by || 'Ticktap customer')}, about ${esc(rv.p.name.split(' ')[0])} · ${esc(catName(rv.p.cat))}</span></section>` : ''}
       <footer class="ms-foot"><span><b>Ticktap</b> © 2026</span><span class="grow"></span><button data-act="missionTerms">Terms & privacy</button><span>Payments held safely in the app</span></footer>
     </div><div class="ms-today"><button data-act="missionHideToday">${ic('x', 15)} Don't show again today</button><button data-act="missionClose">Close</button></div></div></div>`;
@@ -6301,7 +6301,7 @@ const A = {
   deskCheck: id => { const u = admUser(); (S.opsLog || (S.opsLog = [])).unshift({ item: id, by: u ? u.name : 'Admin', at: now() }); S.opsLog = S.opsLog.slice(0, 300); },
   deskCheckAll: () => { const u = admUser(); deskItems().forEach(x => (S.opsLog || (S.opsLog = [])).unshift({ item: x.id, by: u ? u.name : 'Admin', at: now() })); S.opsLog = S.opsLog.slice(0, 300); toast('admin', 'Shift check recorded', deskItems().length + ' items'); },
   deskNote: () => { const t = String(S.admin.deskNote || '').trim(); if (!t) return; const u = admUser(); (S.opsNotes || (S.opsNotes = [])).unshift({ id: 'N' + Date.now().toString(36), text: t.slice(0, 400), by: u ? u.name : 'Admin', at: now() }); S.opsNotes = S.opsNotes.slice(0, 200); S.admin.deskNote = ''; },
-  missionHideToday: () => { const d = new Date(now()).toDateString(); S.msHide = d; lsSet('tt-ms-hide', d); S.modal = null; toast('customer', 'Hidden for today', 'The story will not pop up while you scroll. Tap the banner to open it any time.'); },
+  missionHideToday: () => { const d = new Date(now()).toDateString(); S.msHide = d; lsSet('tt-ms-hide', d); S.modal = null; toast('customer', 'Hidden for today', 'The Why Ticktap banner comes back tomorrow.'); },
   missionOpen: () => { if (Date.now() < PEEK_HUSH) return; peekEnd(true); S.modal = { kind: 'mission' }; setTimeout(() => { const sc = document.querySelector('.ms-scroll'); if (sc) sc.scrollTop = 0; }, 0); },
   missionClose: () => { if (S.modal && S.modal.kind === 'mission') S.modal = null; },
   missionBook: () => { S.modal = null; S.role = 'customer'; S.cust.screen = 'list'; S.cust.cat = null; },
@@ -7806,7 +7806,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 151;
+const BUILD = 152;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
