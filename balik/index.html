@@ -5636,7 +5636,7 @@ const TERMS = {
       'No off-app deals. Users may not offer, arrange or accept bookings or payments outside the app with someone they met through Ticktap, during or after a booking. Off-app deals are not covered by refunds, support, identity checks, safety tools or insurance.',
       'Each blocked attempt is recorded with the booking. After a third attempt on a booking, the Company reviews it. For a confirmed breach: a Provider loses 3 reward credits (Section 8); a Customer receives a written warning; a second confirmed breach within 90 days may lead to suspension for up to 30 days; arranging an off-app deal or repeated breaches may lead to forced withdrawal (Section 18).',
       'No extra charges. The price paid in the app is the full price of the service. A Provider (including Business Partner staff) may not ask a Customer for any other money, before, during or after the service, for any reason, including transport, fuel, parking, materials, products or "extra" work. The only exception is a tip that the Customer chooses to give without being asked; asking for a tip is not allowed.',
-      'A Customer who is asked for extra money should not pay and should report it through Help in the app. A review that mentions extra charges is treated as a report. For a confirmed case, the Provider loses 5 reward credits (Section 8); a serious or repeated case leads to forced withdrawal (Section 18). Any amount the Customer paid because of the request is returned as Ticktap Credit.'
+      'A Customer who is asked for extra money should not pay and should report it through Help in the app. A review that mentions extra charges is treated as a report. For a confirmed case, the Provider loses 5 reward credits (Section 8); a serious or repeated case leads to forced withdrawal (Section 18). Money handed over outside the app cannot be verified and the Customer has been told not to pay it: the Company does not refund, credit or compensate any amount paid outside the app, and the Customer may not claim it from the Company.'
     ]],
     ['11. Reviews', [
       'Customers may leave a star rating and a written review after a service. Reviews must be honest, based on the actual service and free of personal information, abuse or unlawful content. Photos cannot be added to reviews. The Company may hide reviews that break these rules.'
@@ -7550,7 +7550,7 @@ function xmProvCard() {
 }
 function xmCustCard(b) {
   return `<div class="card tight xm-card" role="note"><b class="small">${ic('shield', 16)} You have paid in full</b>
-    <span class="small">Your provider may not ask for transport, materials or any extra money. Tips are up to you. If you are asked to pay more, do not pay — tell us.</span>
+    <span class="small">Your provider may not ask for transport, materials or any extra money. Tips are up to you. If you are asked to pay more, do not pay — tell us. Money paid outside the app cannot be refunded by Ticktap.</span>
     <button class="btn secondary xs" data-act="xmReport" data-arg="${b.id}">Report extra charge</button></div>`;
 }
 /* Admin › Help desk: decision on a confirmed report */
@@ -7560,7 +7560,7 @@ function xmDecision(tk) {
   if (!p) return `<span class="small muted">No provider linked to this report.</span>`;
   if (tk.xm) return `<div class="card tight" style="background:var(--surface-2);border-color:transparent"><b class="small">Decision: ${esc(tk.xm.label)}</b><span class="tiny muted">${fmtD(tk.xm.at)} ${fmtT(tk.xm.at)}</span></div>`;
   return `<div class="card tight" style="gap:8px;border-color:var(--bad)"><b class="small">Extra-charge report · ${esc(p.name)}</b>
-    <span class="tiny muted">Check the chat, call both sides in the app, then decide. Rule: −5 reward credits, or removal for a serious or repeated case (${(p.xmCount || 0)} earlier case${p.xmCount === 1 ? '' : 's'}). If the customer paid extra, give it back as Ticktap Credit.</span>
+    <span class="tiny muted">Check the chat, call both sides in the app, then decide. Rule: −5 reward credits, or removal for a serious or repeated case (${(p.xmCount || 0)} earlier case${p.xmCount === 1 ? '' : 's'}). Money paid outside the app is not refunded or credited by Ticktap (Terms §10); say so in the reply.</span>
     <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn primary xs" data-act="xmPenalty" data-arg="${tk.id}">Confirmed · −5 credits</button><button class="btn danger xs" data-act="xmRemove" data-arg="${tk.id}">Confirmed · remove provider</button><button class="btn ghost xs" data-act="xmClear" data-arg="${tk.id}">Not confirmed</button></div></div>`;
 }
 function xmFromReview(b, text) {   // called after a review is saved
@@ -7731,7 +7731,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 145;
+const BUILD = 146;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
