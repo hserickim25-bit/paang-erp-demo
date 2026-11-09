@@ -225,7 +225,7 @@ button.brand:hover{background:var(--surface-2)}
 .chip{flex-shrink:0;height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--line-2);background:var(--surface);font-size:13px;font-weight:500;color:var(--fg-2)}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:500;color:var(--fg-2)}
-.input,.select,.textarea{width:100%;height:44px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);padding:0 12px;font-size:15px;color:var(--fg)}
+.input,.select,.textarea{width:100%;height:44px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);padding:0 12px;font-size:16px;color:var(--fg)}
 .textarea{height:auto;min-height:84px;padding:10px 12px;resize:vertical}
 .input:focus,.select:focus,.textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
 .check{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--fg-2);line-height:1.4}
@@ -817,6 +817,11 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .catsw-b:has(img){background:none!important;padding:0;overflow:hidden}
 .ms-ic.img{background:none!important;padding:0;overflow:hidden}
 .ms-ic.img img{width:100%;height:100%;display:block}
+
+/* Keep the page fitted to the phone (build 148): no double-tap zoom; 16 px inputs so iPhone does not zoom in on focus.
+   Pinch zoom stays available in the browser for people who need larger text; the installed app locks it (09-install-location.js). */
+html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+input[type="search"],input[type="text"],input[type="email"],input[type="tel"],input[type="number"],input[type="password"],textarea,select{font-size:max(16px,1em)}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1488,7 +1493,7 @@ function custHome() {
       ${guideTip('customer')}${ptBanner()}
       ${act ? activeCard(act) : ''}
       <label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
-        <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)"></label>
+        <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:16px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile${CAT_IMG[k.id] ? ' img' : ''}">${catIcon(k.id, k.icon, 64)}</span>${k.name}</button>`).join('')}</div>
       <button class="mission-btn" data-act="missionOpen" aria-label="Why Ticktap: open the story"><img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348"></button>
       ${covered() ? `<div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
@@ -1541,7 +1546,7 @@ function custList() {
     <div class="scroll" data-scroll="c-list">
       <button class="row" data-act="addrSheet" style="border:0;background:var(--surface-2);border-radius:10px;padding:9px 12px;text-align:left">${ic('pin', 16)}<span class="small grow">Distance from <b>${esc(a.label)} · ${esc(a.short)}</b></span><span class="chg-pill">Change</span></button>
       ${c.cat ? '' : `<label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
-        <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:15px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
+        <input id="c-q" class="grow" type="search" data-bind="cust.q" value="${esc(c.q)}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:16px;outline:none;color:var(--fg)">${c.q ? `<button class="iconbtn" style="width:30px;height:30px" data-act="clearQ" aria-label="Clear search">${ic('x', 16)}</button>` : ''}</label>`}
       ${c.cat && c.q ? `<button class="chip" aria-pressed="true" data-act="clearQ">${ic('search', 14)} “${esc(c.q)}” ${ic('x', 14)}</button>` : ''}
       <div class="chips">${f('nearest', 'Nearest')}${f('now', 'Available now')}${f('ind', 'Individuals')}${f('biz', 'Businesses')}${f('top', 'Rating 4.8+')}</div>
       ${c.q && all.length && all[0].close ? `<span class="small" style="color:var(--accent)">No exact match for “${esc(c.q)}” · showing close matches</span>` : ''}
@@ -7742,7 +7747,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 147;
+const BUILD = 148;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7797,6 +7802,8 @@ const pushKey = () => { const c = fbConfig(); return (c && c.vapidKey) || ''; };
 const pushTarget = () => ({ provider: 'provider:' + S.prov.id, business: 'business:' + S.biz.id, customer: 'customer:' + (S.customer.cid || 'me'), admin: 'admin', family: 'family:' + FAM.code })[S.role] || null;
 const pushIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const pushStandalone = () => { try { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; } catch (e) { return false; } };
+/* Installed app: lock zoom like a native app so the screen always fits the phone (build 148). The browser version keeps pinch zoom. */
+try { if (pushStandalone()) { const vm = document.querySelector('meta[name="viewport"]'); if (vm) vm.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover'); } } catch (e) { }
 const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window && window.isSecureContext;
 const pushLsKey = t => 'tt-push:' + SYNC.room + ':' + t;
 function pushState() {
