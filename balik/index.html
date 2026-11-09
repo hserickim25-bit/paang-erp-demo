@@ -805,6 +805,10 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 .ev-card .btn{align-self:flex-start}
 /* Services grouped by category on a profile (build 142) */
 .svc-grp{margin:6px 2px 0}
+/* No extra charges notice (build 145) */
+.xm-card{gap:6px;border-color:color-mix(in srgb,var(--bad) 30%,var(--line))}
+.xm-card b{display:flex;align-items:center;gap:6px}
+.xm-card .btn{align-self:flex-start}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1040,7 +1044,7 @@ const S = {
     tiers: [{ label: 'Tier 1', points: '0', rate: 20 }, { label: 'Tier 2', points: '1–2', rate: 22 }, { label: 'Tier 3', points: '3+', rate: 25 }],
     credit: { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null,
       bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 25 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 20 }, { label: 'Silver', min: 7, max: 8, rate: 17 }, { label: 'Gold', min: 9, max: 20, rate: 15 }],
-      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1, contact: -3 } },
+      rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1, contact: -3, extraMoney: -5 } },
     respond: 6, hold: 5, bookAheadHours: 72, lateTrigger: 0, penaltyAfter: 20, weeklyTarget: 30, dayTarget: 6, minDays: 5,
     whtThreshold: 500000, whtRate: 1, whtBase: 50, adminNumbers: '+63 917 800 1100, +63 917 800 1101',
     alertBiz: true, tellCustomer: true
@@ -1767,6 +1771,7 @@ function custTrack() {
         const O0 = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['rate', 'chk', 'talk'] }[b.status] || ['rate', 'chk', 'talk'], O = B.ns ? ['ns'].concat(O0) : O0;   /* a no-show report in progress, or the button to make one, comes first */   // what the customer acts on now comes first
         return O.map(k => k === O[0] && B[k] ? `<div class="job-next" data-next="${b.status}">${B[k]}</div>` : B[k]).join(''); })()}
       <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
+      ${['paid', 'departed', 'arrived', 'ended'].includes(b.status) ? xmCustCard(b) : ''}
       ${['paid', 'departed'].includes(b.status) ? (nsOpen(b) ? '' : provIsLate(b) ? lateWaitNote(b) : cancelPanel(b)) : ''}
       ${b.refund ? `<div class="card tight"><span class="eyebrow">Refund</span><div class="row between small"><span>${esc(b.refund.method)} · ${b.refund.days === 5 ? 'within 5 days' : 'within 24 hours'}</span><b class="num">${peso(b.refund.amount, 2)}</b></div><span class="tiny muted">Expected by ${fmtWhen(b.refund.dueBy)}${b.refund.fee ? ' · cancellation fee ' + peso(b.refund.fee, 2) : ''}</span></div>` : ''}
     </div>`;
@@ -2059,6 +2064,7 @@ function provJob() {
     ${['offered', 'paid', 'departed'].includes(b.status) ? (S.prov.cancelAsk === b.id ? `<div class="card tight" style="background:var(--bad-soft);border-color:transparent;gap:8px"><b class="small" style="color:var(--bad)">Cancel this job?</b><span class="small">${b.paidAt ? `The customer has paid, so they get a full refund and you lose <b>${Math.abs(CR().rules.paidCancel)} reward credits</b>.` : `You already accepted, so you lose <b>${Math.abs(CR().rules.acceptCancel)} reward credits</b>.`}</span><div class="row" style="gap:8px"><button class="btn danger sm grow" data-act="provCancel" data-arg="${b.id}">Cancel job</button><button class="btn secondary sm" data-act="provCancelAsk" data-arg="">Keep job</button></div></div>` : `<button class="btn ghost xs" style="align-self:flex-start;color:var(--bad)" data-act="provCancelAsk" data-arg="${b.id}">Can't do this job?</button>`) : ''}
     ${b.reminders && b.reminders.length && b.status === 'paid' ? remindersCard(b) : ''}
     ${['paid', 'departed'].includes(b.status) ? liveMap(b, me, 'p') : ''}
+    ${['paid', 'departed', 'arrived'].includes(b.status) ? xmProvCard() : ''}
     ${b.checkin ? `<div class="card tight" style="gap:8px"><div class="row between"><span class="eyebrow">Your check-in photo</span><span class="tiny muted">${fmtT(b.checkin.at)}</span></div><img src="${b.checkin.photo}" alt="Your check-in photo" style="width:100%;border-radius:10px;max-height:220px;object-fit:contain;background:#0E1520"></div>` : ''}
     <div class="list"><div class="li"><span class="muted small" style="width:80px">Service</span><b class="grow small">${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</b></div>
       <div class="li"><span class="muted small" style="width:80px">Address</span><span class="grow small">${esc(b.address)}</span></div>
@@ -2135,6 +2141,7 @@ function provPerf() {
         ${rule('bell', `No reply to 2 requests in a row (each request gives you ${S.settings.respond} min)`, R0.noReply2)}
         ${rule('x', 'Accepting a request, then cancelling', R0.acceptCancel)}
         ${rule('x', 'Cancelling after the customer has paid', R0.paidCancel)}
+        ${rule('alert', 'Asking a customer for money outside the app (transport, materials, extra fees) · a serious or repeated case means removal', R0.extraMoney != null ? R0.extraMoney : -5)}
       </div><span class="tiny muted">New providers start with ${C.start} credits. Credits update every Sunday and stay between ${C.min} and ${C.max}.</span></div>
     <div class="list">${CR().bands.map((t, i) => `<div class="li" style="${i === ti ? 'background:var(--accent-soft)' : ''}"><b class="grow">${t.label}</b><span class="small muted" style="width:110px">${t.min}${t.max >= C.max ? '+' : '–' + t.max} credits</span><b class="num">${rateAt(me, i)}%</b></div>`).join('')}</div>${me.biz ? `<span class="tiny muted">Spa staff rate: you started at ${staffRateAt(bandIdx(CR().start))}% with ${CR().start} credits. Credits move it between ${STAFF_MIN()}% and ${STAFF_MAX()}%. The fee is deducted from ${esc(biz(me.biz).name)}'s payout.</span>` : ''}
   </div>`;
@@ -3401,6 +3408,7 @@ function admHelp() {
   const detail = sel ? `<div class="panel"><div class="panel-h"><h3>${sel.id} · ${esc(sel.topic)}</h3>${tkState(sel)}</div><div class="panel-b col" style="gap:12px">
       <span class="small">${esc(sel.who)} · ${sel.role === 'customer' ? 'Customer' : 'Provider'} · sent ${fmtD(sel.at)} ${fmtT(sel.at)}${sel.urgent ? ' · <span class="pill bad" style="height:18px">Urgent</span>' : ''}${sel.late ? ' · <span class="pill warn" style="height:18px">Reported after 48 working h</span>' : ''}${sel.status === 'open' && sel.needs === 'staff' ? ' · reply due ' + fmtWhen(tkDue(sel)) + ' (' + left(sel) + ')' : ''}</span>
       ${rec}
+      ${xmDecision(sel)}
       <div class="col" style="gap:6px">${sel.msgs.map(m => `<div class="hp-msg ${m.by}"><span class="tiny muted">${m.by === 'staff' ? esc(m.name) + ' (staff)' : esc(m.name)} · ${fmtD(m.at)} ${fmtT(m.at)}</span><span class="small">${esc(m.text)}</span></div>`).join('')}</div>
       ${sel.status === 'resolved' ? `<span class="small"><b>Outcome:</b> ${esc(sel.outcome || '')} · ${fmtD(sel.resolvedAt)}</span><button class="btn ghost sm" data-act="admTkReopen" data-arg="${sel.id}">Reopen</button>`
       : `<div class="row" style="gap:6px">${staffDialBtn(sel.key, sel.bid, 'Call ' + esc(sel.who.split(' ')[0]) + ' in app')}</div><label class="field">Reply to ${esc(sel.who)}<textarea id="tk-reply" class="textarea" rows="3" data-bind="admin.tkReply" placeholder="What we checked and what happens next">${esc(S.admin.tkReply || '')}</textarea></label><button class="btn primary sm" data-act="admTkReply" data-arg="${sel.id}">${ic('send', 16)} Send reply</button>
@@ -3884,7 +3892,7 @@ function admSettings() {
       ${num('cr-daily', 'settings.credit.rules.daily', st.credit.rules.daily, 'Daily services target met', 'credits')}${num('cr-djobs', 'settings.credit.dailyJobs', st.credit.dailyJobs, 'Services a day', 'jobs')}
       ${num('cr-ddays', 'settings.credit.dailyDays', st.credit.dailyDays, 'Days needed in the week', 'days')}${num('cr-share', 'settings.credit.rules.share', st.credit.rules.share, 'Shared on social media (weekly)', 'credits')}
       ${num('cr-ref', 'settings.credit.rules.referral', st.credit.rules.referral, 'Each referred sign-up', 'credits')}${num('cr-late', 'settings.credit.rules.late', st.credit.rules.late, 'Late arrival', 'credits')}
-      ${num('cr-nr', 'settings.credit.rules.noReply2', st.credit.rules.noReply2, 'No reply to 2 requests in a row', 'credits')}${num('cr-ac', 'settings.credit.rules.acceptCancel', st.credit.rules.acceptCancel, 'Accepted, then cancelled', 'credits')}${num('cr-pc', 'settings.credit.rules.paidCancel', st.credit.rules.paidCancel, 'Cancelled after payment', 'credits')}
+      ${num('cr-nr', 'settings.credit.rules.noReply2', st.credit.rules.noReply2, 'No reply to 2 requests in a row', 'credits')}${num('cr-ac', 'settings.credit.rules.acceptCancel', st.credit.rules.acceptCancel, 'Accepted, then cancelled', 'credits')}${num('cr-pc', 'settings.credit.rules.paidCancel', st.credit.rules.paidCancel, 'Cancelled after payment', 'credits')}${num('cr-xm', 'settings.credit.rules.extraMoney', st.credit.rules.extraMoney, 'Asked a customer for extra money (confirmed)', 'credits')}
     </div></div></div>`,
     points: () => { const P = PTS(), ev = ptEventAt(now()), m = ptMultNow(), per = P.per || 100, ex = 1000, base = Math.floor(ex / per), val = P.value || 1;
       return `<div class="pt-now"><span class="pt-nowx">${m ? m + '×' : 'Off'}</span><div class="col grow" style="gap:4px;min-width:0">
@@ -4353,7 +4361,7 @@ function addTestPros() {
 }
 function normalizeCredits() {
   addTestPros();
-  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 25 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 20 }, { label: 'Silver', min: 7, max: 8, rate: 17 }, { label: 'Gold', min: 9, max: 20, rate: 15 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
+  const d = { start: 5, min: 0, max: 20, dailyJobs: 2, dailyDays: 7, lastWeek: null, bands: [{ label: 'Kaya Mo!', min: 0, max: 4, rate: 25 }, { label: 'Starter · Standard', min: 5, max: 6, rate: 20 }, { label: 'Silver', min: 7, max: 8, rate: 17 }, { label: 'Gold', min: 9, max: 20, rate: 15 }], rules: { hours: 1, daily: 1, share: 1, referral: 1, late: -1, under: -1, acceptCancel: -3, paidCancel: -5, noReply2: -1, contact: -3, extraMoney: -5 }, staffRates: [20, 15, 12, 10], staffMin: 10, staffMax: 20 };
   { const bs = S.settings.credit.bands; if (bs && bs[1] && (bs[1].label === 'Standard' || bs[1].label === 'Starter')) { bs[1].label = 'Starter · Standard'; if (bs[0] && bs[0].label === 'Starter') bs[0].label = 'Kaya Mo!'; } }
   if (!S.settings.credit || !S.settings.credit.feeV2) {   /* owner's decision 2026-11-06: individual fee 15–25% (was 22–30%); moves default rates only, custom rates stay */
     const bs = S.settings.credit && S.settings.credit.bands, was = [30, 25, 23, 22], to = [25, 20, 17, 15];
@@ -4557,8 +4565,9 @@ function callScreen(role) {
 
 /*MGMT-BEGIN*/
 /* =============== Help desk: members report a problem in the app; staff reply within 48 hours (Terms §12). Tickets live in S.tickets (shared). =============== */
+const XM_TOPIC_LABEL = 'Provider asked for extra money (transport, fees)';   /* = XM_TOPIC in 23-no-extra-charge.js */
 const HELP_TOPICS = {
-  customer: [['Provider is late', 1], ['Service was not as described', 0], ['Charged the wrong amount', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Change the address', 0], ['Cancel this booking', 0], ['Refund', 0], ['Account or app problem', 0], ['Privacy request (my personal data)', 0], ['Something else', 0]],
+  customer: [['Provider is late', 1], [XM_TOPIC_LABEL, 1], ['Service was not as described', 0], ['Charged the wrong amount', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Change the address', 0], ['Cancel this booking', 0], ['Refund', 0], ['Account or app problem', 0], ['Privacy request (my personal data)', 0], ['Something else', 0]],
   provider: [['Customer is not at the address', 1], ['Customer asked to pay outside the app', 0], ['Payout is missing or wrong', 0], ['Damage, loss or injury', 1], ['Safety concern', 1], ['Account or app problem', 0], ['Privacy request (my personal data)', 0], ['Something else', 0]]
 };
 const HELP_SLA = 48 * HOUR;   // counted on working days only: Saturdays, Sundays and holidays (Payroll › Holidays list) do not count
@@ -5554,8 +5563,8 @@ function admCalls() {
 }
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.7',
-  effective: 'November 7, 2026',
+  version: '1.8',
+  effective: 'November 9, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
   sections: [
@@ -5607,7 +5616,7 @@ const TERMS = {
     ['8. Reward credits for Providers', [
       'Every Provider starts with 5 reward credits. Credits are counted from Monday to Sunday and updated every Sunday, and are kept between 0 and 20.',
       'A Provider earns 1 credit for: 30 or more hours on green (stand-by) in the week; completing 2 or more services a day as set by the Company; sharing Ticktap on Facebook, Instagram or TikTok (once a week); and each customer or provider who joins with the Provider\'s referral code.',
-      'A Provider loses 1 credit for each late arrival and for a week with fewer than 30 hours on green, 3 credits for cancelling after accepting a request, 3 credits for each confirmed attempt to share contact details or arrange an off-app deal (Section 10), and 5 credits for cancelling after the Customer has paid.',
+      'A Provider loses 1 credit for each late arrival and for a week with fewer than 30 hours on green, 3 credits for cancelling after accepting a request, 3 credits for each confirmed attempt to share contact details or arrange an off-app deal (Section 10), 5 credits for each confirmed request for extra money (Section 10), and 5 credits for cancelling after the Customer has paid.',
       'The Platform Fee is set by the credits held after each Sunday update: 0 to 4 credits, 25%; 5 to 6 credits, 20%; 7 to 8 credits, 17%; 9 or more credits, 15%. The Company may review a Provider\'s record and adjust credits or the fee band where it finds an error or abuse.',
       'Reward credits are not money, cannot be transferred and have no cash value.'
     ]],
@@ -5625,7 +5634,9 @@ const TERMS = {
       'After payment, the Customer and Provider can send in-app messages and make in-app voice calls until the service ends. Phone numbers are not shared. Messages, call times and booking records are kept to help with safety and disputes.',
       'No contact details. Users may not share or ask for phone numbers, email addresses, social media or messaging accounts (such as Viber, WhatsApp, Telegram or Facebook), or any other way to contact each other outside Ticktap, in messages, calls, reviews, profiles or photos. The app blocks such details automatically, limits the digits that can be typed in one message, and may refuse photos that show contact details. Calls in the app are not recorded.',
       'No off-app deals. Users may not offer, arrange or accept bookings or payments outside the app with someone they met through Ticktap, during or after a booking. Off-app deals are not covered by refunds, support, identity checks, safety tools or insurance.',
-      'Each blocked attempt is recorded with the booking. After a third attempt on a booking, the Company reviews it. For a confirmed breach: a Provider loses 3 reward credits (Section 8); a Customer receives a written warning; a second confirmed breach within 90 days may lead to suspension for up to 30 days; arranging an off-app deal or repeated breaches may lead to forced withdrawal (Section 18).'
+      'Each blocked attempt is recorded with the booking. After a third attempt on a booking, the Company reviews it. For a confirmed breach: a Provider loses 3 reward credits (Section 8); a Customer receives a written warning; a second confirmed breach within 90 days may lead to suspension for up to 30 days; arranging an off-app deal or repeated breaches may lead to forced withdrawal (Section 18).',
+      'No extra charges. The price paid in the app is the full price of the service. A Provider (including Business Partner staff) may not ask a Customer for any other money, before, during or after the service, for any reason, including transport, fuel, parking, materials, products or "extra" work. The only exception is a tip that the Customer chooses to give without being asked; asking for a tip is not allowed.',
+      'A Customer who is asked for extra money should not pay and should report it through Help in the app. A review that mentions extra charges is treated as a report. For a confirmed case, the Provider loses 5 reward credits (Section 8); a serious or repeated case leads to forced withdrawal (Section 18). Any amount the Customer paid because of the request is returned as Ticktap Credit.'
     ]],
     ['11. Reviews', [
       'Customers may leave a star rating and a written review after a service. Reviews must be honest, based on the actual service and free of personal information, abuse or unlawful content. Photos cannot be added to reviews. The Company may hide reviews that break these rules.'
@@ -6425,6 +6436,7 @@ const A = {
     p.reviews.unshift({ by: 'Maria S.', stars: r.stars, text: r.text, tags: r.tags.slice(), photos: [], ago: 'Just now' });
     p.rating = Math.round(((p.rating * p.count) + r.stars) / (p.count + 1) * 10) / 10; p.count++;
     pushAlert('provider:' + p.id, `New ${r.stars}★ review`, r.text || 'Maria S. rated your service.', b.id, 'good');
+    xmFromReview(b, r.text);
     toast('provider', `New ${r.stars}★ review`, r.text ? r.text.slice(0, 60) : 'Maria S. rated your service.');
     toast('customer', 'Thanks for your review', `It now shows on ${p.name.split(' ')[0]}'s profile.`);
     S.cust.screen = 'home';
@@ -7523,6 +7535,54 @@ Object.assign(A, {
   apAlso: c => { const a = S.prov.apply; if (!a) return; const L = a.cats || (a.cats = []); a.cats = L.includes(c) ? L.filter(x => x !== c) : L.concat(c); },
   admCatToggle: arg => { const [pid, c] = String(arg).split('|'), p = prov(pid); if (!p || c === p.cat) return; const L = p.cats || []; p.cats = L.includes(c) ? L.filter(x => x !== c) : L.concat(c); }
 });
+/* ---------- No extra charges (build 145, owner's rule 2026-11-09) ----------
+   Providers may not ask a customer for any money outside the app — transport, materials, "extra" or anything else.
+   The only exception is a tip the customer chooses to give, unasked. A confirmed case (a Help report, or a review
+   that mentions it) means −5 reward credits or removal from Ticktap, decided by staff (Terms v1.8).
+   Customers: do not pay; report it in Help. A review that mentions extra charges opens a Help report automatically,
+   so it reaches the Help desk and the Ops desk. */
+const XM_TOPIC = XM_TOPIC_LABEL;
+const XM_WORDS = /pamasahe|transpo|transport(ation)? (fee|money|allowance)|gas money|extra (fee|charge|payment|money|cash)|additional (fee|charge|payment)|asked (me )?(for|to pay) (more|extra|cash|money)|humingi.{0,20}(pera|bayad)|nanghingi|singil|dagdag bayad/i;
+function xmProvCard() {
+  return `<div class="card tight xm-card" role="note"><b class="small">${ic('alert', 16)} No extra charges</b>
+    <span class="small">The customer has paid in the app. Never ask for transport, materials or any other money. A tip is fine only if the customer offers it.</span>
+    <span class="tiny" style="color:var(--bad)">Asking for money: −5 reward credits or removal from Ticktap.</span></div>`;
+}
+function xmCustCard(b) {
+  return `<div class="card tight xm-card" role="note"><b class="small">${ic('shield', 16)} You have paid in full</b>
+    <span class="small">Your provider may not ask for transport, materials or any extra money. Tips are up to you. If you are asked to pay more, do not pay — tell us.</span>
+    <button class="btn secondary xs" data-act="xmReport" data-arg="${b.id}">Report extra charge</button></div>`;
+}
+/* Admin › Help desk: decision on a confirmed report */
+function xmDecision(tk) {
+  if (!tk || tk.topic !== XM_TOPIC) return '';
+  const b = tk.bid ? bk(tk.bid) : null, p = b && b.pid ? prov(b.pid) : null;
+  if (!p) return `<span class="small muted">No provider linked to this report.</span>`;
+  if (tk.xm) return `<div class="card tight" style="background:var(--surface-2);border-color:transparent"><b class="small">Decision: ${esc(tk.xm.label)}</b><span class="tiny muted">${fmtD(tk.xm.at)} ${fmtT(tk.xm.at)}</span></div>`;
+  return `<div class="card tight" style="gap:8px;border-color:var(--bad)"><b class="small">Extra-charge report · ${esc(p.name)}</b>
+    <span class="tiny muted">Check the chat, call both sides in the app, then decide. Rule: −5 reward credits, or removal for a serious or repeated case (${(p.xmCount || 0)} earlier case${p.xmCount === 1 ? '' : 's'}). If the customer paid extra, give it back as Ticktap Credit.</span>
+    <div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn primary xs" data-act="xmPenalty" data-arg="${tk.id}">Confirmed · −5 credits</button><button class="btn danger xs" data-act="xmRemove" data-arg="${tk.id}">Confirmed · remove provider</button><button class="btn ghost xs" data-act="xmClear" data-arg="${tk.id}">Not confirmed</button></div></div>`;
+}
+function xmFromReview(b, text) {   // called after a review is saved
+  if (!b || !text || !XM_WORDS.test(text) || (S.tickets || []).some(t => t.bid === b.id && t.topic === XM_TOPIC)) return;
+  const t = now(), id = 'T-' + (1043 + (S.tickets || []).length) + Math.random().toString(36).slice(2, 4).toUpperCase();
+  S.tickets.unshift({ id, at: t, role: 'customer', key: tkKey('customer'), who: b.customer || 'Customer', bid: b.id, topic: XM_TOPIC, urgent: true, late: false, status: 'open', needs: 'staff', clock: t, fromReview: true,
+    msgs: [{ by: 'member', name: b.customer || 'Customer', at: t, text: 'From the review: ' + text }] });
+  logB(b, 'Review mentions extra charges · Help report ' + id + ' opened');
+  pushAlert('admin', 'URGENT · Review mentions extra charges', (b.customer || 'Customer') + ' on ' + b.id + ' · ' + id, b.id, 'bad');
+}
+Object.assign(A, {
+  xmReport: bid => { S.cust.bid = bid || S.cust.bid; S.cust.help = { bid: bid || S.cust.bid || null, topic: XM_TOPIC, text: '', reply: '', open: null }; },
+  xmPenalty: id => { const tk = (S.tickets || []).find(x => x.id === id), b = tk && bk(tk.bid), p = b && prov(b.pid); if (!p || tk.xm) return;
+    addCredit(p, CR().rules.extraMoney, 'Asked a customer for extra money · ' + b.id, b.id, 'extraMoney', 'xm:' + b.id); p.xmCount = (p.xmCount || 0) + 1;
+    tk.xm = { d: 'penalty', label: '−5 reward credits', at: now() }; logB(b, 'Extra-charge report confirmed · −5 reward credits');
+    pushAlert('provider:' + p.id, 'Extra-charge report confirmed', 'You asked a customer for money outside the app (' + b.id + '). −5 reward credits. Another case means removal from Ticktap.', b.id, 'bad');
+    toast('admin', '−5 credits · ' + p.name, 'Write the outcome and reply to the customer, then resolve.'); },
+  xmRemove: id => { const tk = (S.tickets || []).find(x => x.id === id), b = tk && bk(tk.bid), p = b && prov(b.pid); if (!p || tk.xm) return;
+    p.xmCount = (p.xmCount || 0) + 1; tk.xm = { d: 'remove', label: 'Provider removed', at: now() }; logB(b, 'Extra-charge report confirmed · provider to be removed');
+    A.admExpel('provider|' + p.id); if (S.modal && S.modal.kind === 'expel') { S.modal.reason = 'Paying or asking to be paid outside the app'; S.modal.note = 'Help report ' + id + ' · ' + b.id; } },
+  xmClear: id => { const tk = (S.tickets || []).find(x => x.id === id); if (!tk || tk.xm) return; tk.xm = { d: 'none', label: 'Not confirmed', at: now() }; }
+});
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7671,7 +7731,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 144;
+const BUILD = 145;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
