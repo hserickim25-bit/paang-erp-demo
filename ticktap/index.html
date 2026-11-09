@@ -3869,7 +3869,7 @@ function admOverview() {
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Job value per provider · ${new Date(n).toLocaleString('en-US', { month: 'long' })}</h3><span class="small muted">gross customer payments</span></div><div class="panel-b">
       ${perProv.map(({ p, v }) => `<div class="hbar"><span class="ellipsis">${esc(p.name)}${p.returning ? ' <span class="ret" style="font-size:10px">R</span>' : ''}</span><div class="track"><span style="width:${v / max * 100}%"></span></div><span class="num" style="text-align:right">${peso(v)}</span></div>`).join('')}
       <span class="tiny muted">R = returning professional</span></div></div>
-    <div class="narrow panel"><div class="panel-h"><h3>Admin SMS feed</h3></div><div class="panel-b">${S.sms.slice(0, 6).map(s => `<div class="col" style="gap:2px;border-bottom:1px solid var(--line);padding-bottom:8px"><span class="tiny muted num">${fmtT(s.at)} · to ${esc(s.to)}</span><span class="small" style="${s.kind === 'late' ? 'color:var(--bad)' : ''}">${esc(s.text)}</span></div>`).join('') || '<div class="empty">No SMS yet.</div>'}</div></div></div>`;
+    <div class="narrow panel"><div class="panel-h"><h3>Admin SMS feed</h3></div><div class="panel-b">${smsCostLine()}${S.sms.slice(0, 6).map(s => `<div class="col" style="gap:2px;border-bottom:1px solid var(--line);padding-bottom:8px"><span class="tiny muted num">${fmtT(s.at)} · to ${esc(s.to)}</span><span class="small" style="${s.kind === 'late' ? 'color:var(--bad)' : ''}">${esc(s.text)}</span></div>`).join('') || '<div class="empty">No SMS yet.</div>'}</div></div></div>`;
 }
 function admLate() {
   const list = S.bookings.filter(b => b.late).sort((a, b) => (a.late.resolved - b.late.resolved) || b.late.at - a.late.at);
@@ -5579,8 +5579,8 @@ function admCalls() {
 }
 /* =============== Terms and Conditions (one agreement for customers, business partners and providers) =============== */
 const TERMS = {
-  version: '1.8',
-  effective: 'November 9, 2026',
+  version: '1.9',
+  effective: 'November 10, 2026',
   title: 'Ticktap Terms and Conditions',
   intro: 'These Terms and Conditions ("Terms") are one agreement that applies to everyone who uses Ticktap: customers who book services, businesses that list their staff, and individual service providers. Please read them carefully. By ticking "I agree" when you sign up, or by using Ticktap, you accept these Terms.',
   sections: [
@@ -5598,7 +5598,7 @@ const TERMS = {
     ]],
     ['4. Eligibility and accounts', [
       'You must be at least 18 years old and able to enter into a binding contract under Philippine law.',
-      'Customers sign up with a verified mobile number and confirm their email address within 7 days of signing up; until it is confirmed, refunds are held, and after 7 days it must be confirmed before a new booking. Providers and Business Partners verify both their email address and mobile number at sign-up. Adding a government ID is optional and shows a Verified badge to providers.',
+      'Customers sign up with a verified mobile number and confirm their email address within 7 days of signing up; until it is confirmed, refunds are held, and after 7 days it must be confirmed before a new booking. Providers and Business Partners verify both their email address and mobile number at sign-up. A User who signs up with a Google or Facebook account does not receive verification codes: the email address is the one that service has confirmed, and the mobile number given must be the User\'s own; logging in is through that account. Adding a government ID is optional and shows a Verified badge to providers.',
       'Providers must give a valid government ID, a selfie that matches the ID, a Tax Identification Number (TIN), a recent clear photo of themselves and truthful work experience. Business Partners must give their business registration details and must make sure their staff meet the same requirements.',
       'You are responsible for keeping your login and device secure and for everything done through your account. Information you give must be true, complete and kept up to date. One person or business may hold only one account per role.'
     ]],
@@ -5827,6 +5827,7 @@ function authShell(title, back, body, cta) {
 function authPane() {
   const A0 = S.auth || (S.auth = { screen: 'start' });
   if (A0.screen === 'start') return authStart();
+  if (A0.screen === 'social') return authSocialScreen();
   if (A0.screen === 'login') return authLogin();
   if (A0.screen === 'forgot') return authForgot();
   if (A0.screen === 'activate') return authActivate();
@@ -5862,7 +5863,7 @@ function authWelcome() {
   return `<div class="screen" data-pane="auth"><div class="scroll" data-scroll="auth" style="gap:14px;padding-top:calc(18px + env(safe-area-inset-top,0px))">
     <button class="btn ghost sm" style="align-self:flex-start" data-act="authStart"><span style="display:inline-flex;transform:rotate(180deg)">${ic('chev', 16)}</span> Back</button>
     <div class="logo-plain" style="align-self:center;width:min(220px,60vw)">${brandPic(LOGO_T, LOGO_D, 'Ticktap')}</div>
-    <div class="col" style="gap:2px;text-align:center"><h2 style="font-size:21px">Join with email</h2><span class="small muted">Choose how you want to join</span></div>
+    <div class="col" style="gap:2px;text-align:center"><h2 style="font-size:21px">${S.auth.social ? 'Signed in with ' + esc(S.auth.social.who) : 'Join with email'}</h2><span class="small muted">${S.auth.social ? esc(S.auth.social.email) + ' · choose how you want to join' : 'Choose how you want to join'}</span></div>
     ${card('customer', 'user', 'Customer', 'Book verified pros for home beauty, massage and pet care')}
     ${card('provider', 'bag', 'Individual provider', 'Run your own business with your skills · ID, TIN and face check')}
     ${card('business', 'building', 'Business', 'Register your salon or spa · permit and BIR documents')}
@@ -5883,22 +5884,22 @@ const credOk = f => LOGIN_RE.test(f.loginId || '') && !acctByLogin(f.loginId) &&
 const DOCS = [['permit', "Business permit / Mayor's permit", true], ['bir', 'BIR Certificate of Registration (Form 2303)', true], ['reg', 'DTI or SEC registration', true], ['brgy', 'Barangay clearance', false]];
 function authSignup() {
   const a = S.auth, f = a.f, t = a.type;
-  const total = t === 'business' ? 5 : 3;   /* customer: details · phone + login · address (email confirmed later, 20-email-verify.js) */
-  const steps = `<div class="row" style="gap:6px">${Array.from({ length: total }, (_, i) => `<div class="progress grow"><span style="width:${i + 1 <= a.step ? 100 : 0}%"></span></div>`).join('')}</div>`;
-  const head = (h, sub) => `<span class="pill accent" style="align-self:flex-start">${ROLE_NAME[t]} sign-up</span><h2 style="font-size:22px">${h}</h2><p class="small muted">Step ${a.step} of ${total}${t === 'provider' && a.step === 3 ? ' · then your provider profile' : ''} · ${sub}</p>`;
+  const so = !!f.social, total = so ? socialSteps(t).length : t === 'business' ? 5 : 3, shown = so ? socialSteps(t).indexOf(a.step) + 1 : a.step;   /* customer: details · phone + login · address (email confirmed later, 20-email-verify.js) */
+  const steps = `<div class="row" style="gap:6px">${Array.from({ length: total }, (_, i) => `<div class="progress grow"><span style="width:${i + 1 <= shown ? 100 : 0}%"></span></div>`).join('')}</div>`;
+  const head = (h, sub) => `<span class="pill accent" style="align-self:flex-start">${ROLE_NAME[t]} sign-up</span><h2 style="font-size:22px">${h}</h2><p class="small muted">Step ${shown} of ${total}${t === 'provider' && a.step === 3 ? ' · then your provider profile' : ''} · ${sub}</p>`;
   let body = '', cta = '';
   const emailOk = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email || ''), phoneOk = String(f.phone || '').replace(/\D/g, '').length >= 10;
   if (a.step === 1) {
-    body = head(t === 'business' ? 'Owner or authorized person' : 'Your details', t === 'business' ? 'Use your own email and mobile number.' : t === 'customer' ? 'We verify your mobile number now. You confirm your email later.' : 'We verify your email and mobile number.') + `
+    body = head(t === 'business' ? 'Owner or authorized person' : 'Your details', t === 'business' ? 'Use your own email and mobile number.' : so ? 'Your ' + f.social + ' account confirms your email. No SMS code needed.' : t === 'customer' ? 'We verify your mobile number now. You confirm your email later.' : 'We verify your email and mobile number.') + `
       <label class="field">Full name<input id="au-name" class="input" autocomplete="name" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
-      <label class="field">Email<input id="au-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@example.com"></label>
+      <label class="field">Email<input id="au-email" class="input" type="email" inputmode="email" autocomplete="email" ${so ? 'readonly aria-readonly="true"' : ''} data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@example.com"></label>
       <label class="field">Mobile number<div class="row"><span class="input" style="width:70px;display:grid;place-items:center">+63</span><input id="au-phone" class="input" inputmode="numeric" autocomplete="tel-national" data-bind="auth.f.phone" value="${esc(f.phone || '')}" placeholder="917 555 0142"></div></label>
       ${t !== 'business' ? `<div class="row" style="gap:10px"><label class="field grow">Gender <span class="muted small" style="font-weight:400">(optional)</span><select id="au-gender" class="select" data-bind="auth.f.gender"><option value="">Prefer not to say</option><option value="female" ${f.gender === 'female' ? 'selected' : ''}>Female</option><option value="male" ${f.gender === 'male' ? 'selected' : ''}>Male</option></select></label><label class="field" style="width:120px">Birth year <span class="muted small" style="font-weight:400">(optional)</span><input id="au-by" class="input num" inputmode="numeric" maxlength="4" data-bind="auth.f.by" value="${esc(f.by || '')}" placeholder="e.g. 1992"></label></div>` : ''}
       ${t === 'customer' ? `<label class="check"><input type="checkbox" id="au-also-p" data-bind="auth.f.alsoProv" ${f.alsoProv ? 'checked' : ''}><span>I also want to <b>work as a provider</b> (apply after sign-up)</span></label>` : t === 'provider' ? `<label class="check"><input type="checkbox" id="au-also-c" data-bind="auth.f.alsoCust" ${f.alsoCust ? 'checked' : ''}><span>I also want to <b>book services as a customer</b></span></label>` : ''}
       ${t !== 'business' ? `<label class="field">Referral code <span class="muted small" style="font-weight:400">(optional)</span><input id="au-ref" class="input" data-bind="auth.f.ref" value="${esc(f.ref || '')}" placeholder="e.g. LIZA-P1"></label>` : ''}
       ${mktSignup(f)}
       <label class="check"><input type="checkbox" id="au-terms" data-bind="auth.f.terms" ${f.terms ? 'checked' : ''}><span>I have read and agree to the <button type="button" class="inlinelink" data-act="termsOpen">Ticktap Terms and Conditions</button> (v${TERMS.version}), including the disclaimer of liability, and the <button type="button" class="inlinelink" data-act="privacyOpen">Privacy Policy</button>.</span></label>`;
-    cta = `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>${t === 'customer' ? 'Send SMS code' : 'Send verification codes'}</button>`;
+    cta = so ? `<button class="btn primary block" data-act="auSocialNext">${t === 'provider' ? 'Create account and continue' : 'Continue'}</button>` : `<button class="btn primary block" data-act="auSend" ${!(String(f.name || '').trim() && emailOk && phoneOk && f.terms) ? 'disabled' : ''}>${t === 'customer' ? 'Send SMS code' : 'Send verification codes'}</button>`;
   } else if (t === 'customer' && a.step === 2) {
     const pDone = f.pOtp && f.pOtp === f.pCode;
     body = head('Verify phone and create login', 'In this test build the code appears on screen.') + codeBox('SMS', '+63 ' + f.phone, f.pCode, 'auth.f.pOtp', f.pOtp, pDone) +
@@ -6240,14 +6241,13 @@ function sendRequest() {
     logB(b, 'Business alerted to assign staff');
   } else notifyProviderOfRequest(b, src);
   c.bid = b.id; c.cart = []; c.screen = 'request';
-  toast('customer', 'Request sent', isBiz ? src.name + ' will assign a therapist.' : `${src.name.split(' ')[0]} was alerted by app and SMS.`);
+  toast('customer', 'Request sent', isBiz ? src.name + ' will assign a therapist.' : `${src.name.split(' ')[0]} was alerted in the app.`);
 }
 function notifyProviderOfRequest(b, p) {
   pushAlert('provider:' + p.id, 'New request', `${b.services.map(s => s.name).join(' + ')} · ${fmtKm(haversine(p, b))}`, b.id);
-  sendSms(p.phone, `Ticktap: New booking request, ${b.services[0].name}. Accept or decline: ticktap.ph/r/${b.id.slice(2)}`);
+  b.reqAt = now();   /* SMS follows only if the app alert is not answered in time (smsFallbackTick, 24-social-sms.js) */
   toast('provider', 'Ticktap · New request', `${b.services.map(s => s.name).join(' + ')} · ${fmtKm(haversine(p, b))} away`);
-  toast('provider', 'SMS · Ticktap', 'New booking request. Accept or decline: ticktap.ph/r/' + b.id.slice(2), true);
-  logB(b, `App alert and SMS sent to ${p.name}`);
+  logB(b, `App alert sent to ${p.name}`);
 }
 function endService(b, auto = false) {
   const p = prov(b.pid);
@@ -6435,7 +6435,6 @@ const A = {
       logB(b, `Customer accepted arrival time and paid ${peso(b.gross)} via ${S.customer.pay}`);
       pushAlert('provider:' + p.id, b.when === 'later' ? 'Payment received · booking confirmed' : 'Payment received · depart', `Arrive by ${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}.`, b.id, 'good');
       toast('provider', 'Payment received', `Depart now · arrive by ${fmtT(b.promisedAt)}.`);
-      sendSms(p.phone, `Ticktap: Customer paid for ${b.id}. Arrive by ${fmtT(b.promisedAt)}.`);
       c.pay.stage = 'done'; render();
       setTimeout(() => { c.pay = null; c.bid = b.id; c.screen = 'track'; render(); }, 900);
     }, 1100);
@@ -6584,26 +6583,25 @@ const A = {
   termsAccept: () => { const t = S.terms; if (!t || !t.accept || !t.ok) return; const a = t.accept; recordConsent(a.role, a.who, a.name, a.contact); S.terms = null;
     toast(a.role === 'business' ? 'business' : a.role, 'Terms accepted', 'Version ' + TERMS.version + ' · your consent is saved.'); if (a.then && A[a.then.act]) A[a.then.act](a.then.arg); },
   bizTerms: () => { const b = biz(S.biz.id); needTerms('business', b.id, b.name, b.phone || '', null); },
-  authType: t => { S.pwShow = null; S.auth = { screen: 'signup', type: t, step: 1, f: { ref: urlRef(), bcat: 'massage', docs: {} } }; },
+  authType: t => { S.pwShow = null; const so = S.auth && S.auth.social; S.auth = { screen: 'signup', type: t, step: 1, f: Object.assign({ ref: urlRef(), bcat: 'massage', docs: {} }, so ? { social: so.who, name: so.name, email: so.email } : {}) }; },
   authGo: sc => { S.pwShow = null; S.auth = { screen: sc, step: 1, f: {} }; },
   authWelcome: () => { S.auth = { screen: 'welcome' }; },
   authStart: () => { S.auth = { screen: 'start' }; },
   authTrouble: () => { S.auth.trouble = !S.auth.trouble; },
-  authSocial: who => { S.auth = { screen: 'welcome' }; toast('auth', who + ' sign-in is coming soon', 'It opens with the live app. For now, join with your email.'); },
-  auBack: () => { const a = S.auth; if (a.step > 1) a.step--; else S.auth = { screen: 'welcome' }; },
+  auBack: () => { const a = S.auth; if (a.f && a.f.social && a.step > 1) { const L = socialSteps(a.type), i = L.indexOf(a.step); a.step = i > 0 ? L[i - 1] : 1; return; } if (a.step > 1) a.step--; else S.auth = { screen: 'welcome', social: a.f && a.f.social ? { who: a.f.social, name: a.f.name, email: a.f.email } : null }; },
   auSend: () => { const f = S.auth.f; if (S.auth.type === 'customer') { f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.pOtp = ''; S.auth.step = 2; toast('auth', 'Code sent', 'SMS to +63 ' + f.phone); return; } f.eCode = String(100000 + Math.floor(Math.random() * 900000)); f.pCode = String(100000 + Math.floor(Math.random() * 900000)); f.eOtp = f.pOtp = ''; S.auth.step = 2; toast('auth', 'Codes sent', 'Email to ' + f.email + ' and SMS to +63 ' + f.phone); },
   auFill: () => { const f = S.auth.f; f.eOtp = f.eCode; f.pOtp = f.pCode; },
   auNext: () => { S.auth.step++; },
   auAddr: id => { S.auth.f.addr = id; S.customer.addr = id; },
   auCustomer: () => { const f = S.auth.f, c = S.customer; const cid = 'c' + Date.now().toString(36).slice(-4) + Math.random().toString(36).slice(2, 5);
-    Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: false, phoneOk: true, idOk: false, signedIn: true });
-    S.customers[cid] = custRecordFromLocal(); S.customers[cid].emailDue = now() + EV_DAYS * DAY; S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; if (f.mkt) mktSet('c:' + cid, 'all', true, 'Ticked “Promos & news” at sign-up'); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
+    Object.assign(c, { cid, name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), addr: f.addr, emailOk: !!f.social, phoneOk: !f.social, idOk: false, signedIn: true });
+    S.customers[cid] = custRecordFromLocal(); if (!f.social) S.customers[cid].emailDue = now() + EV_DAYS * DAY; S.customers[cid].addrs = (c.extraAddrs || []).slice(); if (f.gender) S.customers[cid].gender = f.gender; if (+f.by > 1900) S.customers[cid].birthYear = +f.by; if (f.mkt) mktSet('c:' + cid, 'all', true, 'Ticked “Promos & news” at sign-up'); recordConsent('customer', cid, c.name, c.email + ' · ' + c.phone);
     { const rp = provByRef(f.ref); if (rp) { S.customers[cid].refBy = rp.id; addCredit(rp, CR().rules.referral, 'Referral · new customer ' + c.name, null, 'referral', 'ref:' + cid); } }
-    const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
+    const salt = newSalt(); const a = { id: 'u-' + cid, loginId: f.loginId.trim(), role: 'customer', name: c.name, email: c.email, phone: c.phone, link: { cid }, status: 'active', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), social: f.social || null };
     S.accounts.push(a); startSession(a); S.cust.screen = 'home'; toast('customer', 'Welcome to Ticktap', 'Your account ' + a.loginId + ' is ready.');
     if (f.alsoProv) setTimeout(() => { A.becomeProv(); render(); }, 50); },
   auProvider: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36);
-    const a = { mkt: !!f.mkt, gender: f.gender || '', birthYear: +f.by > 1900 ? +f.by : 0, id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '' };
+    const a = { mkt: !!f.mkt, gender: f.gender || '', birthYear: +f.by > 1900 ? +f.by : 0, id: uid, loginId: f.loginId.trim(), role: 'provider', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: {}, status: 'applying', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), ref: f.ref || '', social: f.social || null };
     if (f.alsoCust) newCustFor(a);
     S.accounts.push(a); S.session = { uid, at: Date.now(), mode: 'provider' }; S.auth = null; S.role = 'provider'; A.startApply(); S.prov.apply.name = a.name; S.prov.apply.ref = f.ref || ''; S.prov.apply.uid = uid;
     toast('provider', 'Account created', 'Now set up your provider profile.'); },
@@ -6611,7 +6609,7 @@ const A = {
     mkDoc("MAYOR'S PERMIT", 'permit'); mkDoc('BIR FORM 2303 · COR', 'bir'); mkDoc('DTI BUSINESS NAME', 'reg'); },
   auBusiness: () => { const f = S.auth.f; const salt = newSalt(); const uid = 'u-' + Date.now().toString(36), appId = 'BA-' + (1000 + Math.floor(Math.random() * 8999));
     S.bizApps.unshift({ id: appId, uid, name: f.bname.trim(), cat: f.bcat, area: f.barea.trim(), tin: f.btin, owner: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), docs: f.docs, at: Date.now(), status: 'pending' });
-    const a = { mkt: !!f.mkt, id: uid, loginId: f.loginId.trim(), role: 'business', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: { bizAppId: appId }, status: 'pending', salt, pw: hashPw(f.pw, salt), createdAt: Date.now() };
+    const a = { mkt: !!f.mkt, id: uid, loginId: f.loginId.trim(), role: 'business', name: f.name.trim(), email: f.email.trim(), phone: '+63 ' + f.phone.trim(), link: { bizAppId: appId }, status: 'pending', salt, pw: hashPw(f.pw, salt), createdAt: Date.now(), social: f.social || null };
     S.accounts.push(a); recordConsent('business', appId, f.bname.trim(), f.name.trim() + ' · ' + f.email.trim()); S.session = { uid, at: Date.now() }; S.auth = null; S.role = 'business';
     pushAlert('admin', 'New business application', f.bname + ' · ' + appId, null); toast('auth', 'Application sent', 'Ticktap will review your documents.'); },
   authLogin: () => { const f = S.auth.f, a = acctByLogin(f.loginId);
@@ -7396,8 +7394,8 @@ Object.assign(A, {
    Drawn from Terms §17 and the app's actual data flows, written to the Data Privacy Act of 2012 (RA 10173), its IRR and
    NPC circulars. Opened from the first screen, sign-up, Terms §17 and Account. Draft for review by Philippine counsel. */
 const PRIVACY = {
-  version: '1.0',
-  effective: 'November 7, 2026',
+  version: '1.1',
+  effective: 'November 10, 2026',
   title: 'Ticktap Privacy Policy',
   intro: 'This Privacy Policy explains what personal data Ticktap collects, why, who it is shared with, how long it is kept and the rights you have. It applies to Customers, Providers, Business Partners and their staff, trusted contacts of Providers, and anyone who contacts us. It forms part of the Ticktap Terms and Conditions; words such as "Customer", "Provider" and "Business Partner" have the meaning given there.',
   sections: [
@@ -7406,12 +7404,13 @@ const PRIVACY = {
       'We have appointed a Data Protection Officer (DPO) who oversees how we handle personal data and answers privacy requests and complaints (Section 14).'
     ]],
     ['2. What we collect', [
-      'Account details: name, mobile number, email address, login ID, password (stored only in scrambled, hashed form), gender and birth year if you choose to give them, referral code, and your choices about promotions.',
+      'Account details: name, mobile number, email address, login ID, password (stored only in scrambled, hashed form; none if you use Google or Facebook), gender and birth year if you choose to give them, referral code, and your choices about promotions.',
       'Identity and qualification records (Providers and Business Partner staff): government ID, a selfie matched against the ID, a recent photo, Tax Identification Number (TIN), certificates (for example TESDA) and work experience. Business Partners: business permit, BIR Certificate of Registration (Form 2303), DTI or SEC registration, barangay clearance, business TIN and the name of the authorised person. Customers may add a government ID to get a Verified badge; this is optional.',
       'Booking records: services, prices, addresses where services are given, dates and times, booking status, cancellations, reschedules, reviews and ratings, help reports, no-show reports and how they were decided.',
       'Payment records: amounts, payment method (GCash, Maya or card), refunds, Ticktap Credit, payouts to Providers and Business Partners, platform fees and tax withheld. Card and e-wallet log-in details are entered with the payment partner; the Company does not store full card numbers.',
       'Location: the address you choose for a booking; and, only while a booking is active, the Provider\'s location so the Customer can follow arrival. Location is not tracked outside an active booking.',
       'Messages, photos and calls: in-app chat messages and photos, check-in photos, and records of in-app calls with Ticktap staff (time, length and result). Calls between users and staff are not recorded unless you are told at the start of the call.',
+      'Google or Facebook sign-in: if you choose it, we receive your name, email address and a confirmation that the email is verified from that service. We do not receive your Google or Facebook password, contacts or posts, and we do not post anything for you.',
       'Device and usage data: device type, app version, alert (notification) settings, sign-in times, and error reports needed to keep the app working.',
       'Data about other people: if a Provider adds a family member or trusted contact to follow their trips, we keep that person\'s name and contact. Please add someone only with their agreement.'
     ]],
@@ -7599,6 +7598,66 @@ Object.assign(A, {
     A.admExpel('provider|' + p.id); if (S.modal && S.modal.kind === 'expel') { S.modal.reason = 'Paying or asking to be paid outside the app'; S.modal.note = 'Help report ' + id + ' · ' + b.id; } },
   xmClear: id => { const tk = (S.tickets || []).find(x => x.id === id); if (!tk || tk.xm) return; tk.xm = { d: 'none', label: 'Not confirmed', at: now() }; }
 });
+/* ---------- Fewer SMS (build 151, owner's decision 2026-11-09; costs in docs/SCALING_AND_COSTS.md) ----------
+   1. Google / Facebook sign-up: the account's email is already verified by Google or Facebook, so no email code and
+      no SMS code, and no Ticktap password. (Demo: a simulated account picker; live: Firebase Authentication, Stage 2.)
+   2. Notifications go by app push first (free). SMS only where it is really needed:
+      - a new booking request the provider has not answered within SMS_FALLBACK_S seconds (push missed or phone silent),
+      - urgent safety and no-show alerts, staff alerts (SOS, late arrivals, urgent Help reports),
+      - people who do not have the app yet (business staff invites, trusted-contact invites and pickups).
+      Everything else (payment received, application questions, reminders) is push and in-app only. */
+const SMS_FALLBACK_S = 60;
+const SMS_PRICE = 0.56;   /* ₱ per SMS, Philippine gateway (Semaphore, Nov 2026); Firebase's own phone-auth SMS is $0.15 */
+const SOCIAL = { Google: { color: '#2F6FEB' }, Facebook: { color: '#1877F2' } };
+
+function authSocialScreen() {
+  const a = S.auth, f = a.f || (a.f = {}), who = a.who, mine = S.accounts.filter(x => x.social === who && x.status !== 'closed');
+  const ok = String(f.name || '').trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email || '');
+  return authShell('Continue with ' + who, 'authStart', `<div class="card tight" style="gap:4px;background:var(--surface-2);border-color:transparent"><b class="small">${esc(who)} account</b><span class="tiny muted">In this test build the ${esc(who)} sign-in is simulated. With the live app your ${esc(who)} account opens here.</span></div>
+    ${mine.length ? `<span class="eyebrow">Continue as</span><div class="list">${mine.slice(0, 6).map(x => `<button class="li" data-act="socialLogin" data-arg="${x.id}">${avatar(x.name, 3, 36)}<div class="col grow"><b>${esc(x.name)}</b><span class="small muted">${esc(x.email || '')} · ${esc(ROLE_NAME[x.role] || x.role)}</span></div>${ic('chev', 16)}</button>`).join('')}</div><span class="eyebrow">Or a new account</span>` : ''}
+    <label class="field">Name on your ${esc(who)} account<input id="so-name" class="input" autocomplete="name" data-bind="auth.f.name" value="${esc(f.name || '')}"></label>
+    <label class="field">${esc(who)} email<input id="so-email" class="input" type="email" inputmode="email" autocomplete="email" data-bind="auth.f.email" value="${esc(f.email || '')}" placeholder="you@gmail.com"></label>
+    <span class="tiny muted">No SMS code and no password: ${esc(who)} confirms it is you.</span>`,
+    `<button class="btn primary block" data-act="socialNew">Continue</button>`);
+}
+/* signup helpers for a social account */
+const socialSteps = t => t === 'customer' ? [1, 3] : t === 'business' ? [1, 4, 5] : [1];
+function socialLoginId(email) {
+  const base = String(email || 'user').split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 14) || 'user';
+  let id = base, n = 1; while (acctByLogin(id)) id = base + (++n); return id;
+}
+Object.assign(A, {
+  authSocial: who => { S.pwShow = null; S.auth = { screen: 'social', who: SOCIAL[who] ? who : 'Google', f: {} }; },
+  socialNew: () => { const a = S.auth, f = a.f || {}; const name = String(f.name || '').trim(), email = String(f.email || '').trim();
+    if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('auth', 'Add your name and email', 'They come from your ' + a.who + ' account.'); return; }
+    if (S.accounts.some(x => x.social === a.who && (x.email || '').toLowerCase() === email.toLowerCase())) { toast('auth', 'You already have an account', 'Choose it under "Continue as".'); return; }
+    S.auth = { screen: 'welcome', social: { who: a.who, name, email } }; },
+  socialLogin: uid => { const a = acct(uid); if (!a) return;
+    if (a.status === 'closed') { toast('auth', 'Account closed', 'This account was closed by Ticktap (Terms, Section 18).'); return; }
+    if (a.suspended) { toast('auth', 'Account on hold', 'Please contact Ticktap support.'); return; }
+    startSession(a); toast(S.role === 'business' ? 'business' : S.role, 'Welcome back', a.name); landOnBooking(); },
+  auSocialNext: () => { const a = S.auth, f = a.f, t = a.type;
+    if (!String(f.name || '').trim() || String(f.phone || '').replace(/\D/g, '').length < 10 || !f.terms) { toast('auth', 'Complete the form', 'Add your mobile number and accept the Terms.'); return; }
+    f.eCode = f.eOtp = f.pCode = f.pOtp = 'social'; f.loginId = socialLoginId(f.email); f.pw = f.pw2 = 'Sx' + Math.random().toString(36).slice(2) + '9!';
+    if (t === 'provider') { A.auProvider(); return; }
+    a.step = t === 'customer' ? 3 : 4; }
+});
+
+/* provider request: SMS only if the push was not answered in time */
+function smsFallbackTick(n) {
+  let changed = false;
+  S.bookings.forEach(b => { if (b.status !== 'requested' || !b.pid || b.reqSms || !b.reqAt || n < b.reqAt + SMS_FALLBACK_S * 1000) return;
+    const p = prov(b.pid); if (!p) return; b.reqSms = n;
+    sendSms(p.phone, `Ticktap: New booking request, ${b.services[0].name}. Open the app to accept or decline: ticktap.ph/r/${b.id.slice(2)}`);
+    toast('provider', 'SMS · Ticktap', 'New booking request. Open the app to accept or decline.', true);
+    logB(b, `No reply to the app alert in ${SMS_FALLBACK_S} s · SMS sent to ${p.name}`); changed = true; });
+  return changed;
+}
+/* Admin: SMS sent and their cost this month */
+function smsCostLine() {
+  const t = new Date(now()), m0 = new Date(t.getFullYear(), t.getMonth(), 1).getTime(), n = (S.sms || []).filter(s => s.at >= m0).length;
+  return `<span class="tiny muted">This month: ${n} SMS · about ${peso(n * SMS_PRICE, 2)} at ${peso(SMS_PRICE, 2)} each. Bookings, payments and reminders go by free app push; SMS only for unanswered requests, urgent alerts and people without the app.</span>`;
+}
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7747,7 +7806,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 150;
+const BUILD = 151;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7948,6 +8007,7 @@ function tick(force = false) {
   if (lead) { const dk = ymd(n); S.providers.forEach(p => { if (p.greenDay && p.greenDay !== dk) { dayRoll(p, dk); changed = true; } else if (!p.greenDay) p.greenDay = dk; }); }
   if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += Math.min(dt, 5 * MIN) / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
   if (lead && sendDueReminders(n)) changed = true;
+  if (lead && smsFallbackTick(n)) changed = true;
   if (lead) S.bookings.forEach(b => {
     if (nsTick(b, n)) changed = true;
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true; noReplyCheck(b);
