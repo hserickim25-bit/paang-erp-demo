@@ -1018,7 +1018,7 @@ const CATS = [
   { id: 'hair', name: 'Hair', icon: 'scissors' },
   { id: 'nails', name: 'Nails', icon: 'sparkle' },
   { id: 'massage', name: 'Massage', icon: 'hand' },
-  { id: 'skin', name: 'Waxing & facial', icon: 'drop' },
+  { id: 'skin', name: 'Waxing, facial & make-up', icon: 'drop', words: 'makeup make up make-up mua bridal wax waxing facial brows lashes' },
   { id: 'pet', name: 'Pet grooming', icon: 'paw' }
 ];
 const catName = id => (CATS.find(c => c.id === id) || {}).name || '';
@@ -1070,7 +1070,7 @@ S.providers = [
     services: [{ name: 'Small dog full groom', mins: 75, price: 700, on: true }, { name: 'Bath, nails & ears', mins: 45, price: 400, on: true }, { name: 'Cat grooming', mins: 60, price: 650, on: true }],
     reviews: [{ by: 'Kat V.', stars: 5, text: 'My shih tzu was relaxed the whole time.', photos: [], ago: '2 days ago' }] }),
   mkProv({ id: 'p8', name: 'Teresa Lim', cat: 'skin', area: 'Rockwell, Makati', lat: 14.5649, lng: 121.0366, years: 10, past: 'Esthetician, skin clinic (2010–2020)', story: 'Waxing and facials with clinic-grade hygiene.', returning: true, rating: 4.8, count: 83, dist: [84, 11, 3, 1, 1], status: 'red', week: [6.0, 6.2, 6.0, 0, 0, 0, 0], ytd: 132500, phone: '+63 917 555 0108', tin: '366-918-200-000', hue: 300,
-    services: [{ name: 'Underarm wax', mins: 20, price: 300, on: true }, { name: 'Brazilian wax', mins: 40, price: 900, on: true }, { name: 'Deep-cleansing facial', mins: 60, price: 800, on: true }],
+    services: [{ name: 'Underarm wax', mins: 20, price: 300, on: true }, { name: 'Brazilian wax', mins: 40, price: 900, on: true }, { name: 'Deep-cleansing facial', mins: 60, price: 800, on: true }, { name: 'Event make-up', mins: 60, price: 1200, on: true }],
     reviews: [{ by: 'Joy A.', stars: 5, text: 'Quick and painless. Very hygienic.', photos: [], ago: '6 days ago' }] })
 ];
 // Show the yellow-light providers as away until a time after "now"
@@ -1175,6 +1175,15 @@ function closeWeekFor(p, wk) {
 }
 function closeWeekAll(wk) { let n = 0; S.providers.forEach(p => { if (p.active !== false && closeWeekFor(p, wk)) n++; }); CR().lastClosed = wk; return n; }
 const payeeOf = b => b.bizId ? biz(b.bizId) : prov(b.pid);
+/* end of a day for one provider: today's stand-by hours become that day's total, and the new day starts at 0 (build 143) */
+function dayRoll(p, dk) {
+  const old = p.greenDay ? new Date(p.greenDay + 'T12:00:00') : null, oi = old ? (old.getDay() + 6) % 7 : -1;
+  const sameWeek = old && weekKeyOf(old.getTime()) === weekKeyOf(now());
+  if (!Array.isArray(p.week)) p.week = [0, 0, 0, 0, 0, 0, 0];
+  if (sameWeek) p.week[oi] = Math.min(24, (Number(p.week[oi]) || 0) * 0.4 + (p.greenToday || 0));
+  else p.week = [0, 0, 0, 0, 0, 0, 0];
+  p.week[todayIdx()] = 0; p.greenToday = 0; p.greenDay = dk;
+}
 const weekHours = p => { const w = p.week.slice(); const t = todayIdx(); for (let i = t + 1; i < 7; i++) w[i] = 0; w[t] = Math.min(24, (p.week[t] * 0.4) + p.greenToday); return w; };
 const weekTotal = p => weekHours(p).reduce((a, b) => a + b, 0);
 const daysMet = p => weekHours(p).filter(h => h >= S.settings.dayTarget).length;
@@ -1311,7 +1320,7 @@ function srchEdit(a, b, max) {   // edit distance with swaps (Damerau OSA), stop
   return p[b.length];
 }
 function srchMatch(o, q) {   // 2 = exact, 1 = close (typo), 0 = no match
-  const hay = srchNorm([o.name, o.area, (o.cats ? provCats(o) : [o.cat]).map(catName).join(' '), (o.services || []).map(x => x.name).join(' ')].join(' ')), words = srchNorm(q).split(/\s+/).filter(Boolean);
+  const hay = srchNorm([o.name, o.area, (o.cats ? provCats(o) : [o.cat]).map(c => catName(c) + ' ' + ((CATS.find(k => k.id === c) || {}).words || '')).join(' '), (o.services || []).map(x => x.name).join(' ')].join(' ')), words = srchNorm(q).split(/\s+/).filter(Boolean);
   if (!words.length) return 2; const toks = hay.split(/[^a-z0-9]+/).filter(Boolean); let exact = true;
   for (const w of words) {
     if (hay.includes(w)) continue; exact = false; if (w.length < 3) return 0; const max = w.length >= 6 ? 2 : 1;
@@ -2062,7 +2071,7 @@ function provJob() {
 }
 function provStatus() {
   const me = prov(S.prov.id), st = statusOf(me), w = weekHours(me), t = todayIdx();
-  const tgt = S.settings.dayTarget, max = 9;
+  const tgt = S.settings.dayTarget, max = Math.max(9, tgt * 1.5, ...w);   /* scale to the longest day so a bar never leaves the card */
   return `${provHeader('Status')}<div class="scroll" data-scroll="p-st">
     <div class="row" style="gap:16px;align-items:center">
       <div class="tlight" aria-hidden="true"><i class="r ${me.status === 'red' ? 'on' : ''}"></i><i class="y ${me.status === 'yellow' ? 'on' : ''}"></i><i class="g ${me.status === 'green' ? 'on' : ''}"></i></div>
@@ -2078,7 +2087,7 @@ function provStatus() {
     <p class="small muted">After a job you return to green when you tap End service, or automatically when the shown service time ends.</p>
     <button class="card" data-act="openPerf" style="text-align:left">
       <div class="row between"><b>Stand-by this week</b><span class="num small">${weekTotal(me).toFixed(1)} / ${S.settings.weeklyTarget} h · ${daysMet(me)}/${S.settings.minDays} days</span></div>
-      <div class="wbars">${w.map((x, i) => `<div class="b ${x >= tgt ? 'met' : x > 0 ? 'part' : ''} ${i === t ? 'today' : ''}" style="height:${Math.max(3, x / max * 100)}%" title="${x.toFixed(1)} h"></div>`).join('')}<div class="line" style="bottom:${tgt / max * 100}%"></div></div>
+      <div class="wbars">${w.map((x, i) => `<div class="b ${x >= tgt ? 'met' : x > 0 ? 'part' : ''} ${i === t ? 'today' : ''}" style="height:${Math.min(100, Math.max(3, x / max * 100))}%" title="${x.toFixed(1)} h"></div>`).join('')}<div class="line" style="bottom:${tgt / max * 100}%"></div></div>
       <div class="wlabels">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span>${d}</span>`).join('')}</div>
       <span class="small muted">Dashed line = ${tgt} h. Reach ${S.settings.weeklyTarget} h of green this week for +1 reward credit (under: −1).</span>
       <span class="small" style="color:var(--accent);font-weight:600">Reward credits & platform fee ${ic('chev', 14)}</span></button>
@@ -2341,7 +2350,7 @@ function guideFil(role) {
         ['doc', 'Opsyonal: i-verify ang iyong ID', 'Account › Government ID. Makikita ng mga provider ang "Verified" badge, kaya mas mabilis nilang tinatanggap ang request mo.'],
         ['bag', 'Opsyonal: magtrabaho rin bilang provider', 'I-tick ang "also work as a provider" sa sign-up, o pumunta sa Account › Become a provider. Pareho ang login. Pagka-approve, lilipat ka gamit ang Account › Switch to Provider mode.']]],
       ['Maghanap ng pro at magpadala ng request', [
-        ['search', 'Pumili ng serbisyo', 'Piliin ang Hair, Nails, Massage, Waxing & facial o Pet grooming, o mag-search. May discount ang may EVENT badge.'],
+        ['search', 'Pumili ng serbisyo', 'Piliin ang Hair, Nails, Massage, Waxing, facial & make-up o Pet grooming, o mag-search. May discount ang may EVENT badge.'],
         ['light', 'Basahin ang traffic light', 'Green = available ngayon. Yellow = wala sandali, babalik sa oras na nakalagay. Red = off ngayong araw. Mag-book ng "Now" sa green lang; puwedeng mag-book ng "Later" kahit kanino.'],
         ['user', 'Buksan ang profile', 'Tingnan ang mga serbisyo at presyo, reviews, karaniwang oras, layo at mga certificate.'],
         ['send', 'Ipadala ang request', 'Pumili ng serbisyo, tapos Now o Later (petsa at oras, hanggang ' + (st.bookAheadHours || 72) + ' oras in advance). Kumpirmahin ang address at i-tap ang Request.'],
@@ -2466,7 +2475,7 @@ function guideEn(role) {
         ['doc', 'Optional: verify your ID', 'Account › Government ID. Providers see a "Verified" badge, so they accept your requests faster.'],
         ['bag', 'Optional: also work as a provider', 'Tick "also work as a provider" at sign-up, or go to Account › Become a provider. Same login. After approval, use Account › Switch to Provider mode.']]],
       ['Find a pro and send a request', [
-        ['search', 'Browse by service', 'Pick Hair, Nails, Massage, Waxing & facial or Pet grooming, or search. The EVENT badge marks a discount.'],
+        ['search', 'Browse by service', 'Pick Hair, Nails, Massage, Waxing, facial & make-up or Pet grooming, or search. The EVENT badge marks a discount.'],
         ['light', 'Read the traffic light', 'Green = available now. Yellow = away, back at the time shown. Red = off today. Book "Now" only with green; book "Later" with anyone.'],
         ['user', 'Open the profile', 'Check services and prices, reviews, usual hours, distance and certificates.'],
         ['send', 'Send the request', 'Choose services, then Now or Later (date and time, up to ' + ahead + ' hours ahead). Confirm the address and tap Request.'],
@@ -2559,7 +2568,7 @@ function guideKo(role) {
         ['doc', '선택: 신분증 인증', 'Account › Government ID. 제공자에게 "Verified" 배지가 보여 요청을 더 빨리 수락받을 수 있습니다.'],
         ['bag', '선택: 제공자로도 일하기', '가입할 때 "also work as a provider"에 체크하거나, 나중에 Account › Become a provider를 누릅니다. 같은 로그인을 씁니다. 승인되면 Account › Switch to Provider mode로 전환합니다.']]],
       ['제공자 찾기와 요청 보내기', [
-        ['search', '서비스 고르기', 'Hair, Nails, Massage, Waxing & facial, Pet grooming 중에서 고르거나 검색합니다. EVENT 배지는 할인 중이라는 뜻입니다.'],
+        ['search', '서비스 고르기', 'Hair, Nails, Massage, Waxing, facial & make-up, Pet grooming 중에서 고르거나 검색합니다. EVENT 배지는 할인 중이라는 뜻입니다.'],
         ['light', '신호등 보는 법', '초록 = 지금 가능, 노랑 = 잠시 자리 비움(표시된 시간에 복귀), 빨강 = 오늘 휴무. 지금 예약(Now)은 초록만, 나중 예약(Later)은 누구나 가능합니다.'],
         ['user', '프로필 확인', '서비스와 가격, 리뷰, 평소 근무시간, 거리, 자격증을 확인합니다.'],
         ['send', '요청 보내기', '서비스를 고르고 Now 또는 Later(날짜와 시간, 최대 ' + ahead + '시간 이후까지)를 선택합니다. 주소를 확인하고 Request를 누릅니다.'],
@@ -3911,7 +3920,7 @@ function missionModal() {
   const SV = [['hair', 'scissors', 'Hair cuts & styling', 'Cuts, color, blow-dry and styling for the whole family, at home.', 'hair'],
     ['nails', 'sparkle', 'Nail care', 'Manicure, pedicure, gel and nail art without the salon queue.', 'nails'],
     ['massage', 'hand', 'Massage & hilot', 'Swedish, shiatsu, hilot and aromatherapy by trained therapists.', 'massage'],
-    ['skin', 'drop', 'Waxing & facial', 'Gentle waxing, facials and skin care in your own space.', 'skin'],
+    ['skin', 'drop', 'Waxing, facial & make-up', 'Gentle waxing, facials and make-up in your own space.', 'skin'],
     ['pet', 'paw', 'Pet grooming', 'Bath, trim, nails and blow-dry for dogs and cats.', 'pet']];
   const rv = (() => { for (const p of act) { const r = (p.reviews || []).find(x => x.stars === 5 && String(x.text || '').length > 24); if (r) return { r, p }; } return null; })();
   const pic = (k, tag, t) => `<figure class="ms-pic photo"><img src="${MS_PHOTOS[k]}" alt="${esc(tag + ': ' + t)}"></figure>`;
@@ -4346,6 +4355,12 @@ function normalizeCredits() {
     if (Array.isArray(bs)) bs.forEach((b, i) => { if (b && Number(b.rate) === was[i]) b.rate = to[i]; });
     if (S.settings.credit) S.settings.credit.feeV2 = true;
     if (Array.isArray(S.notices) && !S.notices.some(n => n.id === 'nt-fee-v2')) S.notices.unshift({ id: 'nt-fee-v2', title: 'Lower platform fees from November 6, 2026', body: 'Platform fees for individual providers are now 15% to 25%: Gold 15%, Silver 17%, Starter · Standard 20%, Kaya Mo! 25%. Your band still follows your reward credits, updated every Sunday. Jobs that ended before today keep the fee shown on them.', aud: ['provider'], level: 'important', pin: true, from: '', until: '2026-12-31', at: Date.now(), by: 'Ticktap' });
+  }
+  if (!S.settings.skillsV1) {   /* build 142 demo data: Carmela (hair) also does nails; rooms created before then lack it */
+    const c = Array.isArray(S.providers) && S.providers.find(p => p.id === 'p4' && p.name === 'Carmela Santos');
+    if (c && !(c.cats || []).length && !c.skillReq) { c.cats = ['nails']; if (Array.isArray(c.services) && !c.services.some(s => s.cat === 'nails')) c.services.push({ name: 'Gel manicure', mins: 60, price: 450, on: true, cat: 'nails' }, { name: 'Classic pedicure', mins: 45, price: 350, on: true, cat: 'nails' }); }
+    const t = S.providers.find(p => p.id === 'p8' && p.name === 'Teresa Lim'); if (t && Array.isArray(t.services) && !t.services.some(x => /make-?up/i.test(x.name))) t.services.push({ name: 'Event make-up', mins: 60, price: 1200, on: true });
+    S.settings.skillsV1 = true;
   }
   if (!S.settings.respondV6) { if (Number(S.settings.respond) === 5) S.settings.respond = 6; S.settings.respondV6 = true; }
   if (!S.settings.credit) S.settings.credit = d; else { Object.keys(d).forEach(k => { if (S.settings.credit[k] == null) S.settings.credit[k] = d[k]; }); Object.keys(d.rules).forEach(k => { if (S.settings.credit.rules[k] == null) S.settings.credit.rules[k] = d.rules[k]; }); }
@@ -7645,7 +7660,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 142;
+const BUILD = 143;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -7841,7 +7856,8 @@ function tick(force = false) {
   const n = now(), dt = Math.max(0, n - lastTick); lastTick = n; let changed = force;
   const lead = isLeader();
   if (lead) { const wk = weekKeyOf(n); if (CR().lastWeek && CR().lastWeek !== wk) { closeWeekAll(CR().lastWeek); changed = true; } if (CR().lastWeek !== wk) { CR().lastWeek = wk; } }
-  if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += dt / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
+  if (lead) { const dk = ymd(n); S.providers.forEach(p => { if (p.greenDay && p.greenDay !== dk) { dayRoll(p, dk); changed = true; } else if (!p.greenDay) p.greenDay = dk; }); }
+  if (lead) S.providers.forEach(p => { if (p.status === 'green') p.greenToday += Math.min(dt, 5 * MIN) / HOUR; if (p.status === 'yellow' && p.backAt && n >= p.backAt) { p.status = 'green'; p.backAt = null; changed = true; if (S.prov.id === p.id) toast('provider', "You're back on green", 'Your away time ended.'); } });
   if (lead && sendDueReminders(n)) changed = true;
   if (lead) S.bookings.forEach(b => {
     if (nsTick(b, n)) changed = true;
