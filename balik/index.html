@@ -1489,7 +1489,6 @@ function custPane() {
     case 'points': h = custPoints(); tab = 'account'; break;
     default: c.screen = 'home'; h = custHome(); tab = 'home';   /* an unknown screen never shows a blank page */
   }
-  if (!footer && S.customer.signedIn && !c.signup) footer = custDock(c.screen);   /* the must-press step sits in the same bottom bar on every screen */
   return `<div class="screen" data-pane="customer">${modeBar('customer')}${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
 }
 
@@ -1743,9 +1742,9 @@ function custRequest() {
   return `${bar('Booking ' + b.id, 'toBookings')}
     <div class="scroll" data-scroll="c-req">
       ${['requested', 'business_queue'].includes(b.status) ? liveLine() + offlineBanner('customer') : ''}
+      ${step >= 0 ? `<ol class="steps">${stepsH}</ol>` : ''}${custDock('request')}
       ${hero}
       ${b.status === 'offered' ? `<div class="job-next" data-next="offered"><button class="btn secondary block" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button></div>` : ''}
-      ${step >= 0 ? `<ol class="steps">${stepsH}</ol>` : ''}
       <div class="card tight"><div class="row">${p ? zav(p, 48) : avatar(bz.name, bz.hue, 40)}<div class="col grow"><b>${esc(who)}</b>${p ? statusLine(p) : ''}</div></div>
         <div class="divider"></div>
         <div class="col small"><span>${esc(b.services.map(s => s.name).join(' + '))} · ${b.mins} min</span><span class="muted">${esc(b.address)}</span></div>
@@ -1787,7 +1786,7 @@ function custTrack() {
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
     <div class="scroll" data-scroll="c-track">
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
-      <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
+      <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>${custDock('track')}
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
       ${(() => { const B = {
         rem: b.reminders && b.reminders.length && ['paid'].includes(b.status) ? remindersCard(b) : '',
@@ -2082,6 +2081,7 @@ function provJob() {
   const led = b.ledger;
   const h = `${bar('Job ' + b.id, 'provBack', `<button class="btn ghost xs" data-act="provHelp" data-arg="${b.id}">Help</button>`)}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
+    ${f ? stepDock(b.status, f) : ''}
     ${hero}
     ${b.status === 'paid' ? reschedCardProv(b) : ''}
     ${custNoShowCard(b)}
@@ -2104,7 +2104,7 @@ function provJob() {
       <div class="divider"></div><div class="row between"><b>${led.payee === 'business' ? 'Paid to ' + esc(led.payeeName) : 'You receive'}</b><b class="num">${peso(led.net, 2)}</b></div></div>` : ''}
     <p class="tiny muted">Every time stamp on this job is saved to your record and used to set your platform fee rate.</p>
   </div>`;
-  return [h, f ? stepDock(b.status, f) : ''];   /* build 153: the must-press step sits in the bottom bar, same place on every screen */
+  return [h, ''];   /* build 154: the must-press step sits right under the blue progress steps */
 }
 function provStatus() {
   const me = prov(S.prov.id), st = statusOf(me), w = weekHours(me), t = todayIdx();
@@ -7672,7 +7672,8 @@ function smsCostLine() {
 }
 /* ===== 25 · Step bar (build 153) =====
    Every button a customer or provider MUST press to move a booking forward sits in one place:
-   the bar at the bottom of the screen, right above the tab bar, on every step.
+   right under the blue progress steps (build 154). Screens without progress steps (Send request, a new
+   request for the provider, the review form) keep it in the bottom bar, because it comes after filling the form.
    The button flips: front = what it does (unchanged label), back = why to press it (one short line).
    The flip is phased on the clock so a re-render never restarts it; reduced-motion users see the reason as a line under the button. */
 const FLIP_MS = 6500;
@@ -7689,6 +7690,26 @@ function custDock(screen) {
   if (screen === 'request' && b.status === 'offered') return stepDock('offered', flipBtn({ cls: 'primary', act: 'openPay', arg: b.id, front: `Accept &amp; pay ${peso(b.gross)}`, label: `Accept and pay ${peso(b.gross)}`, back: 'Pay now to lock in this arrival time' }));
   if (screen === 'track' && b.status === 'ended' && b.pid && prov(b.pid)) return stepDock('ended', flipBtn({ cls: 'primary', act: 'goReview', arg: b.id, front: `Rate ${esc(prov(b.pid).name.split(' ')[0])}`, back: 'Your rating completes this booking' }));
   return '';
+}
+
+/* Reminders when a step was not pressed (build 154). Each fires once per booking, as an app alert + toast.
+   Depart: by max(paid + 3 min, promised − 20 min), before the late alert takes over.
+   Rate: 2 hours after the service ended, only within the first day. */
+const STEP_NUDGE = { departMin: 20, departFloor: 3, rateMin: 120, rateUntil: 24 * 60 };
+function stepNudge(b, n) {
+  const g = b.nudge || {}; let did = false;
+  if (b.status === 'paid' && b.pid && !b.departedAt && !g.dep && b.promisedAt && b.paidAt && n >= Math.max(b.paidAt + STEP_NUDGE.departFloor * MIN, b.promisedAt - STEP_NUDGE.departMin * MIN) && n < b.promisedAt + S.settings.lateTrigger * MIN) {
+    g.dep = n; did = true;
+    pushAlert('provider:' + b.pid, 'Time to leave? Tap Depart now', `${b.id} · arrive by ${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}. Tap Depart now as you leave so the customer can follow you.`, b.id);
+    toast('provider', 'Tap Depart now when you leave', `${b.id} · arrive by ${fmtT(b.promisedAt)}`, false, b.id); logB(b, 'Reminder to provider: tap Depart now');
+  }
+  if (b.status === 'ended' && b.cid && !b.review && !g.rate && b.endedAt && n >= b.endedAt + STEP_NUDGE.rateMin * MIN && n < b.endedAt + STEP_NUDGE.rateUntil * MIN) {
+    g.rate = n; did = true; const p = prov(b.pid), first = p ? p.name.split(' ')[0] : 'your provider';
+    pushAlert('customer', `How was ${first}?`, 'Tap to rate. Your rating completes this booking.', b.id);
+    toast('customer', `How was ${first}?`, 'Tap to rate · it completes your booking.', false, b.id); logB(b, 'Reminder to customer: rate the service');
+  }
+  if (did) b.nudge = g;
+  return did;
 }
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
@@ -7838,7 +7859,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 153;
+const BUILD = 154;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -8042,6 +8063,7 @@ function tick(force = false) {
   if (lead && smsFallbackTick(n)) changed = true;
   if (lead) S.bookings.forEach(b => {
     if (nsTick(b, n)) changed = true;
+    if (stepNudge(b, n)) changed = true;
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true; noReplyCheck(b);
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
     if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; changed = true;
