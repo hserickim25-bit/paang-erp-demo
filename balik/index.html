@@ -1503,7 +1503,7 @@ function custHome() {
       <button class="iconbtn" data-act="custTab" data-arg="alerts" aria-label="Alerts">${ic('bell', 22)}${unread('customer') ? `<span class="badge-n">${unread('customer')}</span>` : ''}</button></header>
     <div class="scroll" data-scroll="c-home">${noticeBanner('customer')}${evBanner()}
       ${guideTip('customer')}${ptBanner()}
-      ${act ? activeCard(act) : ''}
+      ${act ? activeCard(act) : ''}${famFollowCard('home')}
       <label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:16px;outline:none;color:var(--fg)"></label>
       <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile${CAT_IMG[k.id] ? ' img' : ''}">${catIcon(k.id, k.icon, 64)}</span>${k.name}</button>`).join('')}</div>
@@ -1852,6 +1852,7 @@ function custAccount() {
       <div class="li">${ic('phone', 20)}<div class="col grow"><b>Mobile</b><span class="small muted">${esc(c.phone)}</span></div><span class="pill good">Verified</span></div>
       <button class="li" data-act="addId">${ic('shield', 20)}<div class="col grow"><b>Government ID <span class="muted small" style="font-weight:400">(optional)</span></b><span class="small muted">${(c.idOk || myCust().idOk) ? 'Verified · shown to providers as a trust badge' : 'Add an ID for a Verified badge'}</span></div>${(c.idOk || myCust().idOk) ? '<span class="pill good">Verified</span>' : '<span class="pill outline">Add</span>'}</button>
       ${modeRowCust()}
+    </div>${famFollowCard('acc')}<div class="list">
       ${guideRow('customer')}
       ${locRow('c')}${installRow()}${termsRow('customer', S.customer.cid || 'me')}
       <button class="li" data-act="addrSheet">${ic('pin', 20)}<div class="col grow"><b>Addresses</b><span class="small muted">Distances use: ${esc(a.label)}</span></div>${ic('chev', 16)}</button>
@@ -2845,7 +2846,7 @@ function provAccount() {
       <div class="li">${ic('doc', 20)}<div class="col grow"><b>Certificates</b><span class="small muted">${me.cert ? esc(me.cert) : 'Optional · none uploaded'}</span></div>${me.cert ? '<span class="pill accent">Certified</span>' : '<span class="pill outline">Optional</span>'}</div>
       <button class="li" data-act="openPerf">${ic('chart', 20)}<div class="col grow"><b>Reward credits & platform fee</b><span class="small muted">${me.credits} credits · ${tierRate(me)}% fee</span></div>${ic('chev', 16)}</button>
     </div>
-    ${famCard(me)}
+    ${famCard(me)}${famFollowCard('acc')}
     <div class="col" style="gap:8px"><div class="row between"><h3 style="font-size:15px">Alerts</h3><button class="btn ghost xs" data-act="readAll" data-arg="provider:${me.id}">Mark all read</button></div>${alertList('provider:' + me.id)}</div>
     <button class="btn secondary block" data-act="provHelp" data-arg="">${ic('chat', 18)} Help & reports${tkMine('provider').some(x => x.status === 'open' && x.needs === 'member') ? ' · new reply' : ''}</button>
     ${mktCard('p:' + me.id)}
@@ -7248,20 +7249,34 @@ function famFind(code) { for (const p of S.providers) { const t = famTrusted(p).
 const famTrip = p => S.bookings.filter(b => b.pid === p.id && b.famShare !== false && (['paid', 'departed', 'arrived'].includes(b.status) || (['ended', 'reviewed'].includes(b.status) && now() - (b.endedAt || 0) < 3 * HOUR))).sort((a, b) => (b.paidAt || 0) - (a.paidAt || 0))[0] || null;
 function famNotify(b, title, body, kind) {   // alert every trusted contact of this job's provider (lock screen too once they turn alerts on)
   const p = b && prov(b.pid); if (!p || b.famShare === false) return;
-  famTrusted(p).forEach(t => pushAlert('family:' + t.code, title, body, null, kind || 'info'));
+  famTrusted(p).filter(famLive).forEach(t => { const to = famTo(t); if (to) pushAlert(to, title, body, null, kind || 'info'); });
 }
+/* Build 155 (owner's decision, 2026-11-11): contacts are added by their Ticktap ID, not a phone number. They must accept in
+   their own app; after that every trip update and pickup request reaches them as an app alert. No SMS at all: a person who is
+   not a member yet gets the invite link from the provider through the phone's share sheet (KakaoTalk, Messenger, ...). */
+const ttIdOf = a => { if (!a) return ''; let h = 2166136261; for (const ch of String(a.id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } return 'TT-' + h.toString(36).toUpperCase().padStart(5, '0').slice(-5); };
+const ttNorm = v => { const x = String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); return x ? 'TT-' + x.replace(/^TT/, '') : ''; };
+const acctByTt = v => { const k = ttNorm(v); return k ? (S.accounts || []).find(a => a.status !== 'deleted' && ttIdOf(a) === k) : null; };
+const acctTarget = a => !a || !a.link ? null : a.link.cid ? 'customer:' + a.link.cid : a.link.pid ? 'provider:' + a.link.pid : null;
+function isMeAcct(aid) {
+  const a = acct(aid), m = meAcct(); if (!a) return false; if (m && m.id === aid) return true;
+  return !!(a.link && ((a.link.cid && S.customer.signedIn && a.link.cid === (S.customer.cid || 'me')) || (a.link.pid && a.link.pid === S.prov.id)));
+}
+const famTo = t => t.aid ? acctTarget(acct(t.aid)) : 'family:' + t.code;
+const famLive = t => !!t.linkedAt;
 const famLink = t => { try { const u = new URL(location.href); u.search = ''; u.hash = ''; u.searchParams.set('family', t.code); return u.toString(); } catch (e) { return 'https://ticktap.ph/?family=' + t.code; } };
 
 /* ---------- provider: manage trusted contacts ---------- */
 function famForm(where) {
-  const f = S.prov.fam || (S.prov.fam = { name: '', rel: 'Spouse', phone: '' });
+  const f = S.prov.fam || (S.prov.fam = { name: '', rel: 'Spouse', tt: '' });
   return `<div class="col" style="gap:6px"><div class="row" style="gap:6px;flex-wrap:wrap"><input id="fam-n-${where}" class="input grow" style="min-width:120px" data-bind="prov.fam.name" value="${esc(f.name)}" placeholder="Name"><select id="fam-r-${where}" class="select" data-bind="prov.fam.rel" style="width:120px">${FAM_REL.map(r => `<option ${f.rel === r ? 'selected' : ''}>${r}</option>`).join('')}</select></div>
-    <div class="row" style="gap:6px"><input id="fam-p-${where}" class="input grow" inputmode="tel" data-bind="prov.fam.phone" value="${esc(f.phone)}" placeholder="Mobile, e.g. 0917 123 4567"><button class="btn primary sm" data-act="famAdd">Add</button></div>
-    <span class="tiny muted">They get an invite link by SMS. They must install the Ticktap app to follow your trips. Only you and Ticktap see this number.</span></div>`;
+    <div class="row" style="gap:6px"><input id="fam-i-${where}" class="input grow" autocapitalize="characters" autocomplete="off" data-bind="prov.fam.tt" value="${esc(f.tt || '')}" placeholder="Their Ticktap ID, e.g. TT-8K3P2"><button class="btn primary sm" data-act="famAdd">Add</button></div>
+    <span class="tiny muted">They find their Ticktap ID on their Account page. They accept in their app, then get your trip updates and pickup requests as app alerts. No SMS.</span>
+    <button class="btn ghost xs" style="align-self:flex-start" data-act="famShareInvite">${ic('share', 14)} Not on Ticktap yet? Share an invite</button></div>`;
 }
 function famRow(t, compact) {
-  return `<div class="li" data-fam="${t.id}"><div class="col grow" style="min-width:0"><b class="small">${esc(t.name)} <span class="muted" style="font-weight:400">· ${esc(t.rel)}</span></b><span class="tiny muted">${esc(t.phone)} · ${t.linkedAt ? '<span style="color:var(--good)">App installed ✓</span>' : t.invitedAt ? 'Invited ' + fmtD(t.invitedAt) + ' · not installed yet' : 'Not invited yet'}</span></div>
-    ${compact ? '' : `<button class="btn ghost xs" data-act="famInvite" data-arg="${t.id}">${t.invitedAt ? 'Invite again' : 'Send invite'}</button><button class="btn ghost xs" data-act="famDel" data-arg="${t.id}" aria-label="Remove ${esc(t.name)}">${ic('x', 14)}</button>`}</div>`;
+  return `<div class="li" data-fam="${t.id}"><div class="col grow" style="min-width:0"><b class="small">${esc(t.name)} <span class="muted" style="font-weight:400">· ${esc(t.rel)}</span></b><span class="tiny muted">${t.aid ? esc(t.ttid || ttIdOf(acct(t.aid))) + ' · ' + (t.linkedAt ? '<span style="color:var(--good)">Accepted ✓</span>' + (t.alertsOn === false ? ' · <span style="color:var(--warn)">alerts off</span>' : t.alertsOn ? ' · alerts on' : '') : 'Waiting for them to accept') : 'Old entry by phone · remove and add again with their Ticktap ID'}</span></div>
+    ${compact ? '' : `${t.aid && !t.linkedAt ? `<button class="btn ghost xs" data-act="famInvite" data-arg="${t.id}">Remind</button>` : ''}<button class="btn ghost xs" data-act="famDel" data-arg="${t.id}" aria-label="Remove ${esc(t.name)}">${ic('x', 14)}</button>`}</div>`;
 }
 function famCard(me) {   // Account page
   const L = famTrusted(me);
@@ -7269,7 +7284,7 @@ function famCard(me) {   // Account page
     <span class="small muted">Family or friends who can follow your trips for your safety, and pick you up after a job. They see the area, not the customer's details, unless you ask for a pickup.</span>
     ${L.length ? `<div class="list">${L.map(t => famRow(t)).join('')}</div>` : ''}
     ${L.length < FAM_MAX ? famForm('acc') : ''}
-    ${S.prov.famLink ? `<div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><span class="tiny muted">Invite link for ${esc(S.prov.famLink.name)} (also sent by SMS):</span><span class="small mono" style="user-select:all;word-break:break-all">${esc(S.prov.famLink.url)}</span></div>` : ''}</div>`;
+    ${S.prov.famLink ? `<div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><span class="tiny muted">Invite link (copied) · send it to ${esc(S.prov.famLink.name)} yourself:</span><span class="small mono" style="user-select:all;word-break:break-all">${esc(S.prov.famLink.url)}</span></div>` : ''}</div>`;
 }
 function famJobCard(b, me) {   // Job page: who follows this trip, add someone now, ask for a pickup
   if (!['paid', 'departed', 'arrived', 'ended', 'reviewed'].includes(b.status) || (['ended', 'reviewed'].includes(b.status) && now() - (b.endedAt || 0) > 3 * HOUR)) return '';
@@ -7277,13 +7292,29 @@ function famJobCard(b, me) {   // Job page: who follows this trip, add someone n
   if (!L.length) return `<div class="card tight" style="gap:8px"><b class="small">${ic('users', 14)} Let someone follow this trip</b><span class="tiny muted">Add a family member or friend. They install Ticktap and see when you set out, arrive and finish.</span>${famForm('job')}</div>`;
   const pickT = S.prov.pickAt || 'end';
   return `<div class="card tight" style="gap:8px" data-fam-job="${b.id}"><div class="row between"><b class="small">${ic('users', 14)} ${b.famShare === false ? 'Not shared with your trusted contacts' : 'Your trusted contacts follow this trip'}</b><button class="btn ghost xs" data-act="famShare" data-arg="${b.id}">${b.famShare === false ? 'Share' : 'Stop sharing'}</button></div>
-    ${b.famShare === false ? '' : `<span class="tiny muted">${L.map(t => esc(t.name) + (t.linkedAt ? '' : ' (not installed)')).join(', ')}</span>`}
+    ${b.famShare === false ? '' : `<span class="tiny muted">${L.map(t => esc(t.name) + (t.linkedAt ? '' : ' (not accepted yet)')).join(', ')}</span>`}
     ${pk ? `<div class="card tight" style="background:var(--accent-soft);border-color:transparent;gap:4px"><b class="small">Pickup asked · ${esc(pk.name)}</b><span class="small">${pk.reply === 'coming' ? `<b style="color:var(--good)">On the way</b> · ${fmtT(pk.replyAt)}` : pk.reply === 'no' ? '<b style="color:var(--bad)">Cannot come</b> · ask someone else' : 'Waiting for an answer'} · ready ${fmtT(pk.readyAt)}</span>${pk.reply === 'no' ? `<button class="btn ghost xs" data-act="famPickCancel" data-arg="${b.id}">Ask someone else</button>` : `<button class="btn ghost xs" data-act="famPickCancel" data-arg="${b.id}">Cancel pickup</button>`}</div>`
       : b.famShare === false || !['arrived', 'ended', 'reviewed', 'departed'].includes(b.status) ? '' : `<div class="col" style="gap:6px"><span class="eyebrow">Ask for a pickup</span>
       <div class="row" style="gap:6px;flex-wrap:wrap">${['end', 'now'].map(k => `<button class="chip" data-act="famPickAt" data-arg="${k}" aria-pressed="${pickT === k}">${k === 'now' ? 'Ready now' : 'When the service ends' + (b.endAt ? ' (' + fmtT(b.endAt) + ')' : '')}</button>`).join('')}</div>
-      <div class="row" style="gap:6px;flex-wrap:wrap">${L.map(t => `<button class="btn secondary sm" data-act="famPick" data-arg="${b.id}|${t.id}">${esc(t.name.split(' ')[0])}</button>`).join('')}</div>
-      <span class="tiny muted">They get the address of this job and a map link, only for the pickup.</span></div>`}
+      <div class="row" style="gap:6px;flex-wrap:wrap">${L.filter(famLive).map(t => `<button class="btn secondary sm" data-act="famPick" data-arg="${b.id}|${t.id}">${esc(t.name.split(' ')[0])}</button>`).join('') || '<span class="tiny muted">No one has accepted yet.</span>'}</div>
+      <span class="tiny muted">They get an app alert with the address of this job and a map link, only for the pickup.</span></div>`}
     ${L.length < FAM_MAX && S.prov.famAddJob === b.id ? famForm('job') : L.length < FAM_MAX ? `<button class="btn ghost xs" data-act="famAddJob" data-arg="${b.id}">+ Add someone now</button>` : ''}</div>`;
+}
+
+/* ---------- member side: requests to accept, people I follow, my Ticktap ID ---------- */
+function famFollowCard(where) {
+  const mine = []; S.providers.forEach(p => famTrusted(p).forEach(t => { if (t.aid && isMeAcct(t.aid)) mine.push({ p, t }); }));
+  const pend = mine.filter(x => !x.t.linkedAt), on = mine.filter(x => x.t.linkedAt);
+  if (where === 'home' && !mine.length) return '';
+  return `<div class="card tight" data-fam-follow="${where}" style="gap:8px"><b class="small">${ic('users', 14)} Trusted contact</b>
+    ${pend.map(({ p, t }) => `<div class="col" style="gap:6px"><span class="small"><b>${esc(p.name)}</b> asks you to be a trusted contact (${esc(t.rel)}). You will see when they set out, arrive and finish a job, and they can ask you for a pickup.</span><div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="famAccept" data-arg="${p.id}|${t.id}">Accept</button><button class="btn secondary sm" data-act="famDecline" data-arg="${p.id}|${t.id}">Decline</button></div></div>`).join('')}
+    ${on.map(({ p, t }) => { const b = famTrip(p), pk = b && b.pickup && b.pickup.tid === t.id && !b.pickup.reply; return `<button class="li" data-act="famOpen" data-arg="${t.code}">${zav(p, 36)}<div class="col grow"><b class="small">You follow ${esc(p.name)}</b><span class="tiny muted">${pk ? '<b style="color:var(--bad)">Pickup asked · tap to answer</b>' : b ? ({ paid: 'Has a job', departed: 'On the way', arrived: 'Working now', ended: 'Finished', reviewed: 'Finished' }[b.status]) : 'No job right now'}</span></div>${ic('chev', 16)}</button>`; }).join('')}
+    ${where === 'home' ? '' : ttIdRow()}</div>`;
+}
+function ttIdRow() {
+  const a = S.role === 'provider' ? (S.accounts || []).find(x => x.link && x.link.pid === S.prov.id) : ((S.accounts || []).find(x => x.link && x.link.cid === (S.customer.cid || 'me')) || meAcct());
+  if (!a) return ''; const id = ttIdOf(a);
+  return `<div class="row between" style="gap:8px"><div class="col"><span class="tiny muted">My Ticktap ID · give it to family who want to add you</span><b class="mono" style="user-select:all">${id}</b></div><button class="btn secondary xs" data-act="ttCopy" data-arg="${id}">Copy</button></div>`;
 }
 
 /* ---------- trusted person's app ---------- */
@@ -7292,10 +7323,14 @@ function famPane() {
   const head = `<header class="fam-h">${logo}<span class="tiny" style="opacity:.8">Family view</span></header>`;
   if (!hit) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:8px"><b>This invite is no longer active</b><span class="small muted">Ask for a new invite link.</span><button class="btn secondary sm" data-act="famLeave">Close family view</button></div></div></div></div>`;
   const { p, t } = hit, first = p.name.split(' ')[0];
-  if (!famInstalled()) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:10px;align-items:center;text-align:center">${zav(p, 72)}<h2 style="font-size:20px">Install Ticktap to follow ${esc(first)}</h2><p class="small">${esc(p.name)} added you, ${esc(t.name)}, as a trusted contact. For safety, trips can be seen only in the installed Ticktap app.</p></div>
+  const member = t.aid && isMeAcct(t.aid);
+  if (t.aid && !member) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:8px"><b>Sign in to follow ${esc(first)}</b><span class="small muted">${esc(p.name)} added you by your Ticktap ID. Open Ticktap and sign in to your own account.</span><button class="btn secondary sm" data-act="famLeave">Close family view</button></div></div></div></div>`;
+  if (t.aid && !t.linkedAt) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:8px"><b>Accept first</b><span class="small muted">Accept ${esc(first)}'s request on your Home screen.</span><button class="btn secondary sm" data-act="famLeave">Back</button></div></div></div></div>`;
+  if (!member && !famInstalled()) return `<div class="appshell"><div class="screen fam-s">${head}<div class="scroll"><div class="card" style="gap:10px;align-items:center;text-align:center">${zav(p, 72)}<h2 style="font-size:20px">Install Ticktap to follow ${esc(first)}</h2><p class="small">${esc(p.name)} added you, ${esc(t.name)}, as a trusted contact. For safety, trips can be seen only in the installed Ticktap app.</p></div>
     <div class="card tight" style="gap:6px"><b class="small">Android (Chrome)</b><ol class="small" style="margin:0;padding-left:18px"><li>Tap the ⋮ menu.</li><li>Tap <b>Install app</b> or <b>Add to Home screen</b>.</li><li>Open <b>Ticktap</b> from your home screen.</li></ol></div>
     <div class="card tight" style="gap:6px"><b class="small">iPhone (Safari)</b><ol class="small" style="margin:0;padding-left:18px"><li>Tap <b>Share</b> (square with an arrow).</li><li>Tap <b>Add to Home Screen</b>.</li><li>Open <b>Ticktap</b> from your home screen.</li></ol></div></div></div></div>`;
-  if (!t.linkedAt) { t.linkedAt = now(); t.dev = DEVICE; pushAlert('provider:' + p.id, t.name + ' installed Ticktap', 'They can now follow your trips.', null, 'good'); }
+  if (!t.linkedAt && !t.aid) { t.linkedAt = now(); t.dev = DEVICE; pushAlert('provider:' + p.id, t.name + ' installed Ticktap', 'They can now follow your trips.', null, 'good'); }
+  if (!t.aid) { const ps = pushState(); if (['on', 'off', 'denied'].includes(ps) && t.alertsOn !== (ps === 'on')) t.alertsOn = ps === 'on'; }   /* build 155: the provider sees whether app alerts reach this person */
   const b = famTrip(p), pk = b && b.pickup && b.pickup.tid === t.id ? b.pickup : null;
   const step = b ? { paid: 0, departed: 1, arrived: 2, ended: 3, reviewed: 3 }[b.status] : -1;
   const trip = b ? `<div class="card" style="gap:10px" data-fam-trip="${b.status}"><span class="eyebrow">${b.status === 'paid' ? 'Next job' : ['ended', 'reviewed'].includes(b.status) ? 'Finished' : 'Now'}</span>
@@ -7308,20 +7343,35 @@ function famPane() {
   const hist = S.bookings.filter(x => x.pid === p.id && x.famShare !== false && ['ended', 'reviewed'].includes(x.status) && x !== b).sort((a, c) => (c.endedAt || 0) - (a.endedAt || 0)).slice(0, 5);
   return `<div class="appshell"><div class="screen fam-s" data-pane="family">${head}<div class="scroll">
     <div class="row" style="gap:12px;align-items:center">${zav(p, 52)}<div class="col"><span class="tiny muted">You follow</span><b style="font-size:18px">${esc(p.name)}</b></div></div>
-    ${pushCard(true)}${pick}${trip}
+    ${member ? '' : pushCard(true)}${pick}${trip}
     ${hist.length ? `<div class="col" style="gap:6px"><span class="eyebrow">Recent jobs</span><div class="list">${hist.map(x => `<div class="li"><span class="small grow">${fmtD(x.endedAt)} · ${esc(areaOf(x.address))}</span><span class="tiny muted">${fmtT(x.arrivedAt || x.departedAt || x.endedAt)}–${fmtT(x.endedAt)}</span></div>`).join('')}</div></div>` : ''}
     <p class="tiny muted">For ${esc(first)}'s safety only. Customer details are not shown, except the address when you are asked to pick ${esc(first)} up. In an emergency, call 911.</p>
-    <button class="btn ghost sm" data-act="famLeave">Leave family view</button></div></div></div>`;
+    <button class="btn ghost sm" data-act="famLeave">${member ? 'Back to my Ticktap' : 'Leave family view'}</button></div></div></div>`;
 }
 
 Object.assign(A, {
-  famAdd: () => { const me = prov(S.prov.id), f = S.prov.fam || {}; if (!me) return; const name = String(f.name || '').trim(), phone = String(f.phone || '').replace(/[^\d+]/g, '');
-    if (!name || phone.replace(/\D/g, '').length < 10) { toast('provider', 'Name and mobile needed', 'Enter their name and an 11-digit mobile number.'); return; }
+  famAdd: () => { const me = prov(S.prov.id), f = S.prov.fam || {}; if (!me) return; const name = String(f.name || '').trim(), a = acctByTt(f.tt);
+    if (!name || !ttNorm(f.tt)) { toast('provider', 'Name and Ticktap ID needed', 'Ask them for the Ticktap ID on their Account page.'); return; }
+    if (!a) { toast('provider', 'No member with that ID', 'Check the Ticktap ID. Not on Ticktap yet? Share an invite.'); return; }
+    if (a.link && a.link.pid === me.id) { toast('provider', 'That is your own ID', 'Enter the ID of a family member or friend.'); return; }
+    if (famTrusted(me).some(x => x.aid === a.id)) { toast('provider', 'Already added', name + ' is on your list.'); return; }
     if (famTrusted(me).length >= FAM_MAX) return; if (!Array.isArray(me.trusted)) me.trusted = [];
-    const t = { id: 'tc' + Date.now().toString(36), name, rel: f.rel || 'Friend', phone, code: Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-3).toUpperCase(), at: now() };
-    me.trusted.push(t); S.prov.fam = { name: '', rel: 'Spouse', phone: '' }; S.prov.famAddJob = null; A.famInvite(t.id); },
-  famInvite: id => { const me = prov(S.prov.id), t = famTrusted(me).find(x => x.id === id); if (!t) return; t.invitedAt = now(); const url = famLink(t);
-    sendSms(t.phone, `${me.name} added you as a trusted contact on Ticktap. Install the app to follow their trips: ${url}`); S.prov.famLink = { name: t.name, url }; clip(url); toast('provider', 'Invite sent to ' + t.name, 'SMS sent · link copied.'); },
+    const t = { id: 'tc' + Date.now().toString(36), name, rel: f.rel || 'Friend', aid: a.id, ttid: ttIdOf(a), code: Math.random().toString(36).slice(2, 8).toUpperCase() + Date.now().toString(36).slice(-3).toUpperCase(), at: now() };
+    me.trusted.push(t); S.prov.fam = { name: '', rel: 'Spouse', tt: '' }; S.prov.famAddJob = null; A.famInvite(t.id); },
+  famInvite: id => { const me = prov(S.prov.id), t = famTrusted(me).find(x => x.id === id); if (!t || !t.aid) return; t.invitedAt = now(); const to = famTo(t);
+    if (to) pushAlert(to, me.name + ' asks you to be a trusted contact', 'Open Ticktap and accept on your Home screen to follow their trips for their safety.', null, 'info');
+    toast('provider', 'Request sent to ' + t.name, 'They get an app alert and accept in their app.'); },
+  famShareInvite: () => { const me = prov(S.prov.id); let url = ''; try { const u = new URL(location.href); u.search = ''; u.hash = ''; url = u.toString(); } catch (e) { url = 'https://ticktap.ph'; }
+    const text = `${me ? me.name.split(' ')[0] : 'I'} would like you as a trusted contact on Ticktap. Install the app, sign up, and send me your Ticktap ID (Account page): ${url}`;
+    S.prov.famLink = { name: 'them', url: text }; clip(text);
+    try { if (navigator.share) { navigator.share({ title: 'Ticktap', text }).catch(() => { }); return; } } catch (e) { }
+    toast('provider', 'Invite copied', 'Paste it into KakaoTalk, Messenger or a text to them.'); },
+  famAccept: arg => { const [pid, tid] = arg.split('|'), p = prov(pid), t = famTrusted(p).find(x => x.id === tid); if (!t || !isMeAcct(t.aid)) return; t.linkedAt = now();
+    pushAlert('provider:' + p.id, t.name + ' accepted', 'They now follow your trips and can get pickup requests.', null, 'good'); toast(S.role === 'provider' ? 'provider' : 'customer', 'You now follow ' + p.name.split(' ')[0], 'Trip updates come as app alerts.'); },
+  famDecline: arg => { const [pid, tid] = arg.split('|'), p = prov(pid), t = famTrusted(p).find(x => x.id === tid); if (!t || !isMeAcct(t.aid)) return; p.trusted = famTrusted(p).filter(x => x.id !== tid);
+    pushAlert('provider:' + p.id, t.name + ' declined', 'Add someone else as a trusted contact.', null, 'bad'); },
+  famOpen: code => { S.famBack = S.role; FAM.code = code; S.role = 'family'; },
+  ttCopy: id => { clip(id); toast(S.role === 'provider' ? 'provider' : 'customer', 'Copied', id); },
   famDel: id => { const me = prov(S.prov.id); if (!me) return; me.trusted = famTrusted(me).filter(x => x.id !== id); S.prov.famLink = null; },
   famAddJob: id => { S.prov.famAddJob = id; },
   famShare: id => { const b = bk(id); if (b) b.famShare = b.famShare === false; },
@@ -7329,13 +7379,13 @@ Object.assign(A, {
   famPick: arg => { const [id, tid] = arg.split('|'), b = bk(id), me = prov(S.prov.id), t = famTrusted(me).find(x => x.id === tid); if (!b || !t) return;
     const readyAt = (S.prov.pickAt || 'end') === 'now' || !b.endAt ? now() : Math.max(now(), b.endAt);
     b.pickup = { tid, name: t.name, at: now(), readyAt, reply: null }; logB(b, 'Provider asked ' + t.name + ' (' + t.rel + ') for a pickup at ' + fmtT(readyAt));
-    pushAlert('family:' + t.code, me.name.split(' ')[0] + ' asks for a pickup', 'Ready ' + (readyAt > now() + MIN ? 'at ' + fmtT(readyAt) : 'now') + ' · ' + areaOf(b.address) + '. Open Ticktap for the address.', null, 'bad');
-    sendSms(t.phone, `[Ticktap] ${me.name.split(' ')[0]} asks you for a pickup, ready ${readyAt > now() + MIN ? 'at ' + fmtT(readyAt) : 'now'}. Open the Ticktap app for the address.`);
-    toast('provider', 'Pickup asked', t.name + ' was alerted.'); },
+    if (!famLive(t)) return;
+    pushAlert(famTo(t), me.name.split(' ')[0] + ' asks for a pickup', 'Ready ' + (readyAt > now() + MIN ? 'at ' + fmtT(readyAt) : 'now') + ' · ' + areaOf(b.address) + '. Open Ticktap for the address.', null, 'bad');
+    logB(b, 'Pickup request sent to ' + t.name + ' as an app alert'); toast('provider', 'Pickup asked', t.name + ' got an app alert' + (t.alertsOn === false ? '. Their alerts are off, so they see it when they open Ticktap.' : '.')); },
   famPickCancel: id => { const b = bk(id); if (b && b.pickup) { logB(b, 'Pickup request cancelled'); b.pickup = null; } },
   famReply: arg => { const [id, r] = arg.split('|'), b = bk(id); if (!b || !b.pickup) return; b.pickup.reply = r; b.pickup.replyAt = now();
     pushAlert('provider:' + b.pid, r === 'coming' ? b.pickup.name + ' is on the way' : b.pickup.name + ' cannot come', r === 'coming' ? 'Your pickup is coming.' : 'Ask someone else from the job screen.', b.id, r === 'coming' ? 'good' : 'bad'); },
-  famLeave: () => { lsSet('tt-family', null); FAM.code = ''; if (S.role === 'family') S.role = 'customer'; try { const u = new URL(location.href); u.searchParams.delete('family'); history.replaceState(null, '', u.toString()); } catch (e) { } }
+  famLeave: () => { lsSet('tt-family', null); FAM.code = ''; if (S.role === 'family') { S.role = S.famBack || 'customer'; S.famBack = null; } try { const u = new URL(location.href); u.searchParams.delete('family'); history.replaceState(null, '', u.toString()); } catch (e) { } }
 });
 /* ---------- Customer email confirmation (build 140, owner decision 2026-11-07) ----------
    Customers sign up with a verified mobile number only; the email is confirmed afterwards, within 7 days.
@@ -7859,7 +7909,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 154;
+const BUILD = 155;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
