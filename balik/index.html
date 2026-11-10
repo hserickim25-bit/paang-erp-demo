@@ -822,6 +822,18 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
    Pinch zoom stays available in the browser for people who need larger text; the installed app locks it (09-install-location.js). */
 html{touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input[type="search"],input[type="text"],input[type="email"],input[type="tel"],input[type="number"],input[type="password"],textarea,select{font-size:max(16px,1em)}
+
+/* Step bar (build 153): the must-press button for each booking step sits in the bottom bar and flips
+   front (what it does) → back (why to press it). Phase comes from --fd so a re-render does not restart it. */
+.stepdock{display:flex;flex-direction:column;gap:8px}
+.fbtn{position:relative;height:56px;font-size:17px;padding:0;perspective:700px;overflow:visible}
+.fbtn .fx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 14px;border-radius:inherit;text-align:center;line-height:1.2;backface-visibility:hidden;-webkit-backface-visibility:hidden;animation:fbF var(--flip,6.5s) linear infinite;animation-delay:var(--fd,0ms)}
+.fbtn .fb{background:var(--mango);color:var(--mango-ink);font-size:14.5px;font-weight:600;box-shadow:inset 0 0 0 2px rgba(13,40,70,.12);animation-name:fbB}
+.fbtn .fb .ic{flex-shrink:0}
+.fwhy{display:none;text-align:center}
+@keyframes fbF{0%,55%{transform:rotateX(0)}62%,93%{transform:rotateX(180deg)}100%{transform:rotateX(360deg)}}
+@keyframes fbB{0%,55%{transform:rotateX(-180deg)}62%,93%{transform:rotateX(0)}100%{transform:rotateX(180deg)}}
+@media (prefers-reduced-motion: reduce){.fbtn .fx{animation:none}.fbtn .fb{display:none}.fwhy{display:block}}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1477,6 +1489,7 @@ function custPane() {
     case 'points': h = custPoints(); tab = 'account'; break;
     default: c.screen = 'home'; h = custHome(); tab = 'home';   /* an unknown screen never shows a blank page */
   }
+  if (!footer && S.customer.signedIn && !c.signup) footer = custDock(c.screen);   /* the must-press step sits in the same bottom bar on every screen */
   return `<div class="screen" data-pane="customer">${modeBar('customer')}${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
 }
 
@@ -1705,7 +1718,7 @@ function custBook() {
       <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row" style="align-items:flex-start">${ic('shield', 18)}<p class="small">No contact before payment. Once you pay, you can message or call your provider in the app until the service ends.</p></div></div>
     </div>`;
   const dis = c.when === 'later' && (!c.slot || c.slot < now() + 30 * MIN || c.slot > bookMax());
-  const f = `<button class="btn primary block" data-act="sendRequest" ${dis ? 'disabled' : ''}>${ic('send', 18)} Send request</button><span class="tiny muted" style="text-align:center">No charge now. You pay after you accept the arrival time.</span>`;
+  const f = stepDock('book', flipBtn({ cls: 'primary', act: 'sendRequest', disabled: dis, front: `${ic('send', 18)} Send request`, back: 'No charge until you accept a time' }));
   return [h, f];
 }
 
@@ -1731,7 +1744,7 @@ function custRequest() {
     <div class="scroll" data-scroll="c-req">
       ${['requested', 'business_queue'].includes(b.status) ? liveLine() + offlineBanner('customer') : ''}
       ${hero}
-      ${b.status === 'offered' ? `<div class="job-next" data-next="offered"><button class="btn primary block" data-act="openPay" data-arg="${b.id}">Accept & pay ${peso(b.gross)}</button><button class="btn secondary block" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button></div>` : ''}
+      ${b.status === 'offered' ? `<div class="job-next" data-next="offered"><button class="btn secondary block" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button></div>` : ''}
       ${step >= 0 ? `<ol class="steps">${stepsH}</ol>` : ''}
       <div class="card tight"><div class="row">${p ? zav(p, 48) : avatar(bz.name, bz.hue, 40)}<div class="col grow"><b>${esc(who)}</b>${p ? statusLine(p) : ''}</div></div>
         <div class="divider"></div>
@@ -1784,7 +1797,7 @@ function custTrack() {
         rate: b.status === 'ended' ? `<button class="btn primary block" data-act="goReview" data-arg="${b.id}">Rate ${esc(first)}</button>` : '',
         safe: ['paid', 'departed', 'arrived'].includes(b.status) ? `<div class="card"><span class="eyebrow">Safety</span><p class="small"><b>In an emergency, call 911.</b> If something is wrong with the booking, tap <b>Help</b> above and choose an urgent topic: urgent reports go first and Ticktap may call you in the app.</p><button class="btn secondary sm" data-act="custHelp">${ic('chat', 16)} Help · report a problem</button></div>` : '' };
         B.ns = ['paid', 'departed'].includes(b.status) ? nsCustCard(b) : '';
-        const O0 = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['rate', 'chk', 'talk'] }[b.status] || ['rate', 'chk', 'talk'], O = B.ns ? ['ns'].concat(O0) : O0;   /* a no-show report in progress, or the button to make one, comes first */   // what the customer acts on now comes first
+        const O0 = { paid: ['rem', 'talk', 'map', 'safe'], departed: ['talk', 'map', 'safe'], arrived: ['chk', 'safe', 'talk'], ended: ['chk', 'talk'] }[b.status] || ['chk', 'talk'], O = B.ns ? ['ns'].concat(O0) : O0;   /* a no-show report in progress, or the button to make one, comes first */   // what the customer acts on now comes first
         return O.map(k => k === O[0] && B[k] ? `<div class="job-next" data-next="${b.status}">${B[k]}</div>` : B[k]).join(''); })()}
       <div class="row between small"><span class="muted">Total paid · ${esc(b.payMethod || S.customer.pay)}</span><b class="num">${peso(b.gross)}</b></div>
       ${['paid', 'departed', 'arrived', 'ended'].includes(b.status) ? xmCustCard(b) : ''}
@@ -1805,7 +1818,7 @@ function custReview() {
       <div class="row" style="flex-wrap:wrap;gap:8px;justify-content:center">${TAGS.map(t => `<button class="chip" data-act="toggleTag" data-arg="${t}" aria-pressed="${r.tags.includes(t)}">${t}</button>`).join('')}</div>
       <label class="field">Your review<textarea id="c-rev-text" class="textarea" data-guard="1" data-bind="cust.review.text" placeholder="What did you like? What could be better?">${esc(r.text)}</textarea></label>${cgNote('cust.review.text')}
     </div>`;
-  const f = `<button class="btn primary block" data-act="submitReview">Submit review</button><button class="btn ghost sm" data-act="toBookings">Later</button>`;
+  const f = stepDock('review', flipBtn({ cls: 'primary', act: 'submitReview', front: 'Submit review', back: 'This completes your booking' })) + `<button class="btn ghost sm" data-act="toBookings">Later</button>`;
   return [h, f];
 }
 
@@ -2051,7 +2064,7 @@ function provRequest() {
     `<div class="col" style="gap:8px"><span class="eyebrow">Accept with arrival time</span><div style="display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px">${[10, 20, 30, 40, 50, 60].map(m => `<button class="chip" style="height:46px;padding:0;font-family:var(--mono);font-weight:600" data-act="setEta" data-arg="${m}" aria-pressed="${S.prov.eta === m}">${m}</button>`).join('')}</div><span class="small muted">Minutes after the customer pays. They see this time before paying. Arriving more than ${S.settings.penaltyAfter} min after it costs 1 reward credit, and cancelling after you accept costs ${Math.abs(CR().rules.acceptCancel)}.</span></div>`}
     <div class="card tight" style="background:var(--surface-2);border-color:transparent"><p class="small">Your answer goes to the customer instantly. After the customer pays you can message or call them in the app until the service ends.</p></div>
   </div>`;
-  const f = `<div style="display:grid;grid-template-columns:1fr 1.5fr;gap:10px"><button class="btn danger" data-act="declineReq" data-arg="${b.id}">Not available</button><button class="btn primary" data-act="acceptReq" data-arg="${b.id}">Accept${b.when === 'later' ? '' : ' · ' + S.prov.eta + ' min'}</button></div>`;
+  const f = stepDock('requested', `<div style="display:grid;grid-template-columns:1fr 1.6fr;gap:10px;align-items:start"><button class="btn danger" style="height:56px" data-act="declineReq" data-arg="${b.id}">Not available</button><div class="col" style="gap:6px;min-width:0">${flipBtn({ cls: 'primary', act: 'acceptReq', arg: b.id, front: 'Accept' + (b.when === 'later' ? '' : ' · ' + S.prov.eta + ' min'), back: 'Answer now or it goes to others' })}</div></div>`);
   return [h, f];
 }
 function provJob() {
@@ -2061,9 +2074,9 @@ function provJob() {
   const doneN = { offered: 0, paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0;
   let hero = '', f = '';
   if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
-  if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = `<button class="btn primary block" data-act="depart" data-arg="${b.id}">${ic('route', 18)} Depart now</button>`; }
-  if (b.status === 'departed') { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">On the way</b><span class="small">Departed ${fmtT(b.departedAt)} · arrive by <b class="num">${fmtT(b.promisedAt)}</b> (<span class="num" data-cd="${b.promisedAt}">${mmss(b.promisedAt - now())}</span> left)</span></div>`; f = `<button class="btn primary block" data-act="arrive" data-arg="${b.id}">${ic('pin', 18)} I've arrived · check in</button>`; }
-  if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = S.prov.endAsk === b.id ? `<div class="card tight" style="gap:8px;border-color:var(--good-dot)"><b>Is the service finished?</b><span class="small">Started ${fmtT(b.arrivedAt)} · planned until ${fmtT(b.endAt)}. The customer will be asked to rate you.</span><div class="row" style="gap:8px"><button class="btn good grow" data-act="endService" data-arg="${b.id}">${ic('check', 18)} Yes, end service</button><button class="btn secondary" data-act="endAsk" data-arg="">Not yet</button></div></div>` : `<button class="btn good block" data-act="endAsk" data-arg="${b.id}" ${now() - b.arrivedAt < 60000 ? 'disabled title="Available 1 minute after check-in"' : ''}>${ic('check', 18)} End service · back to green</button>${now() - b.arrivedAt < 60000 ? '<span class="tiny muted" style="text-align:center">Service just started. End service unlocks 1 minute after check-in.</span>' : ''}`; }
+  if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = flipBtn({ cls: 'primary', act: 'depart', arg: b.id, front: `${ic('route', 18)} Depart now`, back: 'Leaving? The customer tracks you live' }); }
+  if (b.status === 'departed') { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">On the way</b><span class="small">Departed ${fmtT(b.departedAt)} · arrive by <b class="num">${fmtT(b.promisedAt)}</b> (<span class="num" data-cd="${b.promisedAt}">${mmss(b.promisedAt - now())}</span> left)</span></div>`; f = flipBtn({ cls: 'primary', act: 'arrive', arg: b.id, front: `${ic('pin', 18)} I've arrived · check in`, back: 'At the door? Take your check-in photo' }); }
+  if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = S.prov.endAsk === b.id ? `<div class="card tight" style="gap:8px;border-color:var(--good-dot)"><b>Is the service finished?</b><span class="small">Started ${fmtT(b.arrivedAt)} · planned until ${fmtT(b.endAt)}. The customer will be asked to rate you.</span><div class="row" style="gap:8px"><button class="btn good grow" data-act="endService" data-arg="${b.id}">${ic('check', 18)} Yes, end service</button><button class="btn secondary" data-act="endAsk" data-arg="">Not yet</button></div></div>` : `${flipBtn({ cls: 'good', act: 'endAsk', arg: b.id, disabled: now() - b.arrivedAt < 60000, title: 'Available 1 minute after check-in', front: `${ic('check', 18)} End service · back to green`, back: 'Finished? The customer then rates you' })}${now() - b.arrivedAt < 60000 ? '<span class="tiny muted" style="text-align:center">Service just started. End service unlocks 1 minute after check-in.</span>' : ''}`; }
   if (['ended', 'reviewed'].includes(b.status)) { hero = `<div class="card"><div class="row"><span class="dot green" style="width:12px;height:12px"></span><b style="font-size:17px">Service ended · you're on green</b></div><span class="small muted">${b.autoEnded ? 'Ended automatically at the shown service time.' : 'Ended ' + fmtT(b.endedAt) + '.'} The customer was asked to rate you. Change your status if you need to:</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['green', 'Stand by'], ['yellow', 'Away 1 h'], ['red', 'Off today']].map(([k, l]) => `<button class="btn secondary xs" data-act="${k === 'yellow' ? 'setAway' : 'setStatus'}" data-arg="${k === 'yellow' ? 1 : k}" style="height:38px"><span class="dot ${k}"></span>${l}</button>`).join('')}</div></div>`; f = `<button class="btn secondary block" data-act="provTab" data-arg="jobs">Back to jobs</button>`; }
   const led = b.ledger;
@@ -2071,7 +2084,6 @@ function provJob() {
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${hero}
     ${b.status === 'paid' ? reschedCardProv(b) : ''}
-    ${f ? `<div class="job-next" data-next="${b.status}">${f}</div>` : ''}
     ${custNoShowCard(b)}
     ${famJobCard(b, me)}
     ${b.status === 'departed' ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
@@ -2092,7 +2104,7 @@ function provJob() {
       <div class="divider"></div><div class="row between"><b>${led.payee === 'business' ? 'Paid to ' + esc(led.payeeName) : 'You receive'}</b><b class="num">${peso(led.net, 2)}</b></div></div>` : ''}
     <p class="tiny muted">Every time stamp on this job is saved to your record and used to set your platform fee rate.</p>
   </div>`;
-  return [h, ''];   // the next action sits right under the status card, not in a footer
+  return [h, f ? stepDock(b.status, f) : ''];   /* build 153: the must-press step sits in the bottom bar, same place on every screen */
 }
 function provStatus() {
   const me = prov(S.prov.id), st = statusOf(me), w = weekHours(me), t = todayIdx();
@@ -7658,6 +7670,26 @@ function smsCostLine() {
   const t = new Date(now()), m0 = new Date(t.getFullYear(), t.getMonth(), 1).getTime(), n = (S.sms || []).filter(s => s.at >= m0).length;
   return `<span class="tiny muted">This month: ${n} SMS · about ${peso(n * SMS_PRICE, 2)} at ${peso(SMS_PRICE, 2)} each. Bookings, payments and reminders go by free app push; SMS only for unanswered requests, urgent alerts and people without the app.</span>`;
 }
+/* ===== 25 · Step bar (build 153) =====
+   Every button a customer or provider MUST press to move a booking forward sits in one place:
+   the bar at the bottom of the screen, right above the tab bar, on every step.
+   The button flips: front = what it does (unchanged label), back = why to press it (one short line).
+   The flip is phased on the clock so a re-render never restarts it; reduced-motion users see the reason as a line under the button. */
+const FLIP_MS = 6500;
+function flipBtn(o) {
+  const why = esc(o.back), lab = o.label || o.front.replace(/<[^>]+>/g, '').trim();
+  if (o.disabled) return `<button class="btn ${o.cls} block fbtn" disabled ${o.title ? `title="${esc(o.title)}"` : ''}>${o.front}</button>`;
+  return `<button class="btn ${o.cls} block fbtn" data-act="${o.act}" ${o.arg !== undefined ? `data-arg="${esc(String(o.arg))}"` : ''} aria-label="${esc(lab)}. ${why}" style="--fd:-${Date.now() % FLIP_MS}ms"><span class="fx ff" aria-hidden="true">${o.front}</span><span class="fx fb" aria-hidden="true">${ic('zap', 16)}<span>${why}</span></span></button><span class="fwhy tiny muted">${why}</span>`;
+}
+const stepDock = (key, inner) => `<div class="stepdock" data-next="${key}">${inner}</div>`;
+
+/* The customer's must-press step on the request and track screens (other screens build their own footer). */
+function custDock(screen) {
+  const b = bk(S.cust.bid); if (!b) return '';
+  if (screen === 'request' && b.status === 'offered') return stepDock('offered', flipBtn({ cls: 'primary', act: 'openPay', arg: b.id, front: `Accept &amp; pay ${peso(b.gross)}`, label: `Accept and pay ${peso(b.gross)}`, back: 'Pay now to lock in this arrival time' }));
+  if (screen === 'track' && b.status === 'ended' && b.pid && prov(b.pid)) return stepDock('ended', flipBtn({ cls: 'primary', act: 'goReview', arg: b.id, front: `Rate ${esc(prov(b.pid).name.split(' ')[0])}`, back: 'Your rating completes this booking' }));
+  return '';
+}
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7806,7 +7838,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 152;
+const BUILD = 153;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
