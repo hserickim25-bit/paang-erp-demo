@@ -1332,7 +1332,7 @@ const starsH = n => `<span class="stars" aria-label="${n} out of 5">${'★'.repe
 const photo = (c, h = 64) => `<span class="photo" style="height:${h}px;background:linear-gradient(135deg,${c},color-mix(in srgb,${c} 55%,#5b4a7a))">${ic('camera', 14)}</span>`;
 function statusOf(p) {
   const job = S.bookings.find(b => b.pid === p.id && b.status === 'arrived');
-  if (p.status === 'green') return { cls: 'green', text: job ? `In service ${fmtT(job.arrivedAt)}–${fmtT(job.endAt)}` : 'Available for service', busy: !!job, job };
+  if (p.status === 'green') return { cls: 'green', text: job ? inSvcText(job, '–') : 'Available for service', busy: !!job, job };
   if (p.status === 'yellow') return { cls: 'yellow', text: 'Back at ' + fmtT(p.backAt) };
   return { cls: 'red', text: 'Not available today' };
 }
@@ -1526,7 +1526,7 @@ const c_q = () => S.cust.q;
 function activeCard(b) {
   const p = b.pid ? prov(b.pid) : null, bz = b.bizId ? biz(b.bizId) : null;
   const who = p ? p.name : bz.name;
-  const line = { requested: 'Waiting for ' + who.split(' ')[0] + ' to reply', business_queue: bz && bz.name + ' is assigning a therapist', offered: who.split(' ')[0] + ' can arrive in ' + b.eta + ' min · confirm & pay', paid: 'Paid · ' + who.split(' ')[0] + ' is getting ready', departed: 'On the way · arrives by ' + fmtT(b.promisedAt), arrived: 'In service until ' + fmtT(b.endAt) }[b.status];
+  const line = { requested: 'Waiting for ' + who.split(' ')[0] + ' to reply', business_queue: bz && bz.name + ' is assigning a therapist', offered: who.split(' ')[0] + ' can arrive in ' + b.eta + ' min · confirm & pay', paid: 'Paid · ' + who.split(' ')[0] + ' is getting ready', departed: 'On the way · arrives by ' + fmtT(b.promisedAt), arrived: b.startPending ? 'Arrived · starting your service' : 'In service until ' + fmtT(b.endAt) }[b.status];
   const scr = ['paid', 'departed', 'arrived'].includes(b.status) ? 'track' : 'request';
   return `<button class="card" data-act="openBooking" data-arg="${b.id}" style="text-align:left;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)" data-scr="${scr}">
     <div class="row between"><span class="eyebrow" style="color:var(--accent)">Active booking</span>${statusPill(b.status)}</div>
@@ -1603,7 +1603,7 @@ function custProfile() {
         <h2 style="font-size:21px">${esc(p.name)}</h2>
         <span class="small muted">${b ? 'Staff of ' + esc(b.name) : catsLabel(p, S.cust.cat) + ' · Individual'} · ${fmtKm(d)} from ${esc(addr().label)}</span>
         <span class="row" style="gap:8px;justify-content:center">${statusLine(p, true)}</span>
-        ${st.busy ? `<span class="pill good">In service ${fmtT(st.job.arrivedAt)} – ${fmtT(st.job.endAt)} · free after</span>` : ''}
+        ${st.busy ? `<span class="pill good">${inSvcText(st.job, ' – ')}${st.job.startPending ? '' : ' · free after'}</span>` : ''}
         <div class="row" style="flex-wrap:wrap;justify-content:center;gap:6px;margin-top:4px">
           <span class="pill good">${ic('shield', 14)} ID verified</span><span class="pill good">TIN registered</span><span class="pill">${p.years} yrs experience</span>
           ${p.cert ? `<span class="pill accent">${esc(p.cert)}</span>` : '<span class="pill outline">No certificate · experience verified</span>'}
@@ -1792,7 +1792,7 @@ function custTrack() {
   const late = b.late && !b.arrivedAt;
   const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: 'Service in progress', ended: 'Service ended', reviewed: 'Completed' }[b.status];
   const pT = b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt);
-  const sub = { paid: `Paid ${fmtT(b.paidAt)} · ${b.when === 'later' ? 'booked for' : 'arrives by'} ${pT}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: `Arrived ${fmtT(b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}` }[b.status];
+  const sub = { paid: `Paid ${fmtT(b.paidAt)} · ${b.when === 'later' ? 'booked for' : 'arrives by'} ${pT}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: b.startPending ? `Arrived ${fmtT(b.arrivedAt)} · your service starts when ${esc(p.name.split(' ')[0])} taps Start` : `Started ${fmtT(b.startedAt || b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}` }[b.status];
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
     <div class="scroll" data-scroll="c-track">
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
@@ -2081,12 +2081,13 @@ function provJob() {
   const b = bk(S.prov.bid), me = prov(S.prov.id);
   if (!b) { S.prov.screen = 'jobs'; return [provJobs(), '']; }
   const stages = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
-  const doneN = { offered: 0, paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0;
+  const doneN = b.status === 'arrived' && b.startPending ? 3 : ({ offered: 0, paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0);
   let hero = '', f = '';
   if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
   if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = flipBtn({ cls: 'primary', act: 'depart', arg: b.id, front: `${ic('route', 18)} Depart now?`, back: 'The customer can track your arrival.' }); }
   if (b.status === 'departed') { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">On the way</b><span class="small">Departed ${fmtT(b.departedAt)} · arrive by <b class="num">${fmtT(b.promisedAt)}</b> (<span class="num" data-cd="${b.promisedAt}">${mmss(b.promisedAt - now())}</span> left)</span></div>`; f = flipBtn({ cls: 'primary', act: 'arrive', arg: b.id, front: `${ic('pin', 18)} I've arrived · check in`, back: 'Arrived on site? Take a photo to confirm your arrival.' }); }
-  if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = S.prov.endAsk === b.id ? `<div class="card tight" style="gap:8px;border-color:var(--good-dot)"><b>Is the service finished?</b><span class="small">Started ${fmtT(b.arrivedAt)} · planned until ${fmtT(b.endAt)}. The customer will be asked to rate you.</span><div class="row" style="gap:8px"><button class="btn good grow" data-act="endService" data-arg="${b.id}">${ic('check', 18)} Yes, end service</button><button class="btn secondary" data-act="endAsk" data-arg="">Not yet</button></div></div>` : `${flipBtn({ cls: 'good', act: 'endAsk', arg: b.id, disabled: now() - b.arrivedAt < 60000, title: 'Available 1 minute after check-in', front: `${ic('check', 18)} End service?`, back: 'Click button for your next service.' })}${now() - b.arrivedAt < 60000 ? '<span class="tiny muted" style="text-align:center">Service just started. End service unlocks 1 minute after check-in.</span>' : ''}`; }
+  if (b.status === 'arrived' && b.startPending) { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">Arrived ${fmtT(b.arrivedAt)} · ready to start</b><span class="small">Tap Start service when you begin. The ${b.mins}-minute service time counts from then. If you don't, it starts by itself at ${fmtT(b.arrivedAt + SVC_AUTO_START * MIN)}.</span></div>`; f = flipBtn({ cls: 'primary', act: 'startSvc', arg: b.id, front: `${ic('clock', 18)} Start service`, back: 'Click, when you start service.' }) + flipBtn({ cls: 'good', disabled: true, title: 'Start the service first', front: `${ic('check', 18)} End service?` }); }
+  else if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.startedAt || b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = S.prov.endAsk === b.id ? `<div class="card tight" style="gap:8px;border-color:var(--good-dot)"><b>Is the service finished?</b><span class="small">Started ${fmtT(b.startedAt || b.arrivedAt)} · planned until ${fmtT(b.endAt)}. The customer will be asked to rate you.</span><div class="row" style="gap:8px"><button class="btn good grow" data-act="endService" data-arg="${b.id}">${ic('check', 18)} Yes, end service</button><button class="btn secondary" data-act="endAsk" data-arg="">Not yet</button></div></div>` : `${flipBtn({ cls: 'good', act: 'endAsk', arg: b.id, disabled: now() - (b.startedAt || b.arrivedAt) < 60000, title: 'Available 1 minute after the start', front: `${ic('check', 18)} End service?`, back: 'Click button for your next service.' })}${now() - (b.startedAt || b.arrivedAt) < 60000 ? '<span class="tiny muted" style="text-align:center">Service just started. End service unlocks 1 minute after the start.</span>' : ''}`; }
   if (['ended', 'reviewed'].includes(b.status)) { hero = `<div class="card"><div class="row"><span class="dot green" style="width:12px;height:12px"></span><b style="font-size:17px">Service ended · you're on green</b></div><span class="small muted">${b.autoEnded ? 'Ended automatically at the shown service time.' : 'Ended ' + fmtT(b.endedAt) + '.'} The customer was asked to rate you. Change your status if you need to:</span>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['green', 'Stand by'], ['yellow', 'Away 1 h'], ['red', 'Off today']].map(([k, l]) => `<button class="btn secondary xs" data-act="${k === 'yellow' ? 'setAway' : 'setStatus'}" data-arg="${k === 'yellow' ? 1 : k}" style="height:38px"><span class="dot ${k}"></span>${l}</button>`).join('')}</div></div>`; f = `<button class="btn secondary block" data-act="provTab" data-arg="jobs">Back to jobs</button>`; }
   const led = b.ledger;
@@ -2124,7 +2125,7 @@ function provStatus() {
     <div class="row" style="gap:16px;align-items:center">
       <div class="tlight" aria-hidden="true"><i class="r ${me.status === 'red' ? 'on' : ''}"></i><i class="y ${me.status === 'yellow' ? 'on' : ''}"></i><i class="g ${me.status === 'green' ? 'on' : ''}"></i></div>
       <div class="col grow" style="gap:6px"><b style="font-size:20px;color:var(--${st.cls === 'green' ? 'good' : st.cls === 'yellow' ? 'warn' : 'bad'})">${me.status === 'green' ? 'Stand by' : me.status === 'yellow' ? 'Away · back ' + fmtT(me.backAt) : 'Off today'}</b>
-        ${st.busy ? `<span class="pill good" style="align-self:flex-start">In service ${fmtT(st.job.arrivedAt)} – ${fmtT(st.job.endAt)}</span>` : ''}
+        ${st.busy ? `<span class="pill good" style="align-self:flex-start">${inSvcText(st.job, ' – ')}</span>` : ''}
         <span class="small muted">${me.status === 'green' ? 'Customers see you as available. Requests arrive by app alert and SMS.' : me.status === 'yellow' ? 'Customers see your return time. You switch back to green automatically.' : "You won't get requests today."}</span></div></div>
     <div class="col" style="gap:8px">
       <button class="opt" data-act="setStatus" data-arg="green" aria-pressed="${me.status === 'green'}"><span class="dot green"></span><div class="col grow"><b>Stand by</b><span class="small muted">Available for requests now</span></div></button>
@@ -4042,7 +4043,7 @@ function modal() {
     return `<div class="pid-ov" role="dialog" aria-label="Your Ticktap ID">
       <div class="pid-top">${m.after ? `<span class="pill good">${ic('check', 14)} Arrived ${b && b.arrivedAt ? fmtT(b.arrivedAt) : ''} · check-in photo saved</span>` : ''}<b>Show this to the guard</b><span class="small">They can scan the QR code to confirm you are active${b ? ' and booked here today' : ''}.</span></div>
       <div class="pid-card">${idFront(p, true)}</div>
-      <button class="btn primary block pid-close" data-act="closeModal">${ic('x', 18)} Close${b ? ' · back to job ' + b.id : ''}</button></div>`; }
+      <button class="btn primary block pid-close" data-act="closeModal">${ic('x', 18)} Close</button></div>`; }
   if (m.kind === 'expel') return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Remove member" style="width:min(520px,100%);gap:12px;display:flex;flex-direction:column">
     <div class="row between"><h2 style="font-size:18px;color:var(--bad)">Remove from Ticktap</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
     <p class="small"><b>${esc(m.name)}</b> · ${{ provider: 'Provider', customer: 'Customer', business: 'Business member' }[m.who]}</p>
@@ -6308,13 +6309,12 @@ function endService(b, auto = false) {
 }
 function arrive(b) {
   const p = prov(b.pid);
-  b.status = 'arrived'; b.arrivedAt = now(); b.endAt = b.arrivedAt + b.mins * MIN;
+  b.status = 'arrived'; b.arrivedAt = now(); b.startPending = true; b.startedAt = null; b.endAt = b.arrivedAt + (SVC_AUTO_START + b.mins) * MIN;   /* build 166: the service time counts from Start service; this is only the latest possible end */
   logB(b, `Arrived · ${Math.round((b.arrivedAt - b.promisedAt) / MIN) <= 0 ? 'on time' : Math.round((b.arrivedAt - b.promisedAt) / MIN) + ' min after promise'}`);
   if (b.late) { b.late.resolved = true; if (!b.late.penalty && b.arrivedAt > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; addCredit(p, CR().rules.late, 'Late arrival · ' + b.id, b.id, 'late', 'late:' + b.id); logB(b, 'Reward credit −1 (late arrival)'); } }
-  logB(b, `In service ${fmtT(b.arrivedAt)}–${fmtT(b.endAt)}`);
   if (nsOpen(b)) nsDecide(b, 'rejected', 'provider', 'Your provider checked in at your address at ' + fmtT(b.arrivedAt) + ' with a live photo');
-  if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Service until about ${fmtT(b.endAt)}.${b.checkin ? ' Check-in photo attached.' : ''}`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, `In service until about ${fmtT(b.endAt)}.`); }
-  famNotify(b, p.name.split(' ')[0] + ' arrived', 'Working in ' + areaOf(b.address) + ' until about ' + fmtT(b.endAt) + '.');
+  if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has arrived`, `Your service starts when ${p.name.split(' ')[0]} taps Start.${b.checkin ? ' Check-in photo attached.' : ''}`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} has arrived`, 'Your service starts shortly.'); }
+  famNotify(b, p.name.split(' ')[0] + ' arrived', 'At the job in ' + areaOf(b.address) + '. The service starts shortly.');
   S.prov.screen = 'job'; S.prov.bid = b.id;
 }
 
@@ -6701,6 +6701,7 @@ const A = {
   admAcctSusp: uid => { const a = acct(uid); if (a) { a.suspended = !a.suspended; toast('admin', a.suspended ? 'Account on hold' : 'Account reactivated', a.loginId); } },
   pwToggle: id => { S.pwShow = S.pwShow || {}; S.pwShow[id] = !S.pwShow[id]; setTimeout(() => { const el = document.getElementById(id); if (el) { el.focus({ preventScroll: true }); const L = el.value.length; try { el.setSelectionRange(L, L); } catch (e) { } } }, 0); },
   toggleGps: () => { if (S.loc.status !== 'granted') { S.loc.ask = true; return; } S.loc.shareProv = !S.prov.gps; S.prov.gps = !S.prov.gps; if (S.prov.gps) toast('provider', 'Sharing live GPS', 'The customer sees your phone\'s position until you check in.'); },
+  startSvc: id => { const b = bk(id); if (b) startService(b, false); },
   endAsk: id => { S.prov.endAsk = id || null; },
   endService: id => { S.prov.endAsk = null; endService(bk(id), false); },
   setStatus: s => { const p = prov(S.prov.id); p.status = s; p.backAt = null; toast('provider', s === 'green' ? 'You are on stand-by' : 'You are off today', s === 'green' ? 'Customers now see you as available.' : 'No requests until you switch back.'); },
@@ -7381,7 +7382,7 @@ function famPane() {
   const trip = b ? `<div class="card" style="gap:10px" data-fam-trip="${b.status}"><span class="eyebrow">${b.status === 'paid' ? 'Next job' : ['ended', 'reviewed'].includes(b.status) ? 'Finished' : 'Now'}</span>
       <h2 style="font-size:20px">${b.status === 'paid' ? esc(first) + ' has a job' + (b.slotAt ? ' at ' + fmtWhen(b.slotAt) : ' soon') : b.status === 'departed' ? esc(first) + ' is on the way' : b.status === 'arrived' ? esc(first) + ' is working' : esc(first) + ' finished the job'}</h2>
       <span class="small muted">${esc(areaOf(b.address))} · ${esc(b.services.map(s => s.name).join(' + '))}</span>
-      <ol class="ns-steps">${[['Set out', b.departedAt], ['Arrived', b.arrivedAt], ['Service until about', b.status === 'arrived' ? b.endAt : null], ['Finished', ['ended', 'reviewed'].includes(b.status) ? b.endedAt : null]].map(([l, at], i) => `<li class="${i < step || (i === step && at) ? 'done' : i === step ? 'now' : ''}"><b>${l}</b><span class="small muted">${at ? fmtT(at) : '—'}</span></li>`).join('')}</ol></div>` : `<div class="card" style="gap:6px"><b>No trip right now</b><span class="small muted">You will be alerted when ${esc(first)} sets out for a job.</span></div>`;
+      <ol class="ns-steps">${[['Set out', b.departedAt], ['Arrived', b.arrivedAt], ['Service until about', b.status === 'arrived' && !b.startPending ? b.endAt : null], ['Finished', ['ended', 'reviewed'].includes(b.status) ? b.endedAt : null]].map(([l, at], i) => `<li class="${i < step || (i === step && at) ? 'done' : i === step ? 'now' : ''}"><b>${l}</b><span class="small muted">${at ? fmtT(at) : '—'}</span></li>`).join('')}</ol></div>` : `<div class="card" style="gap:6px"><b>No trip right now</b><span class="small muted">You will be alerted when ${esc(first)} sets out for a job.</span></div>`;
   const pick = pk ? `<div class="card" style="gap:8px;border-color:var(--accent)" data-fam-pick="1"><span class="eyebrow">Pickup</span><b>${esc(first)} asks you to pick them up ${pk.readyAt > now() ? 'at ' + fmtT(pk.readyAt) : 'now'}</b><span class="small">${esc(pickAddr(b.address))}</span><span class="tiny muted">Meet ${esc(first)} at the building entrance or lobby. The customer's unit is not shared.</span>
       <a class="btn secondary sm" href="https://www.google.com/maps/dir/?api=1&destination=${b.lat},${b.lng}" target="_blank" rel="noopener">${ic('route', 16)} Open in Maps</a>
       ${pk.reply ? `<span class="small">${pk.reply === 'coming' ? '<b style="color:var(--good)">You said you are on the way.</b>' : '<b>You said you cannot come.</b>'}</span>` : `<div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="famReply" data-arg="${b.id}|coming">I'm on my way</button><button class="btn secondary sm" data-act="famReply" data-arg="${b.id}|no">I can't</button></div>`}</div>` : '';
@@ -7773,7 +7774,7 @@ function smsCostLine() {
    The flip is phased on the clock so a re-render never restarts it; reduced-motion users see the reason as a line under the button. */
 const FLIP_MS = 6500;
 function flipBtn(o) {
-  const why = esc(o.back), lng = o.back.length > 40 ? ' long' : '', lab = o.label || o.front.replace(/<[^>]+>/g, '').trim();
+  const why = esc(o.back || ''), lng = (o.back || '').length > 40 ? ' long' : '', lab = o.label || o.front.replace(/<[^>]+>/g, '').trim();
   if (o.disabled) return `<button class="btn ${o.cls} block fbtn" disabled ${o.title ? `title="${esc(o.title)}"` : ''}>${o.front}</button>`;
   return `<button class="btn ${o.cls} block fbtn" data-act="${o.act}" ${o.arg !== undefined ? `data-arg="${esc(String(o.arg))}"` : ''} aria-label="${esc(lab)}. ${why}" style="--fd:-${Date.now() % FLIP_MS}ms"><span class="fx ff" aria-hidden="true">${o.front}</span><span class="fx fb${lng}" aria-hidden="true">${ic('zap', 16)}<span>${why}</span></span></button><span class="fwhy tiny muted">${why}</span>`;
 }
@@ -7805,6 +7806,19 @@ function stepNudge(b, n) {
   }
   if (did) b.nudge = g;
   return did;
+}
+
+/* Build 166 (owner): after checking in, the provider taps Start service; the service time (and the In service window shown
+   to customers) counts from then. If they forget, it starts by itself SVC_AUTO_START minutes after check-in. */
+const SVC_AUTO_START = 15;
+const inSvcText = (j, dash) => j.startPending ? `Arrived ${fmtT(j.arrivedAt)} · starting soon` : `In service ${fmtT(j.startedAt || j.arrivedAt)}${dash}${fmtT(j.endAt)}`;
+function startService(b, auto) {
+  if (!b || b.status !== 'arrived' || !b.startPending) return;
+  const p = prov(b.pid); b.startPending = false; b.startedAt = now(); b.endAt = b.startedAt + b.mins * MIN;
+  logB(b, (auto ? 'Service started automatically ' + SVC_AUTO_START + ' min after check-in' : 'Service started') + ` · in service ${fmtT(b.startedAt)}–${fmtT(b.endAt)}`);
+  if (b.cid && p) { pushAlert('customer', 'Your service has started', `${p.name.split(' ')[0]} started at ${fmtT(b.startedAt)} · until about ${fmtT(b.endAt)}.`, b.id, 'good'); toast('customer', 'Your service has started', `Until about ${fmtT(b.endAt)}.`); }
+  if (p) famNotify(b, p.name.split(' ')[0] + ' started the service', 'Working in ' + areaOf(b.address) + ' until about ' + fmtT(b.endAt) + '.');
+  if (auto && p && S.prov.id === p.id) toast('provider', 'Service started automatically', `The service time counts from ${fmtT(b.startedAt)}.`);
 }
 /* ===== 26 · Phone back button (build 159) =====
    In a browser the phone's back button used to leave the page (or reload it), so a customer who pressed it right after
@@ -8001,7 +8015,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 165;
+const BUILD = 166;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -8226,8 +8240,9 @@ function tick(force = false) {
       if (S.settings.tellCustomer && b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} is running late`, 'Our team has been alerted and is following up.', b.id); toast('customer', `${p.name.split(' ')[0]} is running late`, 'Our team is following up.'); }
     }
     if (b.late && !b.late.penalty && !b.arrivedAt && ['paid', 'departed'].includes(b.status) && n > b.promisedAt + S.settings.penaltyAfter * MIN) { b.late.penalty = true; addCredit(prov(b.pid), CR().rules.late, 'Late arrival · ' + b.id, b.id, 'late', 'late:' + b.id); logB(b, `Reward credit −1: more than ${S.settings.penaltyAfter} min late`); changed = true; }
-    if (b.status === 'arrived' && n >= b.endAt) { endService(b, true); changed = true; }
-    if (b.status === 'arrived' && b.arrivedAt && n - b.arrivedAt >= 60000 && n - b.arrivedAt < 61500 && S.prov.screen === 'job' && S.prov.bid === b.id) changed = true;   /* unlock End service after 1 minute */
+    if (b.status === 'arrived' && b.startPending && n >= b.arrivedAt + SVC_AUTO_START * MIN) { startService(b, true); changed = true; }
+    if (b.status === 'arrived' && !b.startPending && n >= b.endAt) { endService(b, true); changed = true; }
+    if (b.status === 'arrived' && !b.startPending && (b.startedAt || b.arrivedAt) && n - (b.startedAt || b.arrivedAt) >= 60000 && n - (b.startedAt || b.arrivedAt) < 61500 && S.prov.screen === 'job' && S.prov.bid === b.id) changed = true;   /* unlock End service after 1 minute */
   });
   const before = S.toasts.length; S.toasts = S.toasts.filter(t => t.until > Date.now()); if (S.toasts.length !== before) changed = true;
   if (changed) render();
