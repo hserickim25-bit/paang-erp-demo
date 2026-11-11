@@ -1365,10 +1365,13 @@ function listEntries(cat, filter, q) {
   let out = S.providers.filter(p => p.active !== false && inCat(p, cat)).map(p => ({ kind: 'p', o: p, d: distTo(p) }));
   S.businesses.filter(b => !b.expelled && (!cat || b.cat === cat)).forEach(b => out.push({ kind: 'b', o: b, d: distTo(b) }));
   if (q && q.trim()) { out.forEach(e => { e.m = srchMatch(e.o, q); }); out = out.filter(e => e.m); if (out.some(e => e.m === 2)) out = out.filter(e => e.m === 2); else out.forEach(e => { e.close = true; }); }
-  if (filter === 'ind') out = out.filter(e => e.kind === 'p' && e.o.type === 'individual');
-  if (filter === 'biz') out = out.filter(e => e.kind === 'b' || e.o.type === 'staff');
-  if (filter === 'now') out = out.filter(e => e.kind === 'b' ? bizGreen(e.o) > 0 : e.o.status === 'green');
-  if (filter === 'top') out = out.filter(e => e.o.rating >= 4.8);
+  /* build 158 (owner): a provider or business searched by NAME is always found, even on a day off or outside the chosen chip */
+  const qw = q && q.trim() ? srchNorm(q).split(/\s+/).filter(Boolean) : [], byName = e => qw.length > 0 && qw.every(w => srchNorm(e.o.name).includes(w));
+  const keep = f => { out = out.filter(e => byName(e) || f(e)); };
+  if (filter === 'ind') keep(e => e.kind === 'p' && e.o.type === 'individual');
+  if (filter === 'biz') keep(e => e.kind === 'b' || e.o.type === 'staff');
+  if (filter === 'now') keep(e => e.kind === 'b' ? bizGreen(e.o) > 0 : e.o.status === 'green');
+  if (filter === 'top') keep(e => e.o.rating >= 4.8);
   const rank = e => e.kind === 'b' ? (bizGreen(e.o) ? 0 : 1) : ({ green: 0, yellow: 1, red: 2 })[e.o.status];
   const mine = myProId(), own = e => e.kind === 'p' && e.o.id === mine ? 0 : 1;   // the pro who invited this customer comes first
   return out.sort((a, b) => own(a) - own(b) || rank(a) - rank(b) || a.d - b.d);
@@ -6871,7 +6874,7 @@ const onBind = (e, live) => {
   setPath(path, v);
   if (svcName && String(v).trim()) { const sv = S.providers[svcName[1]].services[svcName[2]]; if (wasEmpty || sv.isNew) { sv.on = true; delete sv.isNew; } }   /* naming a new service turns it on (also after an Android keyboard composition) */
   if (path === 'prov.id') { S.prov.screen = 'jobs'; S.prov.apply = null; }
-  if (el.dataset.go === 'list' && v && S.cust.screen === 'home') { S.cust.screen = 'list'; S.cust.cat = null; }
+  if (el.dataset.go === 'list' && v && S.cust.screen === 'home') { S.cust.screen = 'list'; S.cust.cat = null; S.cust.filter = 'nearest'; }   /* a new search from Home starts with no filter chip (build 158) */
   if (!live || el.tagName !== 'INPUT' || el.type !== 'text' && el.type !== 'search' && !el.inputMode && el.type !== 'number' && el.type !== 'tel') render();
   else render();
 };
@@ -7917,7 +7920,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 157;
+const BUILD = 158;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
