@@ -2089,7 +2089,7 @@ function provJob() {
   if (b.status === 'arrived' && b.startPending) { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">Arrived ${fmtT(b.arrivedAt)} · ready to start</b><span class="small">Tap Start service when you begin. The ${b.mins}-minute service time counts from then. If you don't, it starts by itself at ${fmtT(b.arrivedAt + svcAutoMin(b) * MIN)}.</span></div>`; f = flipBtn({ cls: 'primary', act: 'startSvc', arg: b.id, front: `${ic('clock', 18)} Start service`, back: 'Click, when you start service.' }) + flipBtn({ cls: 'good', disabled: true, title: 'Start the service first', front: `${ic('check', 18)} End service?` }); }
   else if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.startedAt || b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = S.prov.endAsk === b.id ? `<div class="card tight" style="gap:8px;border-color:var(--good-dot)"><b>Is the service finished?</b><span class="small">Started ${fmtT(b.startedAt || b.arrivedAt)} · planned until ${fmtT(b.endAt)}. The customer will be asked to rate you.</span><div class="row" style="gap:8px"><button class="btn good grow" data-act="endService" data-arg="${b.id}">${ic('check', 18)} Yes, end service</button><button class="btn secondary" data-act="endAsk" data-arg="">Not yet</button></div></div>` : `${flipBtn({ cls: 'good', act: 'endAsk', arg: b.id, disabled: now() - (b.startedAt || b.arrivedAt) < 60000, title: 'Available 1 minute after the start', front: `${ic('check', 18)} End service?`, back: 'Click button for your next service.' })}${now() - (b.startedAt || b.arrivedAt) < 60000 ? '<span class="tiny muted" style="text-align:center">Service just started. End service unlocks 1 minute after the start.</span>' : ''}`; }
   if (['ended', 'reviewed'].includes(b.status)) { hero = `<div class="card"><div class="row"><span class="dot green" style="width:12px;height:12px"></span><b style="font-size:17px">Service ended · you're on green</b></div><span class="small muted">${b.autoEnded ? 'Ended automatically at the shown service time.' : 'Ended ' + fmtT(b.endedAt) + '.'} The customer was asked to rate you. Change your status if you need to:</span>
-      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['green', 'Stand by'], ['yellow', 'Away 1 h'], ['red', 'Off today']].map(([k, l]) => `<button class="btn secondary xs" data-act="${k === 'yellow' ? 'setAway' : 'setStatus'}" data-arg="${k === 'yellow' ? 1 : k}" style="height:38px"><span class="dot ${k}"></span>${l}</button>`).join('')}</div></div>`; f = `<button class="btn secondary block" data-act="provTab" data-arg="jobs">Back to jobs</button>`; }
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['green', 'Stand by'], ['yellow', 'Away 1 h'], ['red', 'Off today']].map(([k, l]) => `<button class="btn secondary xs" data-act="${k === 'yellow' ? 'setAway' : 'setStatus'}" data-arg="${k === 'yellow' ? 1 : k}" style="height:38px"><span class="dot ${k}"></span>${l}</button>`).join('')}</div></div>`; f = ''; }   /* build 170: Back to jobs sits next to the pickup button below */
   const led = b.ledger;
   const h = `${bar('Job ' + b.id, 'provBack', `<button class="btn ghost xs" data-act="provHelp" data-arg="${b.id}">Help</button>`)}<div class="scroll" data-scroll="p-job">
     <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === nowN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
@@ -2097,7 +2097,7 @@ function provJob() {
     ${hero}
     ${b.status === 'paid' ? reschedCardProv(b) : ''}
     ${custNoShowCard(b)}
-    ${famJobCard(b, me)}
+    ${['ended', 'reviewed'].includes(b.status) ? jobEndActions(b, me) : famJobCard(b, me)}
     ${b.status === 'departed' ? `<button class="btn secondary block" data-act="idShow" data-arg="${b.id}">${ic('shield', 18)} Show my Ticktap ID to the guard</button>` : ''}
     ${canTalk(b) && b.status !== 'paid' ? `<div class="card tight" style="gap:10px"><div class="row">${avatar(b.customer, 220, 40)}<div class="col grow"><b>${esc(b.customer)}</b><span class="tiny muted">Messages and calls stay in the app · closes when the service ends</span></div></div>${talkButtons(b, 'provider')}</div>` : ''}
     ${['departed', 'arrived'].includes(b.status) ? `<p class="tiny muted" style="text-align:center"><b>In an emergency, call 911.</b> For a problem with this job, tap <b>Help</b> at the top: urgent reports go first and Ticktap may call you in the app.</p>` : ''}
@@ -7335,7 +7335,8 @@ function famCard(me) {   // Account page
 function famJobCard(b, me) {   // Job page: who follows this trip, add someone now, ask for a pickup
   if (!['paid', 'departed', 'arrived', 'ended', 'reviewed'].includes(b.status) || (['ended', 'reviewed'].includes(b.status) && now() - (b.endedAt || 0) > 3 * HOUR)) return '';
   const L = famTrusted(me), pk = b.pickup;
-  if (!L.length) return `<div class="card tight" style="gap:8px"><b class="small">${ic('users', 14)} Let someone follow this trip</b><span class="tiny muted">Add a family member or friend. They install Ticktap and see when you set out, arrive and finish.</span>${famForm('job')}</div>`;
+  /* build 170 (owner): family and friends are added once in Account › Trusted contacts, not on a job */
+  if (!L.length) return `<div class="card tight" style="gap:6px"><b class="small">${ic('users', 14)} Let someone follow your trips</b><span class="tiny muted">Add a family member or friend once in Account › Trusted contacts. They see when you set out, arrive and finish, and you can ask them for a pickup.</span><button class="btn ghost xs" style="align-self:flex-start" data-act="provTab" data-arg="account">Go to Account</button></div>`;
   const pickT = S.prov.pickAt || 'end';
   return `<div class="card tight" style="gap:8px" data-fam-job="${b.id}"><div class="row between"><b class="small">${ic('users', 14)} ${b.famShare === false ? 'Not shared with your trusted contacts' : 'Your trusted contacts follow this trip'}</b><button class="btn ghost xs" data-act="famShare" data-arg="${b.id}">${b.famShare === false ? 'Share' : 'Stop sharing'}</button></div>
     ${b.famShare === false ? '' : `<span class="tiny muted">${L.map(t => esc(t.name) + (t.linkedAt ? '' : ' (not accepted yet)')).join(', ')}</span>`}
@@ -7344,7 +7345,18 @@ function famJobCard(b, me) {   // Job page: who follows this trip, add someone n
       <div class="row" style="gap:6px;flex-wrap:wrap">${['end', 'now'].map(k => `<button class="chip" data-act="famPickAt" data-arg="${k}" aria-pressed="${pickT === k}">${k === 'now' ? 'Ready now' : 'When the service ends' + (b.endAt ? ' (' + fmtT(b.endAt) + ')' : '')}</button>`).join('')}</div>
       <div class="row" style="gap:6px;flex-wrap:wrap">${L.filter(famLive).map(t => `<button class="btn secondary sm" data-act="famPick" data-arg="${b.id}|${t.id}">${esc(t.name.split(' ')[0])}</button>`).join('') || '<span class="tiny muted">No one has accepted yet.</span>'}</div>
       <span class="tiny muted">They get an app alert with the building and street (not the customer's unit) and a map link, only for the pickup.</span></div>`}
-    ${L.length < FAM_MAX && S.prov.famAddJob === b.id ? famForm('job') : L.length < FAM_MAX ? `<button class="btn ghost xs" data-act="famAddJob" data-arg="${b.id}">+ Add someone now</button>` : ''}</div>`;
+</div>`;
+}
+
+/* Build 170 (owner): when the job has ended, this sits where the follow card was: "Notify family / friend for pickup"
+   next to "Back to jobs" (moved down from the top). One accepted contact gets the request at once; with more, the provider picks. */
+function jobEndActions(b, me) {
+  const L = famTrusted(me).filter(famLive), pk = b.pickup, open = S.prov.pickOpen === b.id && L.length > 1;
+  const pkLine = pk ? `<div class="card tight" style="background:var(--accent-soft);border-color:transparent;gap:4px"><b class="small">Pickup asked · ${esc(pk.name)}</b><span class="small">${pk.reply === 'coming' ? `<b style="color:var(--good)">On the way</b> · ${fmtT(pk.replyAt)}` : pk.reply === 'no' ? '<b style="color:var(--bad)">Cannot come</b> · ask someone else' : 'Waiting for an answer'}</span></div>` : '';
+  return `<div class="card tight" style="gap:8px" data-job-end="${b.id}">${pkLine}
+    <div style="display:grid;grid-template-columns:1.5fr 1fr;gap:8px"><button class="btn primary" style="min-height:52px;line-height:1.2" data-act="famPickNow" data-arg="${b.id}">${ic('users', 16)} ${pk && pk.reply === 'no' ? 'Ask someone else' : 'Notify family / friend for pickup'}</button><button class="btn secondary" style="min-height:52px" data-act="provTab" data-arg="jobs">Back to jobs</button></div>
+    ${open ? `<div class="col" style="gap:6px"><span class="tiny muted">Who should pick you up?</span><div class="row" style="gap:6px;flex-wrap:wrap">${L.map(t => `<button class="btn secondary sm" data-act="famPick" data-arg="${b.id}|${t.id}">${esc(t.name.split(' ')[0])}</button>`).join('')}</div></div>` : ''}
+    ${L.length ? '<span class="tiny muted">They get an app alert with the building and street (not the customer\'s unit) and a map link.</span>' : '<span class="tiny muted">Add family or friends in Account › Trusted contacts to use this.</span>'}</div>`;
 }
 
 /* ---------- member side: requests to accept, people I follow, my Ticktap ID ---------- */
@@ -7422,6 +7434,10 @@ Object.assign(A, {
   famAddJob: id => { S.prov.famAddJob = id; },
   famShare: id => { const b = bk(id); if (b) b.famShare = b.famShare === false; },
   famPickAt: k => { S.prov.pickAt = k; },
+  famPickNow: id => { const me = prov(S.prov.id), L = famTrusted(me).filter(famLive);
+    if (!L.length) { toast('provider', 'No trusted contact yet', 'Add a family member or friend in Account › Trusted contacts. They accept in their app.'); S.prov.screen = 'account'; return; }
+    S.prov.pickAt = 'now'; if (L.length === 1) { S.prov.pickOpen = null; A.famPick(id + '|' + L[0].id); return; }
+    S.prov.pickOpen = S.prov.pickOpen === id ? null : id; },
   famPick: arg => { const [id, tid] = arg.split('|'), b = bk(id), me = prov(S.prov.id), t = famTrusted(me).find(x => x.id === tid); if (!b || !t) return;
     const readyAt = (S.prov.pickAt || 'end') === 'now' || !b.endAt ? now() : Math.max(now(), b.endAt);
     b.pickup = { tid, name: t.name, at: now(), readyAt, reply: null }; logB(b, 'Provider asked ' + t.name + ' (' + t.rel + ') for a pickup at ' + fmtT(readyAt));
@@ -8029,7 +8045,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 169;
+const BUILD = 170;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
