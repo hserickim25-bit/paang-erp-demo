@@ -835,6 +835,11 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 @keyframes fbB{0%,55%{transform:rotateX(-180deg)}62%,93%{transform:rotateX(0)}100%{transform:rotateX(180deg)}}
 @media (prefers-reduced-motion: reduce){.fbtn .fx{animation:none}.fbtn .fb{display:none}.fwhy{display:block}}
 .fbtn .fb.long{font-size:13px;line-height:1.15}
+/* build 160: a primary button that is not ready yet looks off but still answers a tap with a hint */
+.btn.soft-off{opacity:.45;transform:none}
+[data-hint="1"]{animation:svcHint .5s ease-in-out 3;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft, rgba(47,134,194,.25))}
+@keyframes svcHint{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@media (prefers-reduced-motion: reduce){[data-hint="1"]{animation:none}}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1608,13 +1613,13 @@ function custProfile() {
       ${loyCard(p.biz ? 'b:' + p.biz : 'p:' + p.id, S.customer.cid || 'me')}
       ${promoOn(p) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc(p.promo.title || 'Discount event')}</b><span class="small">${p.promo.mode === 'items' ? 'Discounts on selected services' : '−' + p.promo.pct + '% on all services'} · until ${promoUntil(p)}</span><span class="tiny">Prices below already include the discount.</span></div>` : ''}
       <div class="col" style="gap:8px"><h3 style="font-size:15px">Services</h3>
-      ${(() => { const G = svcGroups(p, S.cust.cat), multi = G.length > 1; return G.map(g => `${multi ? `<span class="eyebrow svc-grp">${esc(catName(g.cat) || 'Other')}</span>` : ''}<div class="list">${g.list.map(s => { const i = p.services.indexOf(s), on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min${discPct(p, s) ? ` · <b style="color:var(--bad)">−${discPct(p, s)}%</b>` : ''}</span></div>${priceH(p, s)}<button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}">${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div>`).join(''); })()}</div>
+      ${(() => { const G = svcGroups(p, S.cust.cat), multi = G.length > 1; return G.map(g => `${multi ? `<span class="eyebrow svc-grp">${esc(catName(g.cat) || 'Other')}</span>` : ''}<div class="list">${g.list.map(s => { const i = p.services.indexOf(s), on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min${discPct(p, s) ? ` · <b style="color:var(--bad)">−${discPct(p, s)}%</b>` : ''}</span></div>${priceH(p, s)}<button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}" ${!sel.length && S.cust.svcHint && now() - S.cust.svcHint < 2500 ? 'data-hint="1"' : ''}>${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div>`).join(''); })()}</div>
       ${ratingBlock(p)}
       ${reviewsBlock(p)}
     </div>`;
   const blocked = p.status === 'red';
   const f = `<div class="row between"><div class="col"><span class="small muted">${sel.length ? sel.length + ' service' + (sel.length > 1 ? 's' : '') : 'Add a service'}</span><b class="num" data-fit style="font-size:18px">${peso(total)}</b></div>
-    <button class="btn primary" data-act="goBook" ${!sel.length || blocked ? 'disabled' : ''}>${blocked ? 'Not available today' : 'Continue'}</button></div>`;
+    <button class="btn primary${!sel.length && !blocked ? ' soft-off' : ''}" data-act="goBook" ${blocked ? 'disabled' : ''}>${blocked ? 'Not available today' : 'Continue'}</button></div>`;   /* build 160: with no service chosen, Continue still answers with a hint */
   return [h, f];
 }
 
@@ -6402,7 +6407,7 @@ const A = {
   openBiz: id => { S.cust.bizId = id; S.cust.screenSrc = 'biz'; S.cust.cart = []; S.cust.back = S.cust.screen; S.cust.screen = 'bizprofile'; setTimeout(() => resetScroll('c-biz')); },
   back: () => { const c = S.cust; c.screen = c.screen === 'book' ? (c.screenSrc === 'biz' ? 'bizprofile' : 'profile') : (c.back && !['profile', 'bizprofile', 'book'].includes(c.back) ? c.back : 'home'); },
   toggleSvc: i => { i = Number(i); const c = S.cust.cart; const k = c.indexOf(i); k >= 0 ? c.splice(k, 1) : c.push(i); },
-  goBook: () => { const ma = meAcct(); if (ma && ma.link && ma.link.pid && ma.link.pid === S.cust.pid) { toast('customer', 'This is your own profile', 'You cannot book yourself.'); return; } S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
+  goBook: () => { if (!S.cust.cart.length) { S.cust.svcHint = now(); toast('customer', 'Choose a service first', 'Tap Add next to the service you want, then tap Continue.'); setTimeout(render, 2600); return; } const ma = meAcct(); if (ma && ma.link && ma.link.pid && ma.link.pid === S.cust.pid) { toast('customer', 'This is your own profile', 'You cannot book yourself.'); return; } S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
   setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
   custCancelAsk: id => { S.cust.cancelAsk = id || null; },
@@ -7952,7 +7957,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 159;
+const BUILD = 160;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
