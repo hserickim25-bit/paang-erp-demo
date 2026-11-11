@@ -4455,7 +4455,7 @@ function chatSheet(role) {
     <div class="chatlog" data-scroll="chat-${k}">${(b.chat || []).length ? b.chat.map(m => `<div class="bub ${m.from === k ? 'me' : ''}"><span>${esc(m.text)}</span><i>${fmtT(m.at)}</i></div>`).join('') : `<div class="empty" style="margin:auto">Say hello to ${esc(who)}. Phone numbers stay private.</div>`}</div>
     ${cgNote((role === 'customer' ? 'cust' : 'prov') + '.chatDraft', true)}
     <div class="row" style="gap:6px;overflow-x:auto;flex-wrap:nowrap;padding-bottom:2px">${quick.map(q => `<button class="chip" style="flex-shrink:0" data-act="chatQuick" data-arg="${role}|${esc(q)}">${esc(q)}</button>`).join('')}</div>
-    <div class="row" style="gap:8px"><input id="chat-in-${k}" class="input grow" data-bind="${role === 'customer' ? 'cust' : 'prov'}.chatDraft" data-guard="1" data-enter="chatSend" data-enter-arg="${role}" value="${esc(st.chatDraft || '')}" placeholder="Write a message" autocomplete="off"><button class="btn primary sm" data-act="chatSend" data-arg="${role}" ${(st.chatDraft || '').trim() ? '' : 'disabled'}>Send</button></div>
+    <div class="row" style="gap:8px"><input id="chat-in-${k}" class="input grow" data-bind="${role === 'customer' ? 'cust' : 'prov'}.chatDraft" data-guard="1" data-enter="chatSend" data-enter-arg="${role}" value="${esc(st.chatDraft || '')}" placeholder="Write a message" autocomplete="off"><button class="btn primary sm" data-act="chatSend" data-arg="${role}">Send</button></div>
   </div></div>`;
 }
 function cgStrike(role, kind) {   // count blocked attempts per booking; the third one alerts Ticktap staff
@@ -6590,7 +6590,13 @@ const A = {
   installApp: () => { if (!installEvt) return; installEvt.prompt(); installEvt.userChoice.then(c => { if (c && c.outcome === 'accepted') { S.loc.asked = false; S.loc.ask = true; } installEvt = null; render(); }).catch(() => { }); },
   chatOpen: arg => { const [role, id] = arg.split(':'); const st = role === 'customer' ? S.cust : S.prov; st.chat = id; const b = bk(id); b.chatSeen = b.chatSeen || {}; b.chatSeen[myRoleKey(role)] = (b.chat || []).length; setTimeout(() => { const el = document.querySelector(`[data-scroll="chat-${myRoleKey(role)}"]`); if (el) el.scrollTop = el.scrollHeight; const inp = document.getElementById('chat-in-' + myRoleKey(role)); if (inp && !isPhone()) inp.focus(); }, 40); },
   chatClose: role => { const st = role === 'customer' ? S.cust : S.prov; const b = bk(st.chat); if (b) { b.chatSeen = b.chatSeen || {}; b.chatSeen[myRoleKey(role)] = (b.chat || []).length; } st.chat = null; },
-  chatSend: role => { const st = role === 'customer' ? S.cust : S.prov; sendChat(role, st.chatDraft); },
+  chatSend: role => { const st = role === 'customer' ? S.cust : S.prov;
+    /* build 163: on Android the keyboard may still be composing the last word, so the saved draft can lag behind what is on screen.
+       Read the box itself, so one tap on Send always sends what the user sees. */
+    const el = document.querySelector(`[data-enter="chatSend"][data-enter-arg="${role}"]`), v = el ? el.value : st.chatDraft;
+    if (!String(v || '').trim()) { if (el) el.focus(); return; }
+    if (el && el.dataset.guard && !cgCheck(v).ok) { el.dispatchEvent(new Event('input', { bubbles: true })); return; }   /* let the contact guard show its warning */
+    st.chatDraft = v; composing = false; sendChat(role, v); },
   chatQuick: arg => { const i = arg.indexOf('|'); sendChat(arg.slice(0, i), arg.slice(i + 1)); },
   callStart: arg => { const [role, id] = arg.split(':'); const st = role === 'customer' ? S.cust : S.prov; st.chat = null; startCall(role, id); },
   callAccept: arg => { const [role, id] = arg.split(':'); acceptCall(role, id); },
@@ -7973,7 +7979,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 162;
+const BUILD = 163;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
