@@ -1790,7 +1790,7 @@ function custTrack() {
   const st = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
   const [doneN, nowN] = stepProg(b);
   const late = b.late && !b.arrivedAt;
-  const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: 'Service in progress', ended: 'Service ended', reviewed: 'Completed' }[b.status];
+  const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: b.startPending ? `${esc(first)} has arrived` : 'Service in progress', ended: 'Service ended', reviewed: 'Completed' }[b.status];
   const pT = b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt);
   const sub = { paid: `Paid ${fmtT(b.paidAt)} · ${b.when === 'later' ? 'booked for' : 'arrives by'} ${pT}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: b.startPending ? `Arrived ${fmtT(b.arrivedAt)} · your service starts when ${esc(p.name.split(' ')[0])} taps Start` : `Started ${fmtT(b.startedAt || b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}` }[b.status];
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
@@ -8029,7 +8029,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 168;
+const BUILD = 169;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
