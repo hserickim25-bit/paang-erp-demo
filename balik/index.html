@@ -7772,6 +7772,38 @@ function stepNudge(b, n) {
   if (did) b.nudge = g;
   return did;
 }
+/* ===== 26 · Phone back button (build 159) =====
+   In a browser the phone's back button used to leave the page (or reload it), so a customer who pressed it right after
+   "Send request" could leave Ticktap in the middle of a booking. Now back works inside the app: it closes a pop-up, then
+   goes one screen back, then to the Home tab. Only a second press within 2.5 s on Home leaves Ticktap.
+   When the page is hidden or closed, the latest changes are saved and sent to the server at once. */
+const BK = { armed: 0, leave: false };
+function bkStep() {
+  if (S.modal) { S.modal = null; return true; }
+  const backBtn = [...document.querySelectorAll('.appbar [aria-label="Back"]')].find(el => el.offsetParent !== null);
+  if (backBtn) { backBtn.click(); return true; }
+  if (S.role === 'customer' && S.cust.screen !== 'home') { S.cust.screen = 'home'; return true; }
+  if (S.role === 'provider' && S.prov.screen && S.prov.screen !== 'jobs') { S.prov.screen = 'jobs'; return true; }
+  return false;
+}
+function bkFlush() {
+  try { save(); } catch (e) { }
+  try { if (SYNC.pushT) { clearTimeout(SYNC.pushT); SYNC.pushT = null; pushNow(); } } catch (e) { }
+}
+(function bkInit() {
+  try { if (!history.state || !history.state.tt) history.replaceState({ tt: 'base' }, ''); history.pushState({ tt: 'app' }, ''); } catch (e) { return; }
+  window.addEventListener('popstate', () => {
+    if (BK.leave) return;
+    const again = () => { try { history.pushState({ tt: 'app' }, ''); } catch (e) { } };
+    if (bkStep()) { again(); render(); return; }
+    if (Date.now() - BK.armed < 2500) { BK.leave = true; bkFlush(); history.back(); return; }
+    BK.armed = Date.now(); again();
+    toast(S.role === 'provider' ? 'provider' : S.role === 'business' ? 'business' : 'customer', 'Press back again to leave Ticktap', 'Your requests and bookings stay saved.');
+    render();
+  });
+  window.addEventListener('pagehide', bkFlush);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) bkFlush(); });
+})();
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7920,13 +7952,14 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 158;
+const BUILD = 159;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
   const txt = live ? `Live · room ${SYNC.room === 'demo' ? esc(SYNC.room) : '⚠ ' + esc(SYNC.room)} · ${n} device${n > 1 ? 's' : ''} online` : prev ? 'Demo preview · this device only' : SYNC.mode === 'tabs' || SYNC.mode === 'off' ? 'Not connected to the live server' : 'Live server problem';
   const why = bad ? `<span class="tiny" style="display:block;color:var(--bad);margin:4px 2px 0;word-break:break-word">${SYNC.online === false ? 'No connection to the server right now (weak signal or the app was in the background). It reconnects by itself.' : esc(SYNC.err || 'The server did not answer.')}${SYNC.tries ? ' · retry ' + SYNC.tries : ''} <button class="btn ghost xs" data-act="syncRetry" style="margin-left:4px">Reconnect</button></span>` : '';
-  return `<button class="liveline ${live ? 'ok' : prev ? 'prev' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>${why}`;
+  const newer = onlineList().some(x => Number(x.b) > BUILD);   /* build 159: another phone runs a newer build, so this one is out of date */
+  return `<button class="liveline ${live ? 'ok' : prev ? 'prev' : 'bad'}" data-act="demo"><span class="dot"></span>${txt}<span class="muted">· build ${BUILD}</span></button>${newer ? `<button class="btn primary xs" data-act="syncRetry" style="margin:6px 0 0">New version available · tap to update</button>` : ''}${why}`;
 }
 // presence uses the server clock, so phones whose clocks differ still see each other
 const srvNow = () => Date.now() + (SYNC.skew || 0);
