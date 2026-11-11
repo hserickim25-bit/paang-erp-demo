@@ -1720,7 +1720,7 @@ function custBook() {
         <div class="seg" style="width:100%"><button style="flex:1" data-act="setWhen" data-arg="now" aria-pressed="${c.when === 'now'}">As soon as possible</button><button style="flex:1" data-act="setWhen" data-arg="later" aria-pressed="${c.when === 'later'}">Schedule</button></div>
         ${c.when === 'now' ? `<p class="small muted">The provider replies with an arrival time of 10 to 60 minutes. You confirm and pay only after that.</p>` :
         schedPicker(c, src)}</div>
-      <div class="col" style="gap:8px"><span class="eyebrow">Where</span>
+      <div class="col" style="gap:8px"><span class="eyebrow">Service location</span>
         <button class="card tight" data-act="addrSheet" style="text-align:left;flex-direction:row;align-items:center">${ic('pin', 20)}<div class="col grow"><b>${esc(a.label)}</b><span class="small muted">${esc(a.line)}</span></div><span class="chg-pill">Change</span></button></div>
       <div class="col" style="gap:8px"><span class="eyebrow">Payment method · charged later</span><div class="list">${pm('GCash')}${pm('Maya')}${pm('Card')}</div></div>
       <div class="card tight" style="background:var(--surface-2);border-color:transparent"><div class="row" style="align-items:flex-start">${ic('shield', 18)}<p class="small">No contact before payment. Once you pay, you can message or call your provider in the app until the service ends.</p></div></div>
@@ -7957,7 +7957,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 160;
+const BUILD = 161;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
