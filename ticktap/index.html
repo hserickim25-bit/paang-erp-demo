@@ -1638,10 +1638,10 @@ function custBiz() {
       ${b.story ? `<div class="card"><p class="small">${esc(b.story)}</p></div>` : ''}
       ${loyCard('b:' + b.id, S.customer.cid || 'me')}
       ${bizPromoBadge(b) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc((bizStaffOn(b).find(promoOn) || {}).promo.title)}</b><span class="small">${bizPromoBadge(b).replace(/<[^>]+>/g, '').trim()}. Sale prices show when you choose a therapist.</span></div>` : ''}
-      <div class="col" style="gap:8px"><h3 style="font-size:16px">Choose a therapist to book</h3><span class="small muted">You book a therapist directly. Each one works for ${esc(b.name)} and offers the menu below.</span>
+      <div class="col" style="gap:8px"><h3 style="font-size:16px">Choose a therapist to book</h3><span class="small muted">You book a therapist directly. Each one works for ${esc(b.name)} and offers the menu below${b.services.some(x => x.on && Array.isArray(x.only)) ? ' (a few services are done only by some therapists)' : ''}.</span>
         <div class="list">${staff.map(p => `<button class="li" data-act="openProvider" data-arg="${p.id}">${zav(p, 48, true)}<div class="col grow"><b>${esc(p.name)}</b>${statusLine(p)}<span class="tiny muted">${starsH(p.rating)} ${p.rating} · ${p.years} yrs</span></div><span class="small muted num">${fmtKm(distTo(p))}</span>${ic('chev', 16)}</button>`).join('') || '<div class="empty">No therapists listed yet.</div>'}</div></div>
       ${ratingBlock(b)}
-      <div class="col" style="gap:8px"><h3 style="font-size:15px">Menu & prices</h3><div class="list">${b.services.filter(s => s.on && String(s.name || '').trim()).map(s => `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min</span></div><b class="num">${peso(s.price)}</b></div>`).join('')}</div></div>
+      <div class="col" style="gap:8px"><h3 style="font-size:15px">Menu & prices</h3><div class="list">${b.services.filter(s => s.on && String(s.name || '').trim() && (!Array.isArray(s.only) || s.only.length)).map(s => `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min${Array.isArray(s.only) ? ' · only ' + esc(s.only.map(id => (prov(id) || { name: '' }).name.split(' ')[0]).filter(Boolean).join(', ')) : ''}</span></div><b class="num">${peso(s.price)}</b></div>`).join('')}</div></div>
     </div>`;
   return [h, ''];
 }
@@ -2250,10 +2250,10 @@ function promoErr(e, svcs) {
 /* build 164: a business's staff do not set their own menu. It always mirrors the business menu (see the migration in 09),
    so an edit or "Add service" here was silently undone. Staff now see the menu read-only, with who to ask. */
 function staffMenuCard(me) {
-  const b = biz(me.biz) || {}, L = (me.services || []).filter(x => x.on && String(x.name || '').trim());
+  const b = biz(me.biz) || {}, L = (me.services || []).filter(x => x.on && String(x.name || '').trim()), extra = n => ((b.services || []).find(x => x.name === n) || {}).only;
   return `<div class="card" style="gap:10px"><div class="row between"><span class="eyebrow">Services · set by ${esc(b.name || 'your business')}</span>${ic('shield', 16)}</div>
-    ${L.length ? `<div class="list">${L.map(x => `<div class="li"><div class="col grow"><b class="small">${esc(x.name)}</b><span class="tiny muted">${x.mins} min</span></div><b class="mono">${peso(x.price)}</b></div>`).join('')}</div>` : '<span class="small muted">No services on the menu yet.</span>'}
-    <span class="small muted">${esc(b.name || 'Your business')} chooses the services and prices for all its staff. To add a service or change a price, ask the business owner or manager. It updates here on its own.</span></div>`;
+    ${L.length ? `<div class="list">${L.map(x => `<div class="li"><div class="col grow"><b class="small">${esc(x.name)}</b><span class="tiny muted">${x.mins} min${Array.isArray(extra(x.name)) ? ' · <span style="color:var(--accent)">Extra · you were added</span>' : ''}</span></div><b class="mono">${peso(x.price)}</b></div>`).join('')}</div>` : '<span class="small muted">No services on the menu yet.</span>'}
+    <span class="small muted">${esc(b.name || 'Your business')} chooses the services and prices for all its staff. Can you do another service on the menu, or need a price changed? Ask the business owner or manager to add you. It updates here on its own.</span></div>`;
 }
 function provServices() {
   const me = prov(S.prov.id), i = S.providers.indexOf(me);
@@ -3104,17 +3104,27 @@ function bizProfile(b) {
         ${(b.photos || []).length < 3 ? `<label class="bp add">${ic('plus', 22)}<span class="tiny">Add photo</span><input type="file" accept="image/*" class="sr" data-file="businesses.${bi}.photos" data-ocr="1" data-compress="wide" id="bp-photo"></label>` : ''}</div>
     </div></div></div>`;
 }
+/* build 165 (owner): the business sets one common menu and price list for all staff; a service can be limited to the
+   staff who can do it (s.only = list of provider ids). No list = all staff. Each staff member's own menu is copied from this. */
+const svcForStaff = (s, pid) => !Array.isArray(s.only) || s.only.includes(pid);
+function svcWhoEditor(b, s, j) {
+  const all = !Array.isArray(s.only), st = (b.staff || []).map(id => prov(id)).filter(Boolean);
+  return `<div class="col" style="gap:6px;border-top:1px solid var(--line);padding-top:8px"><span class="tiny muted">Offered by</span>
+    <div class="row wrap" style="gap:6px"><button class="chip${all ? ' on' : ''}" data-act="bizSvcWho" data-arg="${j}|all" aria-pressed="${all}">All staff</button>
+    ${st.map(p => { const on = !all && s.only.includes(p.id); return `<button class="chip${on ? ' on' : ''}" data-act="bizSvcWho" data-arg="${j}|${p.id}" aria-pressed="${on}">${esc(p.name.split(' ')[0])}</button>`; }).join('')}</div>
+    ${!all && !s.only.length ? '<span class="tiny" style="color:var(--bad)">No one offers this yet. Choose at least one therapist.</span>' : !all ? `<span class="tiny muted">Extra service · only ${s.only.length} of ${st.length} staff</span>` : ''}</div>`;
+}
 function bizServices(b) {
   const bi = S.businesses.indexOf(b);
   const ev = b.staff.map(id => prov(id)).filter(p => p && p.promo && ['active', 'scheduled'].includes(promoState(p)));
   const evH = ev.length ? `<div class="panel"><div class="panel-h"><h3>Staff discount events</h3><span class="small muted">Each therapist can run their own sale on this menu</span></div><div class="list">${ev.map(p => `<div class="li"><b class="grow small">${esc(p.name)} · ${esc(p.promo.title)}</b><span class="small muted">${p.promo.mode === 'items' ? 'Selected services' : '−' + p.promo.pct + '% all'} · ${fmtD(dayTs(p.promo.start))} – ${fmtD(dayTs(p.promo.end))}</span><span class="pill ${promoState(p) === 'active' ? 'good' : 'accent'}">${promoState(p) === 'active' ? 'Running' : 'Scheduled'}</span></div>`).join('')}</div></div>` : '';
-  return `<div class="page-h"><div><h1>Services & prices</h1><p>Add or remove the services your business offers and set the price and time for each. Every staff member offers this menu at these prices, and changes show to customers right away.</p></div><button class="btn primary sm" data-act="bizAddSvc">${ic('plus', 14)} Add service</button></div>
+  return `<div class="page-h"><div><h1>Services & prices</h1><p>Add the services your business offers and set one price and time for each. A service is offered by all staff unless you choose who offers it, so a therapist who can do more gets extra services. Changes show to customers right away.</p></div><button class="btn primary sm" data-act="bizAddSvc">${ic('plus', 14)} Add service</button></div>
     ${evH}
     <div class="narrow" style="max-width:640px">${loyEditor(b, 'businesses.' + bi + '.loyalty', 'b:' + b.id)}</div>
     <div class="panel"><div class="panel-b"><div class="svcgrid">
       ${b.services.map((s, j) => { const named = String(s.name || '').trim(); return `<div class="card tight" style="${named ? '' : 'border-color:var(--accent)'}"><div class="row between"><label class="check" style="align-items:center"><input type="checkbox" id="bm-on-${j}" data-bind="businesses.${bi}.services.${j}.on" ${s.on && named ? 'checked' : ''} ${named ? '' : 'disabled'}>Active</label>${b.services.length > 1 ? `<button class="iconbtn" style="width:30px;height:30px" data-act="bizRemoveSvc" data-arg="${j}" aria-label="Remove ${esc(s.name || 'service')}">${ic('x', 15)}</button>` : ''}</div>
         <label class="field">Service name<input id="bm-n-${j}" class="input" maxlength="40" data-bind="businesses.${bi}.services.${j}.name" value="${esc(s.name)}" placeholder="e.g. Hot stone massage"></label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="field">Price (₱)<input id="bm-p-${j}" class="input num" type="number" min="0" step="10" data-bind="businesses.${bi}.services.${j}.price" value="${s.price}"></label><label class="field">Minutes<input id="bm-m-${j}" class="input num" type="number" min="10" step="5" data-bind="businesses.${bi}.services.${j}.mins" value="${s.mins}"></label></div></div>`; }).join('')}
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><label class="field">Price (₱)<input id="bm-p-${j}" class="input num" type="number" min="0" step="10" data-bind="businesses.${bi}.services.${j}.price" value="${s.price}"></label><label class="field">Minutes<input id="bm-m-${j}" class="input num" type="number" min="10" step="5" data-bind="businesses.${bi}.services.${j}.mins" value="${s.mins}"></label></div>${named ? svcWhoEditor(b, s, j) : ''}</div>`; }).join('')}
     </div></div></div>`;
 }
 
@@ -4436,7 +4446,7 @@ function normalizeCredits() {
   if (!S.settings.credit.staffFeeV1) { S.settings.credit.staffFeeV1 = true; S.bookings.forEach(b => { const p = b.ledger && !b.ledger.paidAt && prov(b.pid); if (p && p.biz) { b.ledger.rate = tierRate(p); b.ledger.fee = Math.round(b.gross * b.ledger.rate) / 100; b.ledger.net = Math.round((b.gross - b.ledger.fee - b.ledger.wht) * 100) / 100; b.ledger.staff = { pid: p.id, name: p.name, credits: p.credits }; } }); }
   S.bookings.forEach(x => { if (x.status === 'business_queue') { x.status = 'cancelled'; x.cancelNote = 'Business requests were retired: customers now book a business therapist directly.'; } });
   S.providers.forEach(p => { if (!p.avail) p.avail = defAvail(); });
-  S.providers.forEach(p => { const b = p.biz && biz(p.biz); if (!b) return; const menu = b.services.filter(x => x.on && String(x.name || '').trim()).map(x => ({ name: x.name, mins: Number(x.mins) || 60, price: Number(x.price) || 0, on: true })); if (JSON.stringify(menu.map(x => [x.name, x.mins, x.price])) !== JSON.stringify((p.services || []).map(x => [x.name, x.mins, x.price]))) p.services = menu; });
+  S.providers.forEach(p => { const b = p.biz && biz(p.biz); if (!b) return; const menu = b.services.filter(x => x.on && String(x.name || '').trim() && svcForStaff(x, p.id)).map(x => ({ name: x.name, mins: Number(x.mins) || 60, price: Number(x.price) || 0, on: true })); if (JSON.stringify(menu.map(x => [x.name, x.mins, x.price])) !== JSON.stringify((p.services || []).map(x => [x.name, x.mins, x.price]))) p.services = menu; });
   S.providers.forEach(p => { if (p.credits == null || isNaN(p.credits)) p.credits = S.settings.credit.start; p.credits = Math.max(S.settings.credit.min, Math.min(S.settings.credit.max, Math.round(p.credits))); if (!p.creditLog) p.creditLog = []; if (!p.creditWeeks) p.creditWeeks = []; if (p.tierOverride != null && p.tierOverride >= S.settings.credit.bands.length) p.tierOverride = null; });
 }
 /* =============== In-app messages and voice calls (open after payment, closed when the service ends) =============== */
@@ -6775,6 +6785,10 @@ const A = {
     toast('business', 'Request declined', r.id); },
   bizStmt: k => { S.modal = { kind: 'stmt', k: Number(k) }; },
   bizAddSvc: () => { const b = biz(S.biz.id); b.services.push({ name: '', mins: 60, price: 700, on: false }); const j = b.services.length - 1; setTimeout(() => { const el = document.getElementById('bm-n-' + j); if (el) { el.scrollIntoView({ block: 'center' }); el.focus({ preventScroll: true }); } }, 30); },
+  bizSvcWho: arg => { const [j, who] = arg.split('|'), b = biz(S.biz.id), s = b && b.services[Number(j)]; if (!s) return;
+    if (who === 'all') { if (Array.isArray(s.only)) delete s.only; else s.only = []; return; }   /* tapping All staff again starts an empty pick list */
+    const L = Array.isArray(s.only) ? s.only.slice() : []; const k = L.indexOf(who); if (k >= 0) L.splice(k, 1); else L.push(who); s.only = L;
+    if (L.length === (b.staff || []).length && L.length) delete s.only; },
   bizRemoveSvc: j => { const b = biz(S.biz.id); if (b.services.length > 1) b.services.splice(Number(j), 1); },
   admSetStatus: arg => { const [id, st] = arg.split(':'); const p = prov(id); p.status = st; p.backAt = st === 'yellow' ? now() + HOUR : null; pushAlert('provider:' + id, 'Status changed by Ticktap support', 'Your light is now ' + ({ green: 'green (stand by)', yellow: 'yellow (away 1 h)', red: 'red (off today)' })[st] + '.', null); toast('admin', p.name + ' set to ' + st, 'The provider was notified.'); },
   admOpenJob: id => { S.admin.tab = 'jobs'; S.admin.sel = id; S.admin.jobFilter = 'all'; S.admin.jobQ = ''; },
@@ -7987,7 +8001,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 164;
+const BUILD = 165;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
