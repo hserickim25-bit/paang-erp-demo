@@ -1788,7 +1788,7 @@ function custTrack() {
   const order = ['paid', 'departed', 'arrived', 'ended'];
   const idx = order.indexOf(b.status);
   const st = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
-  const doneN = { paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0;
+  const [doneN, nowN] = stepProg(b);
   const late = b.late && !b.arrivedAt;
   const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: 'Service in progress', ended: 'Service ended', reviewed: 'Completed' }[b.status];
   const pT = b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt);
@@ -1796,7 +1796,7 @@ function custTrack() {
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
     <div class="scroll" data-scroll="c-track">
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
-      <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>${custDock('track')}
+      <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === nowN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>${custDock('track')}
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
       ${(() => { const B = {
         rem: b.reminders && b.reminders.length && ['paid'].includes(b.status) ? remindersCard(b) : '',
@@ -2081,7 +2081,7 @@ function provJob() {
   const b = bk(S.prov.bid), me = prov(S.prov.id);
   if (!b) { S.prov.screen = 'jobs'; return [provJobs(), '']; }
   const stages = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
-  const doneN = b.status === 'arrived' && b.startPending ? 3 : ({ offered: 0, paid: 1, departed: 2, arrived: 4, ended: 5, reviewed: 5 }[b.status] || 0);
+  const [doneN, nowN] = stepProg(b);
   let hero = '', f = '';
   if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
   if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = flipBtn({ cls: 'primary', act: 'depart', arg: b.id, front: `${ic('route', 18)} Depart now?`, back: 'The customer can track your arrival.' }); }
@@ -2092,7 +2092,7 @@ function provJob() {
       <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px">${[['green', 'Stand by'], ['yellow', 'Away 1 h'], ['red', 'Off today']].map(([k, l]) => `<button class="btn secondary xs" data-act="${k === 'yellow' ? 'setAway' : 'setStatus'}" data-arg="${k === 'yellow' ? 1 : k}" style="height:38px"><span class="dot ${k}"></span>${l}</button>`).join('')}</div></div>`; f = `<button class="btn secondary block" data-act="provTab" data-arg="jobs">Back to jobs</button>`; }
   const led = b.ledger;
   const h = `${bar('Job ' + b.id, 'provBack', `<button class="btn ghost xs" data-act="provHelp" data-arg="${b.id}">Help</button>`)}<div class="scroll" data-scroll="p-job">
-    <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === doneN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
+    <ol class="steps">${stages.map((s, i) => `<li class="${i < doneN ? 'done' : i === nowN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>
     ${f ? stepDock(b.status, f) : ''}
     ${hero}
     ${b.status === 'paid' ? reschedCardProv(b) : ''}
@@ -7824,6 +7824,16 @@ function startService(b, auto) {
   if (p) famNotify(b, p.name.split(' ')[0] + ' started the service', 'Working in ' + areaOf(b.address) + ' until about ' + fmtT(b.endAt) + '.');
   if (auto && p && S.prov.id === p.id) toast('provider', 'Service started automatically', `The service time counts from ${fmtT(b.startedAt)}.`);
 }
+
+/* Build 168: the blue progress steps Paid · Departed · Arrived · In service · Ended, the same on the customer and provider screens.
+   Returns [steps fully done, step half-filled]. After check-in and before Start service, Arrived is done and In service is still
+   empty; after Start service, In service is half-filled; after End service, all five are full. */
+function stepProg(b) {
+  const s = b.status;
+  if (s === 'arrived') return b.startPending ? [3, -1] : [3, 3];
+  if (s === 'ended' || s === 'reviewed') return [5, -1];
+  const d = { offered: 0, paid: 1, departed: 2 }[s] || 0; return [d, d];
+}
 /* ===== 26 · Phone back button (build 159) =====
    In a browser the phone's back button used to leave the page (or reload it), so a customer who pressed it right after
    "Send request" could leave Ticktap in the middle of a booking. Now back works inside the app: it closes a pop-up, then
@@ -8019,7 +8029,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 167;
+const BUILD = 168;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
