@@ -840,6 +840,7 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 [data-hint="1"]{animation:svcHint .5s ease-in-out 3;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft, rgba(47,134,194,.25))}
 @keyframes svcHint{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 @media (prefers-reduced-motion: reduce){[data-hint="1"]{animation:none}}
+.svc-hint .toast{animation:none}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1498,7 +1499,7 @@ function custPane() {
     case 'points': h = custPoints(); tab = 'account'; break;
     default: c.screen = 'home'; h = custHome(); tab = 'home';   /* an unknown screen never shows a blank page */
   }
-  return `<div class="screen" data-pane="customer">${modeBar('customer')}${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${toastsFor('customer')}</div>`;
+  return `<div class="screen" data-pane="customer">${modeBar('customer')}${h}${footer ? `<div class="footer-bar">${footer}</div>` : ''}${tab ? custTabs(tab) : ''}${custOverlays()}${c.screen === 'profile' && c.svcHint && !c.cart.length ? `<div class="toasts svc-hint"><div class="toast" role="status"><span class="app">${ic('bell', 16)}</span><div class="col grow"><b class="small">Choose a service first</b><span class="tiny muted">Tap Add next to the service you want, then tap Continue.</span></div></div></div>` : ''}${toastsFor('customer')}</div>`;   /* build 162: the hint stays put, shown once, until the customer scrolls */
 }
 
 function custHome() {
@@ -1612,8 +1613,8 @@ function custProfile() {
       ${bgBlock(p)}
       ${loyCard(p.biz ? 'b:' + p.biz : 'p:' + p.id, S.customer.cid || 'me')}
       ${promoOn(p) ? `<div class="card tight promo-card"><b>${ic('sparkle', 16)} ${esc(p.promo.title || 'Discount event')}</b><span class="small">${p.promo.mode === 'items' ? 'Discounts on selected services' : '−' + p.promo.pct + '% on all services'} · until ${promoUntil(p)}</span><span class="tiny">Prices below already include the discount.</span></div>` : ''}
-      <div class="col" style="gap:8px"><h3 style="font-size:15px">Services</h3>
-      ${(() => { const G = svcGroups(p, S.cust.cat), multi = G.length > 1; return G.map(g => `${multi ? `<span class="eyebrow svc-grp">${esc(catName(g.cat) || 'Other')}</span>` : ''}<div class="list">${g.list.map(s => { const i = p.services.indexOf(s), on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min${discPct(p, s) ? ` · <b style="color:var(--bad)">−${discPct(p, s)}%</b>` : ''}</span></div>${priceH(p, s)}<button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}" ${!sel.length && S.cust.svcHint && now() - S.cust.svcHint < 2500 ? 'data-hint="1"' : ''}>${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div>`).join(''); })()}</div>
+      <div class="col" style="gap:8px" data-svc-list="1"><h3 style="font-size:15px">Services</h3>
+      ${(() => { const G = svcGroups(p, S.cust.cat), multi = G.length > 1; return G.map(g => `${multi ? `<span class="eyebrow svc-grp">${esc(catName(g.cat) || 'Other')}</span>` : ''}<div class="list">${g.list.map(s => { const i = p.services.indexOf(s), on = sel.includes(i); return `<div class="li"><div class="col grow"><b>${esc(s.name)}</b><span class="small muted">${s.mins} min${discPct(p, s) ? ` · <b style="color:var(--bad)">−${discPct(p, s)}%</b>` : ''}</span></div>${priceH(p, s)}<button class="btn ${on ? 'ink' : 'secondary'} xs" data-act="toggleSvc" data-arg="${i}" aria-pressed="${on}" ${!sel.length && S.cust.svcPulse ? 'data-hint="1"' : ''}>${on ? ic('check', 14) + ' Added' : 'Add'}</button></div>`; }).join('')}</div>`).join(''); })()}</div>
       ${ratingBlock(p)}
       ${reviewsBlock(p)}
     </div>`;
@@ -6403,11 +6404,11 @@ const A = {
   listPage: n => { S.cust.page = Math.max(1, +n || 1); setTimeout(() => { const el = document.querySelector('[data-scroll="c-list"]'); if (el) el.scrollTop = 0; }, 30); },
   clearCat: () => { S.cust.cat = null; },
   setFilter: f => { S.cust.filter = f; },
-  openProvider: id => { S.cust.zoom = null; S.cust.pid = id; S.cust.screenSrc = 'p'; S.cust.cart = []; S.cust.back = S.cust.screen; S.cust.screen = 'profile'; setTimeout(() => resetScroll('c-prof')); },
+  openProvider: id => { S.cust.zoom = null; S.cust.svcHint = null; S.cust.svcPulse = false; S.cust.pid = id; S.cust.screenSrc = 'p'; S.cust.cart = []; S.cust.back = S.cust.screen; S.cust.screen = 'profile'; setTimeout(() => resetScroll('c-prof')); },
   openBiz: id => { S.cust.bizId = id; S.cust.screenSrc = 'biz'; S.cust.cart = []; S.cust.back = S.cust.screen; S.cust.screen = 'bizprofile'; setTimeout(() => resetScroll('c-biz')); },
   back: () => { const c = S.cust; c.screen = c.screen === 'book' ? (c.screenSrc === 'biz' ? 'bizprofile' : 'profile') : (c.back && !['profile', 'bizprofile', 'book'].includes(c.back) ? c.back : 'home'); },
   toggleSvc: i => { i = Number(i); const c = S.cust.cart; const k = c.indexOf(i); k >= 0 ? c.splice(k, 1) : c.push(i); },
-  goBook: () => { if (!S.cust.cart.length) { S.cust.svcHint = now(); toast('customer', 'Choose a service first', 'Tap Add next to the service you want, then tap Continue.'); setTimeout(render, 2600); return; } const ma = meAcct(); if (ma && ma.link && ma.link.pid && ma.link.pid === S.cust.pid) { toast('customer', 'This is your own profile', 'You cannot book yourself.'); return; } S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
+  goBook: () => { if (!S.cust.cart.length) { const sc = document.querySelector('[data-scroll="c-prof"]'); S.cust.svcHint = now(); S.cust.svcPulse = true; S.cust.svcHintY = sc ? sc.scrollTop : 0; S.cust.svcAuto = Date.now(); setTimeout(svcScrollTo, 30); return; } const ma = meAcct(); if (ma && ma.link && ma.link.pid && ma.link.pid === S.cust.pid) { toast('customer', 'This is your own profile', 'You cannot book yourself.'); return; } S.cust.screen = 'book'; S.cust.when = 'now'; S.cust.slot = null; },
   setWhen: w => { S.cust.when = w; if (w === 'later') { S.cust.day = null; S.cust.tmin = null; S.cust.calMonth = null; } },
   setDay: d => { S.cust.day = Number(d); },
   custCancelAsk: id => { S.cust.cancelAsk = id || null; },
@@ -7809,6 +7810,21 @@ function bkFlush() {
   window.addEventListener('pagehide', bkFlush);
   document.addEventListener('visibilitychange', () => { if (document.hidden) bkFlush(); });
 })();
+
+/* Build 162: the "Choose a service first" hint on a provider profile goes away once the customer scrolls the page.
+   It is removed in place (no re-render), so the scroll position and the pulsing Add buttons are not disturbed. */
+document.addEventListener('scroll', e => {
+  const sc = e.target; if (!sc || !sc.dataset || sc.dataset.scroll !== 'c-prof' || !S.cust.svcHint) return;
+  if (S.cust.svcAuto && Date.now() - S.cust.svcAuto < 1200) { S.cust.svcHintY = sc.scrollTop; return; }   /* our own scroll to the list does not count */
+  if (Math.abs(sc.scrollTop - (S.cust.svcHintY || 0)) < 40) return;
+  S.cust.svcHint = null; const el = document.querySelector('.svc-hint'); if (el) el.remove();
+}, true);
+/* Continue with no service: bring the service list into view (the hint stays at the top). */
+function svcScrollTo() {
+  const sc = document.querySelector('[data-scroll="c-prof"]'), el = sc && sc.querySelector('[data-svc-list]'); if (!sc || !el) return;
+  const top = el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 96;
+  try { sc.scrollTo({ top: Math.max(0, top), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); } catch (e) { sc.scrollTop = Math.max(0, top); }
+}
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -7957,7 +7973,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 161;
+const BUILD = 162;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
