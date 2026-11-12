@@ -841,6 +841,30 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 @keyframes svcHint{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
 @media (prefers-reduced-motion: reduce){[data-hint="1"]{animation:none}}
 .svc-hint .toast{animation:none}
+/* build 171: bonus points event designs */
+.pt-banner{position:relative;overflow:hidden}
+.pt-banner .col b,.pt-banner .col .small{color:inherit}.pt-banner .col .small{opacity:.92}
+.pt-deco{position:absolute;right:6px;top:0;bottom:0;display:flex;align-items:center;gap:2px;opacity:.28;pointer-events:none;color:currentColor}
+.pt-deco svg{width:26px;height:26px}.pt-deco svg:nth-child(2){width:38px;height:38px;transform:translateY(-8px)}.pt-deco svg:nth-child(3){width:20px;height:20px;transform:translateY(10px)}
+.pt-banner[data-th="christmas"],.pt-sw[data-th="christmas"] .pt-sw-c{background:linear-gradient(120deg,#C81E1E,#7F1D1D 55%,#166534);color:#fff}
+.pt-banner[data-th="christmas"] .pt-x{color:#B91C1C}
+.pt-banner[data-th="newyear"],.pt-sw[data-th="newyear"] .pt-sw-c{background:linear-gradient(120deg,#1E2A55,#3B2F6B 55%,#B8860B);color:#FFF6D6}
+.pt-banner[data-th="newyear"] .pt-x{color:#8A6508}
+.pt-banner[data-th="valentine"],.pt-sw[data-th="valentine"] .pt-sw-c{background:linear-gradient(120deg,#F9A8D4,#EC4899 55%,#BE185D);color:#fff}
+.pt-banner[data-th="valentine"] .pt-x{color:#BE185D}
+.pt-banner[data-th="summer"],.pt-sw[data-th="summer"] .pt-sw-c{background:linear-gradient(120deg,#FDE68A,#34D399 55%,#0EA5E9);color:#06303F}
+.pt-banner[data-th="summer"] .pt-x{color:#0369A1}
+.pt-banner[data-th="independence"],.pt-sw[data-th="independence"] .pt-sw-c{background:linear-gradient(120deg,#0038A8,#1E40AF 55%,#CE1126);color:#fff}
+.pt-banner[data-th="independence"] .pt-x{color:#0038A8}.pt-banner[data-th="independence"] .pt-deco,.pt-sw[data-th="independence"] .pt-deco{color:#FCD116;opacity:.45}
+.pt-banner[data-th="halloween"],.pt-sw[data-th="halloween"] .pt-sw-c{background:linear-gradient(120deg,#2E1065,#6D28D9 55%,#F97316);color:#fff}
+.pt-banner[data-th="halloween"] .pt-x{color:#6D28D9}
+.pt-banner[data-th="payday"],.pt-sw[data-th="payday"] .pt-sw-c{background:linear-gradient(120deg,#065F46,#059669 60%,#34D399);color:#fff}
+.pt-banner[data-th="payday"] .pt-x{color:#047857}
+.pt-sw[data-th="classic"] .pt-sw-c{background:linear-gradient(120deg,#F5B83D,#FF8A3D 55%,#E2557A);color:#2A1300}
+.pt-pick{display:grid;grid-template-columns:repeat(auto-fill,minmax(92px,1fr));gap:8px}
+.pt-sw{display:flex;flex-direction:column;gap:4px;align-items:stretch;padding:4px;border:2px solid transparent;border-radius:12px;background:none;cursor:pointer;color:var(--ink)}
+.pt-sw[aria-pressed="true"]{border-color:var(--accent)}
+.pt-sw-c{position:relative;display:block;height:34px;border-radius:9px;overflow:hidden}.pt-sw-c .pt-deco{opacity:.5}.pt-sw-c .pt-deco svg{width:16px;height:16px}.pt-sw-c .pt-deco svg:nth-child(2){width:22px;height:22px;transform:translateY(-3px)}.pt-sw-c .pt-deco svg:nth-child(3){width:12px;height:12px;transform:translateY(5px)}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1433,7 +1457,7 @@ const ptMultNow = () => { const e = ptEventAt(now()); return e ? e.mult : (PTS()
 const ptOverlap = (start, end, skipId) => PTS().events.some(e => !e.stoppedAt && e.id !== skipId && dayTs(start) <= dayTs(e.end) && dayTs(end) >= dayTs(e.start));
 function ptBanner() {
   const P = PTS(), e = ptEventAt(now()); if (!e) return '';
-  return `<div class="pt-banner"><span class="pt-x">${e.mult}×</span><div class="col grow" style="gap:2px"><b>${esc(e.title || e.mult + '× points event')}</b><span class="small">Earn ${e.mult}× Ticktap Points on every booking paid until ${fmtD(dayTs(e.end))}: ${e.mult} points for every ${peso(P.per)}, instead of the usual 1.</span></div></div>`;
+  return ptBannerHtml(ptThemeOf(e), e.mult, esc(e.title || e.mult + '× points event'), `Earn ${e.mult}× Ticktap Points on every booking paid until ${fmtD(dayTs(e.end))}: ${e.mult} points for every ${peso(P.per)}, instead of the usual 1.`);
 }
 const custRec = cid => (S.customers || {})[cid];
 const ptBal = cid => ((custRec(cid) || {}).ptLog || []).reduce((a, e) => a + e.pts, 0);
@@ -3256,13 +3280,15 @@ function admPointsPolicy() {
   return `<div class="panel" style="border-color:var(--accent)"><div class="panel-h"><div class="col"><h3>Ticktap Points policy</h3><span class="small muted">Standing rule: ${peso(P.per)} paid = 1 point · usable from ${P.min} points · 1 point = ${peso(P.value)}</span><span class="small" style="color:${cur ? 'var(--accent)' : P.on ? 'var(--good)' : 'var(--warn)'}">${cur ? `Now: ${cur.mult}× bonus event replaces the standing rule (no double points)` : P.on ? 'Now: standing rule (1×) applies' : 'Now: no points are earned (standing rule paused)'}</span></div>
       <div class="row" style="gap:8px"><span class="small ${P.on ? '' : 'muted'}">${P.on ? 'Earning on' : 'Earning paused'}</span><button class="switch" role="switch" aria-checked="${P.on}" data-act="ptPolicyToggle" aria-label="Points earning"><span></span></button></div></div>
     <div class="panel-b" style="gap:12px">
-      ${cur ? `<div class="pt-banner" style="margin:0"><span class="pt-x">${cur.mult}×</span><div class="col grow"><b>Live now: ${esc(cur.title)}</b><span class="small">Until ${fmtD(dayTs(cur.end))} · customers see this banner on their home screen</span></div></div>` : ''}
+      ${cur ? ptBannerHtml(ptThemeOf(cur), cur.mult, 'Live now: ' + esc(cur.title), `Until ${fmtD(dayTs(cur.end))} · customers see this banner on their home screen`, 'margin:0') : ''}
       <b class="small">Bonus points event (2× to 5×)</b>
       <div class="formgrid"><label class="field">Event name<input id="pe-title" class="input" maxlength="40" data-bind="admin.ptEv.title" value="${esc(d.title)}" placeholder="e.g. Christmas triple points"></label>
         <label class="field">Multiplier<select id="pe-mult" class="select" data-bind="admin.ptEv.mult" data-type="num">${[2, 3, 4, 5].map(m => `<option value="${m}" ${+d.mult === m ? 'selected' : ''}>${m}× points</option>`).join('')}</select></label>
         <label class="field">Starts<input id="pe-start" class="input" type="date" data-bind="admin.ptEv.start" value="${d.start}"></label><label class="field">Ends (last day)<input id="pe-end" class="input" type="date" data-bind="admin.ptEv.end" value="${d.end}" min="${d.start}"></label></div>
-      <div class="row" style="gap:8px;align-items:center">${err ? `<span class="small" style="color:var(--bad)">${err}</span>` : ''}<button class="btn primary sm" data-act="ptEventAdd" ${err ? 'disabled' : ''}>Schedule event</button><span class="tiny muted">During the event, bookings earn ${d.mult || 2}× points instead of 1× — never both. Only one bonus event can run at a time, and it runs even if the standing rule is paused.</span></div>
-      ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Event</th><th class="num">Multiplier</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${list.map(e => `<tr><td><b class="small">${esc(e.title)}</b></td><td class="num">${e.mult}×</td><td class="small">${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}</td><td>${{ active: '<span class="pill good">Running</span>', scheduled: '<span class="pill accent">Scheduled</span>', ended: '<span class="pill">Ended</span>', stopped: '<span class="pill bad">Stopped</span>' }[st(e)]}</td><td>${['active', 'scheduled'].includes(st(e)) ? `<button class="btn ghost xs" style="color:var(--bad)" data-act="ptEventStop" data-arg="${e.id}">Stop</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${ptThemePicker(d.theme || autoTheme(d.start))}
+      <div class="col" style="gap:4px"><span class="tiny muted">Preview · what customers will see</span>${ptBannerHtml(d.theme || autoTheme(d.start), d.mult || 2, esc(String(d.title || '').trim() || (d.mult || 2) + '× points event'), `Earn ${d.mult || 2}× Ticktap Points on every booking paid until ${isNaN(dayTs(d.end)) ? '…' : fmtD(dayTs(d.end))}.`, 'margin:0')}</div>
+      <div class="row" style="gap:8px;align-items:center">${err ? `<span class="small" style="color:var(--bad)">${err}</span>` : ''}<button class="btn primary sm" data-act="ptEventAdd">Schedule event</button><span class="tiny muted">During the event, bookings earn ${d.mult || 2}× points instead of 1× — never both. Only one bonus event can run at a time, and it runs even if the standing rule is paused.</span></div>
+      ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Event</th><th>Design</th><th class="num">Multiplier</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${list.map(e => `<tr><td><b class="small">${esc(e.title)}</b></td><td>${st(e) === 'ended' || st(e) === 'stopped' ? `<span class="small">${PT_THEMES[ptThemeOf(e)].name}</span>` : `<select class="select" style="min-width:130px;height:34px" data-bind="settings.points.events.${P.events.indexOf(e)}.theme" aria-label="Banner design">${Object.keys(PT_THEMES).map(k => `<option value="${k}" ${ptThemeOf(e) === k ? 'selected' : ''}>${PT_THEMES[k].name}</option>`).join('')}</select>`}</td><td class="num">${e.mult}×</td><td class="small">${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}</td><td>${{ active: '<span class="pill good">Running</span>', scheduled: '<span class="pill accent">Scheduled</span>', ended: '<span class="pill">Ended</span>', stopped: '<span class="pill bad">Stopped</span>' }[st(e)]}</td><td>${['active', 'scheduled'].includes(st(e)) ? `<button class="btn ghost xs" style="color:var(--bad)" data-act="ptEventStop" data-arg="${e.id}">Stop</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
     </div></div>`;
 }
 function admLoyalty() {
@@ -6751,7 +6777,11 @@ const A = {
   admPromoStop: id => { const p = prov(id); if (!p || !p.promo) return; p.promo.stoppedAt = now(); p.promo.stoppedBy = 'admin'; p.promo.stopReason = S.admin.promoReason || 'Stopped by Ticktap'; S.admin.confirm = ''; pushAlert('provider:' + p.id, 'Discount event stopped by Ticktap', `${p.promo.title}: ${p.promo.stopReason}. Customers now see your regular prices.`, null, 'bad'); toast('admin', 'Event stopped', p.name + ' · ' + p.promo.title); },
   admPtsOpen: id => { S.admin.ptsSel = id || null; },
   ptPolicyToggle: () => { const P = PTS(); P.on = !P.on; P.changedAt = now(); toast('admin', P.on ? 'Points earning resumed' : 'Points earning paused', P.on ? 'Customers earn points again.' : 'Customers keep and can use the points they have.'); },
-  ptEventAdd: () => { const P = PTS(), d = S.admin.ptEv; if (!d || ptOverlap(d.start, d.end)) return; P.events.push({ id: 'pe' + Date.now().toString(36), title: d.title.trim(), mult: Math.max(2, Math.min(5, +d.mult || 2)), start: d.start, end: d.end, createdAt: now() }); S.admin.ptEv = null; toast('admin', 'Bonus points event scheduled', 'Shown to customers on the home screen while it runs.'); },
+  ptTheme: k => { if (PT_THEMES[k]) (S.admin.ptEv || (S.admin.ptEv = {})).theme = k; },
+  ptEventAdd: () => { { const el = document.getElementById('pe-title'); if (el && S.admin.ptEv) S.admin.ptEv.title = el.value; }   /* build 171: read the box (Android keyboard may still be composing) */
+    const P = PTS(), d = S.admin.ptEv; if (!d) return;
+    const bad = !String(d.title || '').trim() ? 'Name the event.' : isNaN(dayTs(d.start)) || isNaN(dayTs(d.end)) ? 'Choose dates.' : dayTs(d.end) < dayTs(d.start) ? 'End must be on or after start.' : ptOverlap(d.start, d.end) ? 'Another bonus event already covers some of these dates.' : '';
+    if (bad) { toast('admin', 'Cannot schedule yet', bad); return; } P.events.push({ id: 'pe' + Date.now().toString(36), title: d.title.trim(), mult: Math.max(2, Math.min(5, +d.mult || 2)), start: d.start, end: d.end, theme: d.theme || autoTheme(d.start), createdAt: now() }); S.admin.ptEv = null; toast('admin', 'Bonus points event scheduled', 'Shown to customers on the home screen while it runs.'); },
   ptEventStop: id => { const e = PTS().events.find(x => x.id === id); if (e) { e.stoppedAt = now(); toast('admin', 'Event stopped', e.title); } },
   admSetTab: t => { S.admin.setTab = S.admin.setTab === t ? null : t; if (S.admin.setTab) setTimeout(() => { const el = document.getElementById('setbtn-' + t); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60); },
   admBizOpen: id => { S.admin.bizOpen = S.admin.bizOpen === id ? null : id; },
@@ -7897,6 +7927,47 @@ function svcScrollTo() {
   const top = el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 96;
   try { sc.scrollTo({ top: Math.max(0, top), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); } catch (e) { sc.scrollTop = Math.max(0, top); }
 }
+/* ===== 27 · Bonus points event designs (build 171) =====
+   The owner picks a banner design for each bonus points event (Christmas, New Year, Valentine's, Summer, Independence Day,
+   Halloween, Payday, Classic). Customers see the event banner on Home and in Account in that design. A new event suggests a
+   design from its start date; the owner can change it, also for a scheduled or running event. */
+const PT_SVG = {
+  sparkle: '<path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/>',
+  snow: '<path d="M12 2v20M3.3 7l17.4 10M3.3 17L20.7 7M9 4l3 2 3-2M9 20l3-2 3 2" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+  star: '<path d="M12 2l2.4 7.2H22l-6 4.6 2.3 7.2L12 16.6 5.7 21l2.3-7.2-6-4.6h7.6z"/>',
+  heart: '<path d="M12 21s-7-4.4-9.5-8.6C.9 9.3 2.6 5 6.5 5c2.1 0 3.6 1.2 5.5 3.2C13.9 6.2 15.4 5 17.5 5c3.9 0 5.6 4.3 4 7.4C19 16.6 12 21 12 21z"/>',
+  sun: '<circle cx="12" cy="12" r="5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4M4.2 4.2l2.8 2.8M17 17l2.8 2.8M4.2 19.8L7 17M17 7l2.8-2.8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  coin: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 9.5c0-1.4 1.3-2 3-2s3 .7 3 2-1.3 1.8-3 2.2-3 .9-3 2.3 1.3 2 3 2 3-.6 3-2M12 5.5v13" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+};
+const PT_THEMES = {
+  classic: { name: 'Classic', icon: 'sparkle' },
+  christmas: { name: 'Christmas', icon: 'snow' },
+  newyear: { name: 'New Year', icon: 'star' },
+  valentine: { name: "Valentine's", icon: 'heart' },
+  summer: { name: 'Summer', icon: 'sun' },
+  independence: { name: 'Independence Day', icon: 'sun' },
+  halloween: { name: 'Halloween', icon: 'moon' },
+  payday: { name: 'Payday', icon: 'coin' },
+};
+function autoTheme(start) {
+  const t = dayTs(start); if (isNaN(t)) return 'classic'; const d = new Date(t), m = d.getMonth() + 1, day = d.getDate();
+  if (m === 12 || (m === 11 && day >= 15)) return 'christmas';
+  if (m === 1 && day <= 7) return 'newyear';
+  if (m === 2) return 'valentine';
+  if (m >= 3 && m <= 5) return 'summer';
+  if (m === 6) return 'independence';
+  if (m === 10 && day >= 15) return 'halloween';
+  return 'classic';
+}
+const ptThemeOf = e => (e && PT_THEMES[e.theme]) ? e.theme : 'classic';
+const ptDeco = th => { const s = PT_SVG[PT_THEMES[th].icon]; return `<span class="pt-deco" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor">${s}</svg><svg viewBox="0 0 24 24" fill="currentColor">${s}</svg><svg viewBox="0 0 24 24" fill="currentColor">${s}</svg></span>`; };
+function ptBannerHtml(th, mult, title, sub, style) {
+  return `<div class="pt-banner" data-th="${th}"${style ? ` style="${style}"` : ''}>${ptDeco(th)}<span class="pt-x">${mult}×</span><div class="col grow" style="gap:2px;position:relative"><b>${title}</b><span class="small">${sub}</span></div></div>`;
+}
+function ptThemePicker(cur) {
+  return `<div class="col" style="gap:6px"><span class="small">Banner design</span><div class="pt-pick">${Object.keys(PT_THEMES).map(k => `<button class="pt-sw" data-th="${k}" data-act="ptTheme" data-arg="${k}" aria-pressed="${cur === k}"><span class="pt-sw-c">${ptDeco(k)}</span><span class="tiny">${PT_THEMES[k].name}</span></button>`).join('')}</div></div>`;
+}
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -8045,7 +8116,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 170;
+const BUILD = 171;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
