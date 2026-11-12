@@ -846,7 +846,8 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 .pt-banner .col b,.pt-banner .col .small{color:inherit}.pt-banner .col .small{opacity:.92}
 .pt-deco{position:absolute;right:6px;top:0;bottom:0;display:flex;align-items:center;gap:2px;opacity:.28;pointer-events:none;color:currentColor}
 .pt-deco svg{width:26px;height:26px}.pt-deco svg:nth-child(2){width:38px;height:38px;transform:translateY(-8px)}.pt-deco svg:nth-child(3){width:20px;height:20px;transform:translateY(10px)}
-.pt-banner[data-th="christmas"],.pt-sw[data-th="christmas"] .pt-sw-c{background:linear-gradient(120deg,#C81E1E,#7F1D1D 55%,#166534);color:#fff}
+.pt-banner[data-th="christmas"],.pt-sw[data-th="christmas"] .pt-sw-c{background:linear-gradient(120deg,#F25555 0%,#E02424 44%,#22C55E 60%,#4ADE80 100%);color:#fff}
+.pt-banner[data-th="christmas"] .col{text-shadow:0 1px 2px rgba(0,0,0,.28)}
 .pt-banner[data-th="christmas"] .pt-x{color:#B91C1C}
 .pt-banner[data-th="newyear"],.pt-sw[data-th="newyear"] .pt-sw-c{background:linear-gradient(120deg,#1E2A55,#3B2F6B 55%,#B8860B);color:#FFF6D6}
 .pt-banner[data-th="newyear"] .pt-x{color:#8A6508}
@@ -865,6 +866,12 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 .pt-sw{display:flex;flex-direction:column;gap:4px;align-items:stretch;padding:4px;border:2px solid transparent;border-radius:12px;background:none;cursor:pointer;color:var(--ink)}
 .pt-sw[aria-pressed="true"]{border-color:var(--accent)}
 .pt-sw-c{position:relative;display:block;height:34px;border-radius:9px;overflow:hidden}.pt-sw-c .pt-deco{opacity:.5}.pt-sw-c .pt-deco svg{width:16px;height:16px}.pt-sw-c .pt-deco svg:nth-child(2){width:22px;height:22px;transform:translateY(-3px)}.pt-sw-c .pt-deco svg:nth-child(3){width:12px;height:12px;transform:translateY(5px)}
+
+/* build 173: glossy finish on every event banner and design swatch (light from the top, soft shine line) */
+.pt-banner{box-shadow:0 6px 18px rgba(20,20,40,.18),inset 0 1px 0 rgba(255,255,255,.65),inset 0 -1px 0 rgba(0,0,0,.08)}
+.pt-banner::after,.pt-sw-c::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;background:linear-gradient(180deg,rgba(255,255,255,.42) 0%,rgba(255,255,255,.14) 44%,rgba(255,255,255,0) 52%,rgba(0,0,0,.05) 100%)}
+.pt-banner .pt-x,.pt-banner .col{position:relative;z-index:1}
+.pt-banner .pt-x{box-shadow:0 2px 6px rgba(0,0,0,.15),inset 0 1px 0 #fff}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -8116,7 +8123,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 172;
+const BUILD = 173;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
