@@ -3287,7 +3287,7 @@ function admPointsPolicy() {
         <label class="field">Starts<input id="pe-start" class="input" type="date" data-bind="admin.ptEv.start" value="${d.start}"></label><label class="field">Ends (last day)<input id="pe-end" class="input" type="date" data-bind="admin.ptEv.end" value="${d.end}" min="${d.start}"></label></div>
       ${ptThemePicker(d.theme || autoTheme(d.start))}
       <div class="col" style="gap:4px"><span class="tiny muted">Preview · what customers will see</span>${ptBannerHtml(d.theme || autoTheme(d.start), d.mult || 2, esc(String(d.title || '').trim() || (d.mult || 2) + '× points event'), `Earn ${d.mult || 2}× Ticktap Points on every booking paid until ${isNaN(dayTs(d.end)) ? '…' : fmtD(dayTs(d.end))}.`, 'margin:0')}</div>
-      <div class="row" style="gap:8px;align-items:center">${err ? `<span class="small" style="color:var(--bad)">${err}</span>` : ''}<button class="btn primary sm" data-act="ptEventAdd">Schedule event</button><span class="tiny muted">During the event, bookings earn ${d.mult || 2}× points instead of 1× — never both. Only one bonus event can run at a time, and it runs even if the standing rule is paused.</span></div>
+      ${err ? `<span class="small" style="color:var(--bad)">${err}</span>` : ''}<button class="btn primary block" style="min-height:52px;font-size:16px" data-act="ptEventAdd">${ic('send', 18)} Schedule event · publish to customers</button><div class="row" style="gap:8px;align-items:center"><span class="tiny muted">During the event, bookings earn ${d.mult || 2}× points instead of 1× — never both. Only one bonus event can run at a time, and it runs even if the standing rule is paused.</span></div>
       ${list.length ? `<div class="tablewrap"><table><thead><tr><th>Event</th><th>Design</th><th class="num">Multiplier</th><th>Period</th><th>Status</th><th></th></tr></thead><tbody>${list.map(e => `<tr><td><b class="small">${esc(e.title)}</b></td><td>${st(e) === 'ended' || st(e) === 'stopped' ? `<span class="small">${PT_THEMES[ptThemeOf(e)].name}</span>` : `<select class="select" style="min-width:130px;height:34px" data-bind="settings.points.events.${P.events.indexOf(e)}.theme" aria-label="Banner design">${Object.keys(PT_THEMES).map(k => `<option value="${k}" ${ptThemeOf(e) === k ? 'selected' : ''}>${PT_THEMES[k].name}</option>`).join('')}</select>`}</td><td class="num">${e.mult}×</td><td class="small">${fmtD(dayTs(e.start))} – ${fmtD(dayTs(e.end))}</td><td>${{ active: '<span class="pill good">Running</span>', scheduled: '<span class="pill accent">Scheduled</span>', ended: '<span class="pill">Ended</span>', stopped: '<span class="pill bad">Stopped</span>' }[st(e)]}</td><td>${['active', 'scheduled'].includes(st(e)) ? `<button class="btn ghost xs" style="color:var(--bad)" data-act="ptEventStop" data-arg="${e.id}">Stop</button>` : ''}</td></tr>`).join('')}</tbody></table></div>` : ''}
     </div></div>`;
 }
@@ -8116,7 +8116,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 171;
+const BUILD = 172;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
