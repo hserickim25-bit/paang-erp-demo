@@ -846,7 +846,7 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 .pt-banner .col b,.pt-banner .col .small{color:inherit}.pt-banner .col .small{opacity:.92}
 .pt-deco{position:absolute;right:6px;top:0;bottom:0;display:flex;align-items:center;gap:2px;opacity:.28;pointer-events:none;color:currentColor}
 .pt-deco svg{width:26px;height:26px}.pt-deco svg:nth-child(2){width:38px;height:38px;transform:translateY(-8px)}.pt-deco svg:nth-child(3){width:20px;height:20px;transform:translateY(10px)}
-.pt-banner[data-th="christmas"],.pt-sw[data-th="christmas"] .pt-sw-c{background:linear-gradient(120deg,#F25555 0%,#E02424 44%,#22C55E 60%,#4ADE80 100%);color:#fff}
+.pt-banner[data-th="christmas"],.pt-sw[data-th="christmas"] .pt-sw-c{background:linear-gradient(120deg,#F25555 0%,#E02424 44%,#15963F 60%,#1E9A4B 100%);color:#fff}
 .pt-banner[data-th="christmas"] .col{text-shadow:0 1px 2px rgba(0,0,0,.28)}
 .pt-banner[data-th="christmas"] .pt-x{color:#B91C1C}
 .pt-banner[data-th="newyear"],.pt-sw[data-th="newyear"] .pt-sw-c{background:linear-gradient(120deg,#1E2A55,#3B2F6B 55%,#B8860B);color:#FFF6D6}
@@ -8123,7 +8123,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 173;
+const BUILD = 174;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
