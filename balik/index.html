@@ -3121,9 +3121,10 @@ function bizPeriods(b, count = 4) {
   const out = []; let start = periodStart(b.cycle);
   for (let k = 0; k < count; k++) {
     const end = periodEnd(b.cycle, start);
-    const rows = S.bookings.filter(x => x.bizId === b.id && x.ledger && x.endedAt >= start && x.endedAt < end);
-    const sum = key => rows.reduce((a, x) => a + (key === 'gross' ? x.gross : x.ledger[key]), 0);
-    out.push({ start, end, rows, gross: sum('gross'), fee: sum('fee'), wht: sum('wht'), net: sum('net'), current: k === 0, paid: k > 0 || rows.every(x => x.ledger.paidAt) && rows.length > 0 });
+    const rows = S.bookings.filter(x => x.bizId === b.id && x.ledger && (x.endedAt || x.ledger.at) >= start && (x.endedAt || x.ledger.at) < end);
+    const sum = key => rows.reduce((a, x) => a + (key === 'gross' ? (x.ledger.kind === 'debit' ? 0 : x.gross) : x.ledger[key] || 0), 0);
+    const ded = rows.filter(x => x.ledger.kind === 'debit');   /* build 186: penalties (payment fee) netted into this payout, each with its reason */
+    out.push({ start, end, rows, ded, deduct: ded.reduce((a, x) => a + x.ledger.net, 0), gross: sum('gross'), fee: sum('fee'), wht: sum('wht'), net: sum('net'), current: k === 0, paid: k > 0 || rows.every(x => x.ledger.paidAt) && rows.length > 0 });
     start = periodStart(b.cycle, start - DAY);
   }
   return out;
@@ -3135,15 +3136,16 @@ function bizSettle(b) {
     <div class="kpis"><div class="kpi accent"><span class="l">Next payout to ${esc(b.bank)} · ${fmtD(cur.end)}</span><span class="v">${peso(cur.net, 2)}</span></div>
       <div class="kpi"><span class="l">Customer payments</span><span class="v">${peso(cur.gross, 2)}</span></div>
       <div class="kpi"><span class="l">Platform fees</span><span class="v">${peso(cur.fee, 2)}</span></div>
-      <div class="kpi"><span class="l">Tax withheld (RR 16-2023)</span><span class="v">${peso(cur.wht, 2)}</span></div></div>
+      <div class="kpi"><span class="l">Tax withheld (RR 16-2023)</span><span class="v">${peso(cur.wht, 2)}</span></div>${cur.ded.length ? `<div class="kpi"><span class="l">Deductions · ${cur.ded.length}</span><span class="v" style="color:var(--bad)">${peso(cur.deduct, 2)}</span></div>` : ''}</div>
+    ${cur.ded.length ? `<div class="panel"><div class="panel-h"><h3>Deductions from this payout</h3></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Date</th><th>Reason</th><th class="num">Amount</th></tr></thead><tbody>${cur.ded.map(x => `<tr><td class="mono">${x.id}</td><td class="mono">${fmtD(x.ledger.at)}</td><td class="small">${esc(x.ledger.note)}</td><td class="num">${peso(x.ledger.net, 2)}</td></tr>`).join('')}</tbody></table></div></div>` : ''}
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>This period by therapist · ${fmtD(cur.start)} – ${fmtD(cur.end - DAY)}</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th class="num">Credits · rate now</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Tax withheld</th><th class="num">Net</th></tr></thead><tbody>
-      ${b.staff.map(id => { const p = prov(id), r = cur.rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? x.gross : x.ledger[k]), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${p.credits} · ${tierRate(p)}%</td><td class="num">${r.length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
+      ${b.staff.map(id => { const p = prov(id), r = cur.rows.filter(x => x.pid === id); const s = k => r.reduce((a, x) => a + (k === 'gross' ? (x.ledger.kind === 'debit' ? 0 : x.gross) : x.ledger[k] || 0), 0); return `<tr><td>${esc(p.name)}</td><td class="num">${p.credits} · ${tierRate(p)}%</td><td class="num">${r.filter(x => x.ledger.kind !== 'debit').length}</td><td class="num">${peso(s('gross'), 2)}</td><td class="num">${peso(s('fee'), 2)}</td><td class="num">${peso(s('wht'), 2)}</td><td class="num"><b>${peso(s('net'), 2)}</b></td></tr>`; }).join('')}
       </tbody></table></div></div>
       <div class="narrow panel"><div class="panel-h"><h3>Taxes</h3></div><div class="panel-b"><div class="row between"><span class="small">Year-to-date remittances</span><b class="num">${peso(b.ytd)}</b></div><div class="progress"><span style="width:${Math.min(100, b.ytd / S.settings.whtThreshold * 100)}%;background:var(--warn-dot)"></span></div>
         <p class="small muted">${b.ytd > S.settings.whtThreshold ? `Above ${peso(S.settings.whtThreshold)}, so Ticktap withholds 1% of half the gross on every payout.` : `Below ${peso(S.settings.whtThreshold)}, so nothing is withheld yet.`} The business files its own returns and claims the credit with Form 2307.</p>
         <button class="btn secondary sm" data-act="open2307" data-arg="b:${b.id}">${ic('doc', 16)} BIR Form 2307 · Q${quarterOf(now())}</button></div></div></div>
     <div class="panel"><div class="panel-h"><h3>Statements</h3><span class="small muted">Payout account: ${esc(b.bank)} · change it in Business profile</span></div><div class="tablewrap"><table><thead><tr><th>Period</th><th class="num">Jobs</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th><th>Status</th><th></th></tr></thead><tbody>
-      ${per.map((p, k) => `<tr><td>${fmtD(p.start)} – ${fmtD(p.end - DAY)}</td><td class="num">${p.rows.length}</td><td class="num">${peso(p.gross, 2)}</td><td class="num">${peso(p.fee, 2)}</td><td class="num">${peso(p.wht, 2)}</td><td class="num"><b>${peso(p.net, 2)}</b></td><td>${p.current ? `<span class="pill accent">Scheduled ${fmtD(p.end)}</span>` : p.rows.length ? `<span class="pill good">Paid ${fmtD(p.end)}</span>` : '<span class="pill">No jobs</span>'}</td><td><button class="btn secondary xs" data-act="bizStmt" data-arg="${k}" ${p.rows.length ? '' : 'disabled'}>View</button></td></tr>`).join('')}
+      ${per.map((p, k) => `<tr><td>${fmtD(p.start)} – ${fmtD(p.end - DAY)}</td><td class="num">${p.rows.length - p.ded.length}${p.ded.length ? '<br><span class="tiny" style="color:var(--bad)">' + p.ded.length + ' deduction' + (p.ded.length === 1 ? '' : 's') + '</span>' : ''}</td><td class="num">${peso(p.gross, 2)}</td><td class="num">${peso(p.fee, 2)}</td><td class="num">${peso(p.wht, 2)}</td><td class="num"><b>${peso(p.net, 2)}</b></td><td>${p.current ? `<span class="pill accent">Scheduled ${fmtD(p.end)}</span>` : p.rows.length ? `<span class="pill good">Paid ${fmtD(p.end)}</span>` : '<span class="pill">No jobs</span>'}</td><td><button class="btn secondary xs" data-act="bizStmt" data-arg="${k}" ${p.rows.length ? '' : 'disabled'}>View</button></td></tr>`).join('')}
     </tbody></table></div></div>`;
 }
 function bizBookings(b) {
@@ -4167,7 +4169,7 @@ function modal() {
       <div class="row between"><h2 style="font-size:18px">Settlement statement · ${fmtD(p.start)} – ${fmtD(p.end - DAY)}</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
       <div class="row between small"><span>${esc(b.name)} · TIN ${esc(b.tin)}</span><span>${p.current ? 'Scheduled ' : 'Paid '}${fmtD(p.end)} to ${esc(b.bank)}</span></div>
       <div class="tablewrap"><table><thead><tr><th>Job</th><th>Date</th><th>Therapist</th><th>Service</th><th class="num">Gross</th><th class="num">Fee</th><th class="num">Withheld</th><th class="num">Net</th></tr></thead><tbody>
-      ${p.rows.map(x => `<tr><td class="mono">${x.id}</td><td class="mono">${fmtD(x.endedAt)}</td><td>${esc(prov(x.pid) ? prov(x.pid).name : '')}</td><td>${esc(x.services.map(s => s.name).join(' + '))}</td><td class="num">${peso(x.gross, 2)}</td><td class="num">${peso(x.ledger.fee, 2)}</td><td class="num">${peso(x.ledger.wht, 2)}</td><td class="num">${peso(x.ledger.net, 2)}</td></tr>`).join('')}
+      ${p.rows.map(x => `<tr><td class="mono">${x.id}</td><td class="mono">${fmtD(x.endedAt || x.ledger.at)}</td><td>${esc(prov(x.pid) ? prov(x.pid).name : '')}</td><td>${x.ledger.kind === 'debit' ? `<b style="color:var(--bad)">Deduction</b> · <span class="small">${esc(x.ledger.note)}</span>` : esc(x.services.map(s => s.name).join(' + '))}</td><td class="num">${peso(x.ledger.kind === 'debit' ? 0 : x.gross, 2)}</td><td class="num">${peso(x.ledger.fee, 2)}</td><td class="num">${peso(x.ledger.wht, 2)}</td><td class="num">${peso(x.ledger.net, 2)}</td></tr>`).join('')}
       <tr><td colspan="4"><b>Total</b></td><td class="num"><b>${peso(p.gross, 2)}</b></td><td class="num"><b>${peso(p.fee, 2)}</b></td><td class="num"><b>${peso(p.wht, 2)}</b></td><td class="num"><b>${peso(p.net, 2)}</b></td></tr></tbody></table></div>
       <p class="tiny muted">Tax withheld is credited to the business with BIR Form 2307 each quarter.</p></div></div>`;
   }
@@ -8314,10 +8316,13 @@ function swapRefund(x) {
   if (cash > 0) x.refund = { amount: r2(cash), fee: 0, provPart: 0, method: m, days: card ? 5 : 1, dueBy: t + (card ? 5 : 1) * DAY, at: t, pct: 100 };
   if (x.creditUsed) cashAdd(x.cid, x.creditUsed, 'return', x.id, 'Ticktap Credit used on ' + x.id + ' returned · therapist change');
   if (x.pointsUsed && !x.ptsBack) { x.ptsBack = true; ptAdd(x.cid, x.pointsUsed, 'refund', x.id, 'Points used on ' + x.id + ' returned · therapist change'); }
-  x.ledger = ledgerFor(x, 'cancel', 0, 'Customer declined the business’s therapist change · full refund');
-  logB(x, `Customer declined the therapist change · cancelled with a full refund (${peso(cash, 2)} to ${m}${x.creditUsed ? ', ' + peso(x.creditUsed, 2) + ' credit returned' : ''})`);
+  if (!x.bizId && z) x.bizId = z.id; x.endedAt = t;
+  /* owner 2026-11-13: same as a provider-side cancellation, the business pays the payment fee (MR.faultPct of the booking), taken from its next payout with the reason on the statement */
+  const pen = r2(x.gross * MR.faultPct / 100);
+  x.ledger = ledgerFor(x, 'debit', -pen, `Payment fee (${MR.faultPct}%) charged to the business · customer declined the therapist change (${s.from && prov(s.from) ? prov(s.from).name : 'first therapist'} to ${p ? p.name : 'new therapist'}${s.why ? ', reason given: ' + s.why : ''}) and was refunded in full`);
+  logB(x, `Customer declined the therapist change · cancelled with a full refund (${peso(cash, 2)} to ${m}${x.creditUsed ? ', ' + peso(x.creditUsed, 2) + ' credit returned' : ''}) · ${MR.faultPct}% payment fee (${peso(pen, 2)}) deducted from the business next payout`);
   if (p) { if (p.status !== 'red') p.status = 'green'; pushAlert('provider:' + p.id, 'Job cancelled · no effect on you', `${x.id}: the customer chose not to change therapist. No reward credits are affected.`, x.id); }
-  if (z) pushAlert('business:' + z.id, 'Customer cancelled after the change', `${x.id} was cancelled with a full refund because the customer did not accept ${p ? p.name : 'the new therapist'}.`, x.id, 'bad');
+  if (z) pushAlert('business:' + z.id, 'Customer cancelled after the change · payment fee charged', `${x.id} was cancelled with a full refund because the customer did not accept ${p ? p.name : 'the new therapist'}. The ${MR.faultPct}% payment fee (${peso(pen, 2)}) is deducted from your next payout; the reason is on your settlement statement.`, x.id, 'bad');
   pushAlert('customer', 'Booking cancelled · full refund', `${cash > 0 ? peso(cash, 2) + ' back to ' + m + ' ' + (card ? 'within 5 days' : 'within 24 hours') + '.' : ''}${x.creditUsed ? ' Ticktap Credit returned.' : ''}`, x.id, 'good');
   try { evHold(x); } catch (e) { }
 }
@@ -8754,7 +8759,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 185;
+const BUILD = 186;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
