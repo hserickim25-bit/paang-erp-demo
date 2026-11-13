@@ -2165,7 +2165,7 @@ function provJob() {
   const [doneN, nowN] = stepProg(b);
   let hero = '', f = '';
   if (b.status === 'offered') { hero = `<div class="card" style="background:var(--warn-soft);border-color:transparent"><b style="font-size:17px;color:var(--warn)">Waiting for customer payment</b><span class="small">You offered ${b.when === 'later' ? fmtWhen(b.slotAt) : b.eta + ' min'}. Offer holds for <b class="num" data-cd="${b.offerExpires}">${mmss(b.offerExpires - now())}</b>.</span></div>`; f = `<button class="btn ink block" disabled>Depart · after payment</button>`; }
-  if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>`; f = flipBtn({ cls: 'primary', act: 'depart', arg: b.id, front: `${ic('route', 18)} Depart now?`, back: 'The customer can track your arrival.' }); }
+  if (b.status === 'paid') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">Payment received</b><span class="small">Arrive by <b class="num">${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}</b>. Tap Depart when you leave; the customer sees it right away.</span></div>${swapWaitNote(b)}`; f = swapOpen(b) ? flipBtn({ cls: 'primary', disabled: true, front: `${ic('clock', 18)} Waiting for the customer · until ${fmtT(b.swap.until)}`, title: 'The customer can keep you or cancel first' }) : flipBtn({ cls: 'primary', act: 'depart', arg: b.id, front: `${ic('route', 18)} Depart now?`, back: 'The customer can track your arrival.' }); }
   if (b.status === 'departed') { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">On the way</b><span class="small">Departed ${fmtT(b.departedAt)} · arrive by <b class="num">${fmtT(b.promisedAt)}</b> (<span class="num" data-cd="${b.promisedAt}">${mmss(b.promisedAt - now())}</span> left)</span></div>`; f = flipBtn({ cls: 'primary', act: 'arrive', arg: b.id, front: `${ic('pin', 18)} I've arrived · check in`, back: 'Arrived on site? Take a photo to confirm your arrival.' }); }
   if (b.status === 'arrived' && b.startPending) { hero = `<div class="card" style="background:var(--accent-soft);border-color:transparent"><b style="font-size:17px;color:var(--accent)">Arrived ${fmtT(b.arrivedAt)} · ready to start</b><span class="small">Tap Start service when you begin. The ${b.mins}-minute service time counts from then. If you don't, it starts by itself at ${fmtT(b.arrivedAt + svcAutoMin(b) * MIN)}.</span></div>`; f = flipBtn({ cls: 'primary', act: 'startSvc', arg: b.id, front: `${ic('clock', 18)} Start service`, back: 'Click, when you start service.' }) + flipBtn({ cls: 'good', disabled: true, title: 'Start the service first', front: `${ic('check', 18)} End service?` }); }
   else if (b.status === 'arrived') { hero = `<div class="card" style="background:var(--good-soft);border-color:transparent"><b style="font-size:17px;color:var(--good)">In service ${fmtT(b.startedAt || b.arrivedAt)} – ${fmtT(b.endAt)}</b><span class="small">Shown under your green light. If you don't tap End service, you go back to green automatically at ${fmtT(b.endAt)}.</span></div>`; f = S.prov.endAsk === b.id ? `<div class="card tight" style="gap:8px;border-color:var(--good-dot)"><b>Is the service finished?</b><span class="small">Started ${fmtT(b.startedAt || b.arrivedAt)} · planned until ${fmtT(b.endAt)}. The customer will be asked to rate you.</span><div class="row" style="gap:8px"><button class="btn good grow" data-act="endService" data-arg="${b.id}">${ic('check', 18)} Yes, end service</button><button class="btn secondary" data-act="endAsk" data-arg="">Not yet</button></div></div>` : `${flipBtn({ cls: 'good', act: 'endAsk', arg: b.id, disabled: now() - (b.startedAt || b.arrivedAt) < 60000, title: 'Available 1 minute after the start', front: `${ic('check', 18)} End service?`, back: 'Click button for your next service.' })}${now() - (b.startedAt || b.arrivedAt) < 60000 ? '<span class="tiny muted" style="text-align:center">Service just started. End service unlocks 1 minute after the start.</span>' : ''}`; }
@@ -3164,7 +3164,7 @@ function bizBookings(b) {
         return `<tr><td><div class="row">${avatar(p.name, p.hue, 32)}<b>${esc(p.name)}</b></div></td><td>${statusLine(p)}</td><td class="small">${cur ? `${esc(cur.services.map(s => s.name).join(' + '))} · ${esc(cur.customer)} · ${statusPill(cur.status)}` : '—'}</td><td class="num">${wk}</td></tr>`; }).join('')}
     </tbody></table></div></div>
     <div class="panel"><div class="panel-h"><h3>All staff bookings</h3><div class="seg">${fb('active', 'In progress')}${fb('done', 'Completed')}${fb('cancelled', 'Cancelled')}${fb('all', 'All')}</div></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>When</th><th>Therapist</th><th>Customer</th><th>Service</th><th>Status</th><th class="num">Amount</th><th></th></tr></thead><tbody>
-      ${list.slice(0, 80).map(x => `<tr><td class="mono">${x.id}</td><td class="small">${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : fmtD(x.createdAt) + ' ' + fmtT(x.createdAt)}</td><td>${x.pid && prov(x.pid) ? esc(prov(x.pid).name) : '<span class="muted">—</span>'}</td><td>${esc(x.customer)}</td><td class="small">${esc(x.services.map(s => s.name).join(' + '))}</td><td>${statusPill(x.status)}${x.refund ? '<br><span class="tiny muted">refund ' + peso(x.refund.amount) + '</span>' : ''}</td><td class="num">${peso(x.gross)}</td><td>${bcCan(x) || (['departed', 'arrived'].includes(x.status) && x.cid) ? `<button class="btn secondary xs" data-act="bcOpen" data-arg="${x.id}">Manage</button>` : ''}${x.resched && x.resched.by === 'business' && x.resched.status === 'pending' ? '<br><span class="tiny muted">time change asked</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="8"><div class="empty">No bookings in this view.</div></td></tr>'}
+      ${list.slice(0, 80).map(x => `<tr><td class="mono">${x.id}</td><td class="small">${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : fmtD(x.createdAt) + ' ' + fmtT(x.createdAt)}</td><td>${x.pid && prov(x.pid) ? esc(prov(x.pid).name) : '<span class="muted">—</span>'}</td><td>${esc(x.customer)}</td><td class="small">${esc(x.services.map(s => s.name).join(' + '))}</td><td>${statusPill(x.status)}${x.refund ? '<br><span class="tiny muted">refund ' + peso(x.refund.amount) + '</span>' : ''}</td><td class="num">${peso(x.gross)}</td><td>${bcCan(x) || (['departed', 'arrived'].includes(x.status) && x.cid) ? `<button class="btn secondary xs" data-act="bcOpen" data-arg="${x.id}">Manage</button>` : ''}${x.resched && x.resched.by === 'business' && x.resched.status === 'pending' ? '<br><span class="tiny muted">time change asked</span>' : ''}${swapOpen(x) ? '<br><span class="tiny muted">change waiting for the customer · until ' + fmtT(x.swap.until) + '</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="8"><div class="empty">No bookings in this view.</div></td></tr>'}
     </tbody></table></div></div>`;
 }
 function bizProfile(b) {
@@ -6706,7 +6706,7 @@ const A = {
     logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay within ' + S.settings.hold + ' minutes to keep it.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
     S.prov.screen = 'job'; S.prov.bid = id; },
-  depart: id => { const b = bk(id), p = prov(b.pid); b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); famNotify(b, p.name.split(' ')[0] + ' set out for a job', 'To ' + areaOf(b.address) + ' · arrives by about ' + fmtT(b.promisedAt) + '.'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
+  depart: id => { const b = bk(id), p = prov(b.pid); if (swapOpen(b)) { toast('provider', 'Wait for the customer', 'They can keep you or cancel until ' + fmtT(b.swap.until) + '.'); return; } b.status = 'departed'; b.departedAt = now(); logB(b, 'Provider tapped Depart'); famNotify(b, p.name.split(' ')[0] + ' set out for a job', 'To ' + areaOf(b.address) + ' · arrives by about ' + fmtT(b.promisedAt) + '.'); if (S.loc.status === 'granted' && S.loc.shareProv) { S.prov.gps = true; logB(b, 'Live GPS sharing on'); }
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} has departed`, `Arrives by ${fmtT(b.promisedAt)}.`, b.id); toast('customer', `${p.name.split(' ')[0]} is on the way`, `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`); } },
   arrive: id => { S.prov.cam = id; S.prov.camShot = null; S.prov.camErr = ''; },
   camClose: () => { stopCam(); S.prov.cam = null; S.prov.camShot = null; },
@@ -7233,6 +7233,7 @@ function cancelSummary0(b) {   // what happened to the money on a cancelled book
   return '';
 }
 function cancelPanel(b) {   // the cancel / change-time controls on a paid booking (customer side)
+  if (swapOpen(b)) return '';   /* build 185: while a therapist change waits for the customer, only its Keep / Cancel-full-refund card shows */
   const q = cancelQuote(b), first = (prov(b.pid) || { name: 'your provider' }).name.split(' ')[0];
   const r = b.resched, pend = r && r.status === 'pending';
   const move = q.canMove ? (S.cust.moveAsk === b.id ? reschedForm(b) : `<button class="btn secondary sm" data-act="moveAsk" data-arg="${b.id}" ${pend ? 'disabled' : ''}>${ic('cal', 16)} ${pend ? 'Waiting for ' + esc(first) + ' to confirm ' + fmtWhen(r.slotAt) : 'Change date or time · no charge'}</button>`) : '';
@@ -7283,7 +7284,7 @@ function creditCard() {   // customer account: Ticktap Credit balance
 }
 
 Object.assign(A, {
-  custCancel: id => { custCancelNow(bk(id)); evHold(bk(id)); },
+  custCancel: id => { const b = bk(id); if (swapOpen(b)) { swapRefund(b); return; } custCancelNow(b); evHold(b); },
   creditRefund: id => { creditToRefund(bk(id)); evHold(bk(id)); },
   waitStart: id => { const b = bk(id); if (!b) return; b.waitFrom = now(); logB(b, 'Provider at the address · customer not here · waiting ' + MR.waitMin + ' min'); if (b.cid) pushAlert('customer', 'Your provider is at the door', `${(prov(b.pid) || {}).name || 'Your provider'} is waiting. After ${MR.waitMin} minutes the booking closes with no refund.`, b.id, 'bad'); },
   custNoShow: id => { const b = bk(id); if (!b || !b.waitFrom || now() - b.waitFrom < MR.waitMin * MIN) return; custNoShow(b); S.prov.screen = 'jobs'; },
@@ -7932,7 +7933,7 @@ function custDock(screen) {
 const STEP_NUDGE = { departMin: 20, departFloor: 3, rateMin: 120, rateUntil: 24 * 60 };
 function stepNudge(b, n) {
   const g = b.nudge || {}; let did = false;
-  if (b.status === 'paid' && b.pid && !b.departedAt && !g.dep && b.promisedAt && b.paidAt && n >= Math.max(b.paidAt + STEP_NUDGE.departFloor * MIN, b.promisedAt - STEP_NUDGE.departMin * MIN) && n < b.promisedAt + S.settings.lateTrigger * MIN) {
+  if (b.status === 'paid' && b.pid && !b.departedAt && !g.dep && !swapOpen(b) && b.promisedAt && b.paidAt && n >= Math.max(b.paidAt + STEP_NUDGE.departFloor * MIN, b.promisedAt - STEP_NUDGE.departMin * MIN) && n < b.promisedAt + S.settings.lateTrigger * MIN) {
     g.dep = n; did = true;
     pushAlert('provider:' + b.pid, 'Time to leave? Tap Depart now', `${b.id} · arrive by ${b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt)}. Tap Depart now as you leave so the customer can follow you.`, b.id);
     toast('provider', 'Tap Depart now when you leave', `${b.id} · arrive by ${fmtT(b.promisedAt)}`, false, b.id); logB(b, 'Reminder to provider: tap Depart now');
@@ -8157,6 +8158,18 @@ const bizOfB = x => x.bizId || (x.pid && prov(x.pid) && prov(x.pid).biz) || null
 const bizHeld = id => { const z = id && biz(id); return !!(z && z.hold); };
 const provHeld = p => !!(p && p.biz && bizHeld(p.biz));
 const bcCan = x => BC_OPEN.includes(x.status) && !x.departedAt;
+/* Build 185 (owner): a change never cuts into a window the customer or therapist is already in. Rules: docs/BUSINESS_RULES.md
+   "Business changes to a booking". bcBlock gives the reason a reassignment or time change must wait ('' = allowed). */
+const SWAP = { nowMin: 10, laterMin: 120, laterLeadH: 2 };
+const swapOpen = x => !!(x && x.swap && x.swap.status === 'pending' && x.status === 'paid');
+function bcBlock(x) {
+  if (!bcCan(x)) return 'The therapist has already left or the booking is closed. Only a message can be sent now.';
+  if (x.status === 'offered') return 'The customer is paying right now. Wait until they pay or the offer runs out.';
+  if (x.resched && x.resched.status === 'pending') return 'A time change is waiting for an answer (until ' + fmtWhen(x.resched.expires) + '). Try again after it is answered.';
+  if (swapOpen(x)) return 'The customer has not answered the last therapist change yet (until ' + fmtT(x.swap.until) + ').';
+  if (typeof nsOpen === 'function' && nsOpen(x)) return 'A no-show report is open on this booking.';
+  return '';
+}
 function bcStaffFor(z, x) {
   const names = x.services.map(s => s.name);
   return z.staff.map(id => prov(id)).filter(p => p && p.active !== false && p.id !== x.pid && p.status !== 'red'
@@ -8164,12 +8177,18 @@ function bcStaffFor(z, x) {
 }
 function bcReassign(x, pid, why) {
   const z = biz(bizOfB(x)), p = prov(pid), old = x.pid ? prov(x.pid) : null; if (!z || !p || !bcCan(x)) return false;
+  if (bcBlock(x)) return false;
   (x.reassigned || (x.reassigned = [])).push({ from: x.pid || null, to: pid, at: now(), why: why || '' });
   x.pid = pid;
   if (x.status === 'paid') {
-    logB(x, `${z.name} reassigned the booking to ${p.name}${why ? ' · ' + why : ''} · same time`);
-    pushAlert('provider:' + pid, 'New job from ' + z.name, `${x.id} · ${x.services.map(s => s.name).join(' + ')} · ${x.when === 'later' ? fmtWhen(x.slotAt) : 'arrive by ' + fmtT(x.promisedAt)}. Already paid.`, x.id, 'good');
-    if (x.cid) pushAlert('customer', 'Your therapist changed', `${z.name} sent ${p.name} instead${old ? ' of ' + old.name.split(' ')[0] : ''}. Same time, same price.`, x.id);
+    const t = now(), soon = x.when !== 'later' || startOf(x) - SWAP.laterLeadH * HOUR <= t + 15 * MIN;
+    const until = soon ? t + SWAP.nowMin * MIN : Math.min(t + SWAP.laterMin * MIN, startOf(x) - SWAP.laterLeadH * HOUR);
+    const was = x.promisedAt; if (x.when !== 'later' && x.promisedAt) x.promisedAt = Math.max(x.promisedAt, t) + SWAP.nowMin * MIN;
+    x.swap = { from: old ? old.id : null, to: pid, at: t, until, status: 'pending', why: why || '', wasPromised: was };
+    if (x.nudge) delete x.nudge.dep;
+    logB(x, `${z.name} gave the booking to ${p.name}${why ? ' · ' + why : ''} · waiting for the customer until ${fmtT(until)} (no answer = kept)` + (x.promisedAt !== was ? ' · arrive by moved to ' + fmtT(x.promisedAt) : ''));
+    pushAlert('provider:' + pid, 'New job from ' + z.name + ' · wait for the customer', `${x.id} · ${x.services.map(s => s.name).join(' + ')} · ${x.when === 'later' ? fmtWhen(x.slotAt) : 'arrive by ' + fmtT(x.promisedAt)}. Already paid. Do not leave until the customer keeps the change or ${fmtT(until)}.`, x.id, 'good');
+    if (x.cid) pushAlert('customer', 'Your therapist changed · please choose', `${z.name} sent ${p.name} instead${old ? ' of ' + old.name.split(' ')[0] : ''}. Keep ${p.name.split(' ')[0]}, or cancel with a full refund, by ${fmtT(until)}. No answer = ${p.name.split(' ')[0]} comes${x.promisedAt !== was ? ' by ' + fmtT(x.promisedAt) : ' at the same time'}.`, x.id, 'bad');
   } else {
     x.status = 'requested'; x.respondBy = now() + S.settings.respond * MIN; x.eta = null; x.offerExpires = null; x.payDue = null;
     logB(x, `${z.name} reassigned the request to ${p.name}${why ? ' · ' + why : ''}`);
@@ -8180,7 +8199,7 @@ function bcReassign(x, pid, why) {
   return true;
 }
 function bcAskTime(x, at) {
-  const z = biz(bizOfB(x)), t = now(); if (!z || !bcCan(x) || x.when !== 'later') return 'Only scheduled bookings can move.';
+  const z = biz(bizOfB(x)), t = now(); if (!z) return 'Business not found.'; const blk = bcBlock(x); if (blk) return blk; if (x.when !== 'later') return 'Only scheduled bookings can move.';
   if (!(at > t + 2 * HOUR)) return 'Pick a time at least 2 hours from now.';
   x.resched = { slotAt: at, at: t, by: 'business', status: 'pending', expires: Math.min(t + MR.reschedHours * HOUR, startOf(x) - HOUR), from: x.slotAt };
   logB(x, `${z.name} asked the customer to move the booking to ${fmtWhen(at)}`);
@@ -8198,6 +8217,12 @@ function bcAnswer(x, yes) {
 }
 /* customer card on the request and track screens */
 function bcCustCard(x) {
+  if (swapOpen(x)) { const s = x.swap, p = prov(s.to), z = biz(bizOfB(x)), f = p ? p.name.split(' ')[0] : 'the new therapist', from = s.from && prov(s.from) ? prov(s.from).name.split(' ')[0] : '';
+    return `<div class="card bc-ask swap-ask" style="gap:8px;border-color:var(--warn)"><b>${esc(z ? z.name : 'The business')} changed your therapist</b>
+      <span class="small">${from ? esc(from) + ' → ' : ''}<b>${esc(p ? p.name : '')}</b>${s.why ? ' · ' + esc(s.why) : ''}</span>
+      <span class="small">${x.when === 'later' ? 'Same time: ' + fmtWhen(x.slotAt) : 'Arrives by ' + fmtT(x.promisedAt)} · same price</span>
+      <span class="tiny muted">Choose by <b class="num" data-cd="${s.until}">${mmss(s.until - now())}</b> (${fmtT(s.until)}). If you do not answer, ${esc(f)} comes. Cancelling now gives a full refund.</span>
+      <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="swapKeep" data-arg="${x.id}">Keep ${esc(f)}</button><button class="btn danger sm grow" data-act="swapCancel" data-arg="${x.id}">Cancel · full refund</button></div></div>`; }
   const r = bcPending(x); if (!r) return '';
   const z = biz(bizOfB(x));
   return `<div class="card bc-ask" style="gap:8px;border-color:var(--warn)"><b>${esc(z ? z.name : 'The business')} asks to move your booking</b>
@@ -8207,18 +8232,18 @@ function bcCustCard(x) {
 /* the business pop-up */
 function bizCtlModal(m) {
   const x = bk(m.id), z = x && biz(bizOfB(x)); if (!x || !z) { S.modal = null; return ''; }
-  const who = x.pid && prov(x.pid), staff = bcStaffFor(z, x), can = bcCan(x), r = x.resched && x.resched.by === 'business' ? x.resched : null;
+  const who = x.pid && prov(x.pid), staff = bcStaffFor(z, x), can = bcCan(x), blk = can ? bcBlock(x) : '', r = x.resched && x.resched.by === 'business' ? x.resched : null;
   const cg = cgCheck(m.msg || ''), msgOk = (m.msg || '').trim().length > 1 && cg.ok;
   const sec = (t, inner) => `<div class="col" style="gap:8px;border-top:1px solid var(--line);padding-top:12px"><b class="small">${t}</b>${inner}</div>`;
   return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Manage booking ${x.id}" style="width:min(560px,100%);gap:12px;display:flex;flex-direction:column;max-height:92vh;overflow:auto">
     <div class="row between"><h2 style="font-size:18px">Manage ${x.id}</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
     <p class="small">${esc(x.services.map(s => s.name).join(' + '))} · ${esc(x.customer)} · ${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : 'as soon as possible'} · ${statusPill(x.status)}<br><span class="muted">Therapist: ${who ? esc(who.name) : 'not assigned'}</span></p>
-    ${can ? '' : '<p class="small muted">The therapist has already left or the booking is closed. Only a message can be sent now.</p>'}
-    ${can ? sec('1 · Give it to another therapist', staff.length ? `<div class="col" style="gap:6px">${staff.map(p => `<label class="check"><input type="radio" name="bc-p" data-bind="modal.pid" value="${p.id}" ${m.pid === p.id ? 'checked' : ''}>${esc(p.name)} · ${statusLine(p)}</label>`).join('')}</div>
+    ${can && blk ? `<p class="small" style="color:var(--warn)">${esc(blk)}</p>` : can ? '' : '<p class="small muted">The therapist has already left or the booking is closed. Only a message can be sent now.</p>'}
+    ${can && !blk ? sec('1 · Give it to another therapist', staff.length ? `<div class="col" style="gap:6px">${staff.map(p => `<label class="check"><input type="radio" name="bc-p" data-bind="modal.pid" value="${p.id}" ${m.pid === p.id ? 'checked' : ''}>${esc(p.name)} · ${statusLine(p)}</label>`).join('')}</div>
       <input id="bc-why" class="input" data-bind="modal.why" value="${esc(m.why || '')}" placeholder="Reason for the record (optional), e.g. Joy is sick">
-      <span class="tiny muted">${x.status === 'paid' ? 'Paid booking: the time and price stay the same. The customer gets an app alert.' : 'The new therapist sends an arrival time. The customer has not paid yet.'}</span>
+      <span class="tiny muted">${x.status === 'paid' ? (x.when === 'later' ? 'Paid booking: same time and price. The customer can keep the new therapist or cancel with a full refund within 2 hours (no answer = kept). The therapist waits for that before leaving.' : 'Paid, as soon as possible: the customer has ' + SWAP.nowMin + ' minutes to keep the new therapist or cancel with a full refund (no answer = kept). The arrival time moves back ' + SWAP.nowMin + ' minutes.') : 'The new therapist sends an arrival time. The customer has not paid yet.'}</span>
       <button class="btn primary sm" data-act="bcReassign" ${m.pid ? '' : 'disabled'}>Reassign</button>` : '<span class="small muted">No other therapist on duty offers these services right now.</span>') : ''}
-    ${can && x.when === 'later' ? sec('2 · Ask the customer for another time', r && r.status === 'pending' ? `<span class="small">Waiting for the customer: ${fmtWhen(r.slotAt)} · answer by ${fmtWhen(r.expires)}</span>` : `${r ? `<span class="tiny muted">Last ask: ${fmtWhen(r.slotAt)} · ${esc(r.status)}</span>` : ''}<input id="bc-at" class="input" type="datetime-local" data-bind="modal.at" value="${esc(m.at || '')}">
+    ${can && !blk && x.when === 'later' ? sec('2 · Ask the customer for another time', r && r.status === 'pending' ? `<span class="small">Waiting for the customer: ${fmtWhen(r.slotAt)} · answer by ${fmtWhen(r.expires)}</span>` : `${r ? `<span class="tiny muted">Last ask: ${fmtWhen(r.slotAt)} · ${esc(r.status)}</span>` : ''}<input id="bc-at" class="input" type="datetime-local" data-bind="modal.at" value="${esc(m.at || '')}">
       <span class="tiny muted">The customer must accept. If they keep their time or do not answer, nothing changes.</span><button class="btn secondary sm" data-act="bcAskTime" ${m.at ? '' : 'disabled'}>Send to customer</button>`) : ''}
     ${x.cid ? sec((can ? (x.when === 'later' ? '3' : '2') : '1') + ' · App message to the customer', `<textarea id="bc-msg" class="textarea" rows="3" data-guard="1" data-bind="modal.msg" placeholder="e.g. Our therapist is stuck in traffic, about 10 minutes late. Sorry!">${esc(m.msg || '')}</textarea>
       ${cg.ok ? '' : '<span class="tiny" style="color:var(--bad)">Phone numbers, emails and social accounts cannot be sent. Keep talking in the app.</span>'}<button class="btn secondary sm" data-act="bcMsg" ${msgOk ? '' : 'disabled'}>Send in app</button>`) : ''}
@@ -8270,6 +8295,38 @@ Object.assign(A, {
   admBizHold: id => { S.modal = { kind: 'bizHold', id, reason: HOLD_REASONS[0], note: '' }; },
   admBizHoldDo: () => { const m = S.modal; if (!m || m.kind !== 'bizHold') return; bizHoldSet(m.id, m.reason, (m.note || '').trim()); S.modal = null; toast('admin', 'Business on hold', biz(m.id).name + ' · new bookings paused'); },
   admBizRelease: id => { bizHoldLift(id); toast('admin', 'Hold released', biz(id).name + ' can take bookings again'); },
+});
+
+/* Build 185: the customer's answer to a therapist change on a paid booking (see bcReassign). */
+function swapKeep(x, auto) {
+  if (!swapOpen(x)) return; const s = x.swap, p = prov(s.to), z = biz(bizOfB(x)); s.status = auto ? 'auto' : 'kept'; s.answeredAt = now();
+  logB(x, auto ? 'No answer from the customer · therapist change kept' : 'Customer kept the new therapist');
+  const msg = `${x.id}: ${p ? p.name.split(' ')[0] : 'the therapist'} goes ${x.when === 'later' ? 'on ' + fmtWhen(x.slotAt) : 'now · arrive by ' + fmtT(x.promisedAt)}.`;
+  pushAlert('provider:' + s.to, auto ? 'Go ahead · customer did not object' : 'Customer kept you · go ahead', msg + ' You can tap Depart.', x.id, 'good');
+  if (z) pushAlert('business:' + z.id, auto ? 'Change kept (no answer)' : 'Customer kept the new therapist', msg, x.id, 'good');
+  if (auto && x.cid) pushAlert('customer', (p ? p.name.split(' ')[0] : 'Your therapist') + ' is confirmed', msg, x.id);
+}
+function swapRefund(x) {
+  if (!swapOpen(x)) return; const s = x.swap, t = now(), z = biz(bizOfB(x)), p = prov(s.to), cash = x.cashPaid != null ? x.cashPaid : x.gross, m = x.payMethod || 'GCash', card = m === 'Card';
+  s.status = 'cancelled'; s.answeredAt = t;
+  x.status = 'cancelled'; x.cancelledBy = 'customer'; x.cancelledAt = t; x.refunded = true; if (x.late) x.late.resolved = true; if (x.resched && x.resched.status === 'pending') x.resched.status = 'void';
+  x.cancelInfo = { kind: 'swapFree', cashBack: r2(cash), creditBack: x.creditUsed || 0, ptsBack: x.pointsUsed || 0, at: t };
+  if (cash > 0) x.refund = { amount: r2(cash), fee: 0, provPart: 0, method: m, days: card ? 5 : 1, dueBy: t + (card ? 5 : 1) * DAY, at: t, pct: 100 };
+  if (x.creditUsed) cashAdd(x.cid, x.creditUsed, 'return', x.id, 'Ticktap Credit used on ' + x.id + ' returned · therapist change');
+  if (x.pointsUsed && !x.ptsBack) { x.ptsBack = true; ptAdd(x.cid, x.pointsUsed, 'refund', x.id, 'Points used on ' + x.id + ' returned · therapist change'); }
+  x.ledger = ledgerFor(x, 'cancel', 0, 'Customer declined the business’s therapist change · full refund');
+  logB(x, `Customer declined the therapist change · cancelled with a full refund (${peso(cash, 2)} to ${m}${x.creditUsed ? ', ' + peso(x.creditUsed, 2) + ' credit returned' : ''})`);
+  if (p) { if (p.status !== 'red') p.status = 'green'; pushAlert('provider:' + p.id, 'Job cancelled · no effect on you', `${x.id}: the customer chose not to change therapist. No reward credits are affected.`, x.id); }
+  if (z) pushAlert('business:' + z.id, 'Customer cancelled after the change', `${x.id} was cancelled with a full refund because the customer did not accept ${p ? p.name : 'the new therapist'}.`, x.id, 'bad');
+  pushAlert('customer', 'Booking cancelled · full refund', `${cash > 0 ? peso(cash, 2) + ' back to ' + m + ' ' + (card ? 'within 5 days' : 'within 24 hours') + '.' : ''}${x.creditUsed ? ' Ticktap Credit returned.' : ''}`, x.id, 'good');
+  try { evHold(x); } catch (e) { }
+}
+/* clock: no answer by the deadline = kept (called from tick) */
+function swapTick(x, n) { if (swapOpen(x) && n >= x.swap.until) { swapKeep(x, true); return true; } return false; }
+const swapWaitNote = x => swapOpen(x) ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent;gap:4px"><b class="small">Wait for the customer before leaving</b><span class="small">${esc(biz(bizOfB(x)) ? biz(bizOfB(x)).name : 'Your business')} gave you this job. The customer can keep you or cancel until <b class="num">${fmtT(x.swap.until)}</b> (<span class="num" data-cd="${x.swap.until}">${mmss(x.swap.until - now())}</span>). No answer = you go.</span></div>` : '';
+Object.assign(A, {
+  swapKeep: id => { const x = bk(id); swapKeep(x, false); toast('customer', 'Change accepted', x.id + ' · see you soon'); },
+  swapCancel: id => { const x = bk(id); swapRefund(x); toast('customer', 'Booking cancelled', 'Full refund on its way.'); },
 });
 /* ===== 31 · Service categories in Rules & settings (build 183) =====
    Audit item 4 (owner): the six categories were fixed in code. Now Rules & settings › Service categories can
@@ -8697,7 +8754,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 184;
+const BUILD = 185;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
@@ -8903,6 +8960,7 @@ function tick(force = false) {
   if (lead) S.bookings.forEach(b => {
     if (nsTick(b, n)) changed = true;
     if (stepNudge(b, n)) changed = true;
+    if (swapTick(b, n)) changed = true;
     if (b.status === 'requested' && n > b.respondBy) { b.status = 'no_response'; logB(b, 'No response in time'); changed = true; noReplyCheck(b);
       if (b.cid) { pushAlert('customer', `${prov(b.pid).name.split(' ')[0]} didn't reply in time`, 'You were not charged.', b.id, 'bad'); toast('customer', 'No reply in time', 'You were not charged. Try someone nearby.'); } }
     if (b.status === 'offered' && n > b.offerExpires) { b.status = 'expired'; changed = true;
