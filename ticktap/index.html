@@ -905,6 +905,21 @@ input[type="search"],input[type="text"],input[type="email"],input[type="tel"],in
 .pt-banner[data-th="christmas"],.pt-sw[data-th="christmas"] .pt-sw-c{background:linear-gradient(110deg,#E5232B 0%,#D11A22 42%,#2E9A4F 72%,#1F8A47 100%);color:#fff}
 .pt-banner[data-th="christmas"] .pt-x{color:#D11A22}
 .pt-banner[data-th="christmas"] .pt-art,.pt-sw[data-th="christmas"] .pt-art{width:30%;max-width:130px;background-size:cover;background-position:center bottom;-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 40%);mask-image:linear-gradient(90deg,transparent 0,#000 40%)}
+/* build 181: guest browsing */
+.st-guest{display:inline-flex;align-items:center;justify-content:center;gap:4px;align-self:center;background:none;border:0;font:inherit;font-size:15px;font-weight:700;color:#12355B;text-decoration:underline;text-underline-offset:3px;cursor:pointer;min-height:44px}
+.guest-ic{display:inline-grid;place-items:center;width:58px;height:58px;border-radius:50%;background:var(--surface-2);color:var(--accent);align-self:center}
+.guest-band{border-color:var(--accent);flex-direction:row!important;text-align:left;padding:12px 14px}
+.guest-band .col{align-items:flex-start;gap:2px}
+.steps6 li{font-size:10px}
+/* build 184: statistics charts (one series; hover a bar for its value) */
+.st-chart{margin:0;display:flex;flex-direction:column;gap:6px}
+.st-chart .st-fill{fill:var(--accent)}
+.st-chart .st-bar:hover .st-fill{opacity:.75}
+.st-chart .st-base{stroke:var(--line);stroke-width:1}
+.st-chart .st-ax{font-size:11px;fill:var(--muted)}
+.loy-bar{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;width:90px}.loy-bar span{display:block;height:100%;background:var(--accent)}
+.cat-ic{display:inline-grid;place-items:center;width:32px;height:32px;border-radius:9px;background:var(--surface-2)}
+.bs-print table{width:100%;border-collapse:collapse;font-size:11pt}.bs-print th,.bs-print td{border-bottom:1px solid #ccc;padding:4px 6px;text-align:left}.bs-print .num{text-align:right}
 </style>
 <script src="firebase-config.js"></script>
 <style>html,body{margin:0}body{font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
@@ -1432,8 +1447,9 @@ function srchMatch(o, q) {   // 2 = exact, 1 = close (typo), 0 = no match
   return exact ? 2 : 1;
 }
 function listEntries(cat, filter, q) {
-  let out = S.providers.filter(p => p.active !== false && inCat(p, cat)).map(p => ({ kind: 'p', o: p, d: distTo(p) }));
-  S.businesses.filter(b => !b.expelled && (!cat || b.cat === cat)).forEach(b => out.push({ kind: 'b', o: b, d: distTo(b) }));
+  let out = S.providers.filter(p => p.active !== false && !provHeld(p) && inCat(p, cat)).map(p => ({ kind: 'p', o: p, d: distTo(p) }));
+  S.businesses.filter(b => !b.expelled && !b.hold && (!cat || b.cat === cat)).forEach(b => out.push({ kind: 'b', o: b, d: distTo(b) }));
+  out = out.filter(catEntryOn); if (cat && !catOn(cat, custCityNow())) out = [];
   if (q && q.trim()) { out.forEach(e => { e.m = srchMatch(e.o, q); }); out = out.filter(e => e.m); if (out.some(e => e.m === 2)) out = out.filter(e => e.m === 2); else out.forEach(e => { e.close = true; }); }
   /* build 158 (owner): a provider or business searched by NAME is always found, even on a day off or outside the chosen chip */
   const qw = q && q.trim() ? srchNorm(q).split(/\s+/).filter(Boolean) : [], byName = e => qw.length > 0 && qw.every(w => srchNorm(e.o.name).includes(w));
@@ -1547,8 +1563,10 @@ const bar = (title, back, right = '') => `<header class="appbar">${back ? `<butt
 
 function custPane() {
   const c = S.cust; let h = '', tab = null, footer = '';
+  if (S.guestResume && S.customer.signedIn && meAcct()) guestResume();
   if (c.signup) { h = custSignup(); }
-  else if (!S.customer.signedIn) { h = custSplash(); }
+  else if (!S.customer.signedIn && !isGuest()) { h = custSplash(); }
+  else if (isGuest() && GUEST_GATE[c.screen]) { h = guestGate(c.screen); tab = GUEST_GATE[c.screen][2]; }
   else switch (c.screen) {
     case 'home': h = custHome(); tab = 'home'; break;
     case 'list': h = custList(); tab = 'list'; break;
@@ -1573,15 +1591,15 @@ function custHome() {
   return `<header class="appbar">
       <span class="home-logo" aria-label="Ticktap"><img src="${LOGO_D}" alt="Ticktap"></span>
       <button class="grow" data-act="addrSheet" style="border:0;background:transparent;text-align:left;padding:0;min-width:0">
-        <span class="eyebrow ellipsis" style="display:block">Distances from ${esc(a.label)}</span>
+        <span class="eyebrow ellipsis" style="display:block">${isGuest() ? 'Guest · distances from' : 'Distances from ' + esc(a.label)}</span>
         <span class="row" style="gap:4px;font-weight:600;font-size:14px;min-width:0"><span class="ellipsis">${esc(a.short)}</span> ${ic('down', 16)}</span></button>
       <button class="iconbtn" data-act="custTab" data-arg="alerts" aria-label="Alerts">${ic('bell', 22)}${unread('customer') ? `<span class="badge-n">${unread('customer')}</span>` : ''}</button></header>
     <div class="scroll" data-scroll="c-home">${noticeBanner('customer')}${evBanner()}
       ${guideTip('customer')}${ptBanner()}
-      ${act ? activeCard(act) : ''}${famFollowCard('home')}
+      ${isGuest() ? guestBand() : `${act ? activeCard(act) : ''}${famFollowCard('home')}`}
       <label class="row" style="height:42px;padding:0 14px;border-radius:12px;background:var(--surface);border:1px solid var(--line);color:var(--muted)">${ic('search', 18)}
         <input id="c-q" class="grow" type="search" data-bind="cust.q" data-go="list" value="${esc(c_q())}" placeholder="Search hair, nails, waxing, make-up…" aria-label="Search" style="border:0;background:transparent;height:100%;font-size:16px;outline:none;color:var(--fg)"></label>
-      <div class="cats">${CATS.map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile${CAT_IMG[k.id] ? ' img' : ''}">${catIcon(k.id, k.icon, 64)}</span>${k.name}</button>`).join('')}</div>
+      <div class="cats">${catsVis().map(k => `<button class="cat" data-act="openCat" data-arg="${k.id}"><span class="tile${CAT_IMG[k.id] ? ' img' : ''}">${catIcon(k.id, k.icon, 64)}</span>${k.name}</button>`).join('')}</div>
       ${msHiddenToday() ? '' : `<button class="mission-btn" data-act="missionOpen" aria-label="Why Ticktap: open the story"><img class="mission-img" src="${MISSION_IMG}" alt="Why Ticktap: unlock your skills, support your family. Empower local skilled professionals with your booking." width="1049" height="348"></button>`}
       ${covered() ? `<div class="row between"><h3 style="font-size:16px">Nearest to you</h3><button class="btn ghost xs" data-act="custTab" data-arg="list">See all</button></div>
       ${near.map(e => entryCard(e, true)).join('')}` : comingSoon()}
@@ -1614,7 +1632,7 @@ function comingSoon() {
     <b class="soon-t">This area is being prepared</b>
     <span class="small muted">No approved pros within ${coverKm()} km of ${esc(a.short)} yet. Join the waitlist and we'll open bookings here as soon as verified pros join.${inCity.length ? ` <b>${inCity.length}</b> ${inCity.length === 1 ? 'person is' : 'people are'} already waiting in ${esc(city)}.` : ''}</span>
     <span class="small"><b>What would you book?</b></span>
-    <div class="row" style="gap:6px;flex-wrap:wrap">${CATS.map(k => `<button class="chip" data-act="wlCat" data-arg="${k.id}" aria-pressed="${wl.cats.includes(k.id)}">${k.name}</button>`).join('')}</div>
+    <div class="row" style="gap:6px;flex-wrap:wrap">${catsVis().map(k => `<button class="chip" data-act="wlCat" data-arg="${k.id}" aria-pressed="${wl.cats.includes(k.id)}">${k.name}</button>`).join('')}</div>
     <button class="btn primary block" data-act="wlJoin">Join the waitlist</button>
     <div class="row" style="gap:8px;flex-wrap:wrap">${inviteBtn}<button class="btn ghost sm" data-act="addrSheet">Change address</button></div></div>`;
 }
@@ -1628,7 +1646,7 @@ function custList() {
   const pager = pages > 1 ? `<nav class="pager" aria-label="Pages"><button class="pg" data-act="listPage" data-arg="${pg - 1}" ${pg === 1 ? 'disabled' : ''} aria-label="Previous page">‹</button>${Array.from({ length: pages }, (_, i) => i + 1).filter(n => pages <= 7 || n === 1 || n === pages || Math.abs(n - pg) <= 1).map((n, i, arr) => `${i && n - arr[i - 1] > 1 ? '<span class="pg-gap">…</span>' : ''}<button class="pg" data-act="listPage" data-arg="${n}" aria-current="${n === pg ? 'page' : 'false'}">${n}</button>`).join('')}<button class="pg" data-act="listPage" data-arg="${pg + 1}" ${pg === pages ? 'disabled' : ''} aria-label="Next page">›</button></nav>` : '';
   const f = (id, l) => `<button class="chip" data-act="setFilter" data-arg="${id}" aria-pressed="${c.filter === id}">${l}</button>`;
   const SHORT = { hair: 'Hair', nails: 'Nails', massage: 'Massage', wax: 'Waxing', skin: 'Facial & Make-up', pet: 'Pets' };   /* long names wrap to 2 lines in the header */
-  const switcher = true ? `<div class="catsw" role="group" aria-label="Switch service">${CATS.map((k, i) => `<button class="catsw-b c${i + 1}" data-act="openCat" data-arg="${k.id}" aria-pressed="${c.cat === k.id}" aria-label="${k.name}" title="${k.name}">${catIcon(k.id, k.icon, 36)}</button>`).join('')}</div>` : '';
+  const switcher = true ? `<div class="catsw" role="group" aria-label="Switch service">${catsVis().map((k, i) => `<button class="catsw-b c${i + 1}" data-act="openCat" data-arg="${k.id}" aria-pressed="${c.cat === k.id}" aria-label="${k.name}" title="${k.name}">${catIcon(k.id, k.icon, 36)}</button>`).join('')}</div>` : '';
   return `${c.cat ? `<header class="appbar"><button class="iconbtn" data-act="clearCat" aria-label="Back">${ic('back', 22)}</button><h2 class="${(SHORT[c.cat] || '').length > 10 ? '' : 'ellipsis'}" style="min-width:0;${(SHORT[c.cat] || '').length > 10 ? 'font-size:15px;line-height:1.15;white-space:normal' : ''}">${SHORT[c.cat] || catName(c.cat)}</h2>${switcher}</header>` : `<header class="appbar"><h2 class="ellipsis" style="min-width:0">Explore</h2>${switcher}</header>`}
     <div class="scroll" data-scroll="c-list">
       <button class="row" data-act="addrSheet" style="border:0;background:var(--surface-2);border-radius:10px;padding:9px 12px;text-align:left">${ic('pin', 16)}<span class="small grow">Distance from <b>${esc(a.label)} · ${esc(a.short)}</b></span><span class="chg-pill">Change</span></button>
@@ -1750,7 +1768,7 @@ function calendar(c, av, d0) {
   for (let i = 0; i < lead; i++) cells.push('<span></span>');
   let open = 0;
   for (let d = 1; d <= nDays; d++) {
-    const t = new Date(y, mo, d).getTime(), ok = t + DAY > minT && t <= maxT, usual = av ? !!av.days[(new Date(t).getDay() + 6) % 7] : true;
+    const t = new Date(y, mo, d).getTime(), usual = av ? (av.ok ? bhDayOk(av, t) : !!av.days[(new Date(t).getDay() + 6) % 7]) : true, ok = t + DAY > minT && t <= maxT && !(av && av.hard && !usual);
     if (ok) open++;
     cells.push(`<button type="button" class="cal-d${t === d0 ? ' today' : ''}${usual ? '' : ' off'}${ok ? ' open' : ''}" data-act="setDay" data-arg="${t}" aria-pressed="${c.day === t}" ${ok ? '' : 'disabled'} aria-label="${new Date(t).toDateString()}${usual ? '' : ' (usually off)'}">${d}</button>`);
   }
@@ -1765,14 +1783,14 @@ function calendar(c, av, d0) {
 function schedPicker(c, src) {
   const d0 = dayStart(now()), minT = now() + 30 * MIN, maxT = bookMax();
   if (c.day == null || c.day < d0 || c.day > maxT) c.day = d0;
-  const valid = m => { const t = c.day + m * MIN; return t >= minT && t <= maxT; };
+  const av = bhAvail(src), nm = src && src.name ? src.name.split(' ')[0] : '';
+  const valid = m => { const t = c.day + m * MIN; return t >= minT && t <= maxT && !(av && av.hard && !bhOk(av, t)); };
   if (c.tmin == null || !valid(c.tmin)) { let f = Array.from({ length: 48 }, (_, i) => i * 30).find(valid); if (f == null && c.day + DAY <= maxT) { c.day += DAY; f = Array.from({ length: 48 }, (_, i) => i * 30).find(valid); } c.tmin = f == null ? 0 : f; }
   c.slot = c.day + c.tmin * MIN;
-  const av = src && src.services && !src.staff ? availOf(src) : null, nm = src && src.name ? src.name.split(' ')[0] : '';
   const groups = [['Morning', 360, 720], ['Afternoon', 720, 1080], ['Evening', 1080, 1440], ['Late night', 0, 360]];
   return `${calendar(c, av, d0)}
-    <label class="field">Time<select id="c-time" class="select" data-bind="cust.tmin" data-type="num" style="font-size:16px">${groups.map(([g, a, b]) => `<optgroup label="${g}">${Array.from({ length: (b - a) / 30 }, (_, i) => a + i * 30).map(m => `<option value="${m}" ${c.tmin === m ? 'selected' : ''} ${valid(m) ? '' : 'disabled'}>${fmtMin(m)}${av && valid(m) && !inUsual(av, c.day + m * MIN) ? ' · outside usual hours' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
-    <div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><b class="small">${fmtWhen(c.slot)}</b>${av ? `<span class="small muted">${esc(nm)}'s usual hours: ${availText(av)}</span>${inUsual(av, c.slot) ? '' : `<span class="small" style="color:var(--warn)">Outside ${esc(nm)}'s usual hours. You can still send the request; ${esc(nm)} can accept or decline.</span>`}` : ''}<span class="tiny muted">Book any time of day or night, up to ${bookWindowH()} hours ahead (until ${fmtWhen(maxT)}). Reminders come by in-app message 1 and 2 days after booking, on the day, and 1 hour before.</span></div>`;
+    <label class="field">Time<select id="c-time" class="select" data-bind="cust.tmin" data-type="num" style="font-size:16px">${groups.map(([g, a, b]) => `<optgroup label="${g}">${Array.from({ length: (b - a) / 30 }, (_, i) => a + i * 30).map(m => `<option value="${m}" ${c.tmin === m ? 'selected' : ''} ${valid(m) ? '' : 'disabled'}>${fmtMin(m)}${av && !av.hard && valid(m) && !bhOk(av, c.day + m * MIN) ? ' · outside usual hours' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>
+    <div class="card tight" style="background:var(--surface-2);border-color:transparent;gap:4px"><b class="small">${fmtWhen(c.slot)}</b>${av ? `<span class="small muted">${av.hard ? esc(av.lab) + ': ' + esc(av.txt) : esc(nm) + "'s usual hours: " + availText(av)}</span>${av.hard || bhOk(av, c.slot) ? '' : `<span class="small" style="color:var(--warn)">Outside ${esc(nm)}'s usual hours. You can still send the request; ${esc(nm)} can accept or decline.</span>`}` : ''}<span class="tiny muted">Book any time of day or night, up to ${bookWindowH()} hours ahead (until ${fmtWhen(maxT)}). Reminders come by in-app message 1 and 2 days after booking, on the day, and 1 hour before.</span></div>`;
 }
 function slots() { const t = now(); const start = Math.ceil((t + 60 * MIN) / (30 * MIN)) * 30 * MIN; return Array.from({ length: 6 }, (_, i) => start + i * 30 * MIN); }
 function custBook() {
@@ -1812,11 +1830,10 @@ function custRequest() {
       <h2 style="font-size:20px">${b.status === 'declined' ? esc(first) + " can't take this one" : b.status === 'no_response' ? esc(first) + " didn't reply in time" : b.status === 'expired' ? (b.autoCancelled ? 'Cancelled · not paid in time' : 'The arrival time expired') : b.cancelledBy === 'customer' ? 'You cancelled this booking' : b.noShow === 'customer' ? 'Missed booking' : b.provFault ? (b.provFault.mode === 'credit' ? 'Your provider did not come' : 'Cancelled on the provider side') : 'Request cancelled'}</h2>
       ${b.paidAt ? cancelSummary(b) : '<p class="small muted">You were not charged. Here are the nearest providers on stand-by.</p>'}<button class="btn primary" data-act="openCat" data-arg="${p ? p.cat : 'massage'}">See nearest available</button></div>`;
   const step = { requested: 0, business_queue: 0, offered: 1 }[b.status] ?? -1;
-  const stepsH = ['Request sent', 'Arrival time', 'Pay', 'Departed', 'Service'].map((s, i) => `<li class="${i < step + 1 ? 'done' : i === step + 1 ? 'now' : ''}"><span></span>${s}</li>`).join('');
   return `${bar('Booking ' + b.id, 'toBookings')}
     <div class="scroll" data-scroll="c-req">
       ${['requested', 'business_queue'].includes(b.status) ? liveLine() + offlineBanner('customer') : ''}
-      ${step >= 0 ? `<ol class="steps">${stepsH}</ol>` : ''}${custDock('request')}
+      ${step >= 0 ? custStepsHtml(b) : ''}${custDock('request')}${bcCustCard(b)}
       ${hero}
       ${b.status === 'offered' ? `<div class="job-next" data-next="offered"><button class="btn secondary block" data-act="declineOffer" data-arg="${b.id}">${b.when === 'later' ? 'Cancel booking · no charge' : 'Too late · find someone else'}</button></div>` : ''}
       <div class="card tight"><div class="row">${p ? zav(p, 48) : avatar(bz.name, bz.hue, 40)}<div class="col grow"><b>${esc(who)}</b>${p ? statusLine(p) : ''}</div></div>
@@ -1860,7 +1877,7 @@ function custTrack() {
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
     <div class="scroll" data-scroll="c-track">
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
-      ${b.status === 'cancelled' ? '' : `<ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === nowN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>`}${custDock('track')}
+      ${b.status === 'cancelled' ? '' : custStepsHtml(b)}${custDock('track')}${bcCustCard(b)}
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
       ${(() => { const B = {
         rem: b.reminders && b.reminders.length && ['paid'].includes(b.status) ? remindersCard(b) : '',
@@ -3026,10 +3043,13 @@ function bizPane() {
   if (tab === 'staff') main = bizStaff(b);
   if (tab === 'settle') main = bizSettle(b);
   if (tab === 'profile') main = bizProfile(b);
+  if (tab === 'customers') main = bizCustomers(b);
+  if (tab === 'hours') main = bizHours(b);
+  if (tab === 'sales') main = bizSales(b);
   if (tab === 'guide') main = `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('business')].page}</h1></div></div><div class="gd-page">${guideBody('business')}</div>`;
   return `<div class="web" data-pane="business"><aside class="side"><div class="org">${bizLogo(b, 36, 10, 19, false)}<div class="col"><b>${esc(b.name)}</b><span class="tiny muted">Business account</span></div></div>
-    ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('staff', 'Staff', 'users')}${nav('services', 'Services & prices', 'receipt')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${nav('guide', 'Paano Gamitin', 'doc')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
-    <main class="main">${pushCard(true)}${noticeList('business:' + b.id)}${main}</main>${toastsFor('business', true)}${staffCallScreen('business')}</div>`;
+    ${nav('bookings', 'Bookings & services', 'list', S.bookings.filter(x => (x.bizId === b.id || b.staff.includes(x.pid)) && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)).length)}${nav('customers', 'Customers', 'user')}${nav('staff', 'Staff', 'users')}${nav('hours', 'Hours & roster', 'clock')}${nav('services', 'Services & prices', 'receipt')}${nav('sales', 'Sales report', 'chart')}${nav('settle', 'Settlement', 'wallet')}${nav('profile', 'Profile & photos', 'building')}${nav('guide', 'Paano Gamitin', 'doc')}${meAcct() && meAcct().role === 'business' ? `<button data-act="authLogout">${ic('logout', 18)}<span class="grow">Log out</span></button>` : ''}</aside>
+    <main class="main">${bizHoldBanner(b)}${pushCard(true)}${noticeList('business:' + b.id)}${main}</main>${toastsFor('business', true)}${staffCallScreen('business')}</div>`;
 }
 function bizRequests(b, q) {
   const active = S.bookings.filter(x => x.bizId === b.id && ['requested', 'offered', 'paid', 'departed', 'arrived'].includes(x.status));
@@ -3137,14 +3157,14 @@ function bizBookings(b) {
   const wkGross = mine.filter(x => ['ended', 'reviewed'].includes(x.status) && x.endedAt >= weekStartOf(n)).reduce((a, x) => a + x.gross, 0);
   const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" data-fit style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
   const fb = (id, l) => `<button data-act="bizBF" data-arg="${id}" aria-pressed="${f === id}">${l}</button>`;
-  return `<div class="page-h"><div><h1>Bookings & services</h1><p>Customers book your therapists directly. Watch every staff booking, service and payment here; the therapist handles arrival time, check-in and ending the service.</p></div></div>
+  return `<div class="page-h"><div><h1>Bookings & services</h1><p>Customers book your therapists directly. Watch every staff booking, service and payment here; the therapist handles arrival time, check-in and ending the service. Use Manage to give a booking to another therapist, ask the customer for another time, or send the customer a message.</p></div></div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">${tile('Bookings today', today.length, 'requests and bookings')}${tile('In service now', inSvc.length, inSvc.map(x => prov(x.pid).name.split(' ')[0]).join(', ') || 'none')}${tile('Upcoming', upcoming.length, 'scheduled')}${tile('Earned this week', peso(wkGross), 'completed services')}${tile('On stand-by', bizGreen(b) + ' / ' + b.staff.length, 'green lights now')}</div>
     <div class="panel"><div class="panel-h"><h3>Staff now</h3></div><div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Status</th><th>Current or next job</th><th class="num">Jobs this week</th></tr></thead><tbody>
       ${b.staff.map(id => prov(id)).filter(Boolean).map(p => { const cur = mine.find(x => x.pid === p.id && ['offered', 'paid', 'departed', 'arrived'].includes(x.status)); const wk = mine.filter(x => x.pid === p.id && x.endedAt >= weekStartOf(n)).length;
         return `<tr><td><div class="row">${avatar(p.name, p.hue, 32)}<b>${esc(p.name)}</b></div></td><td>${statusLine(p)}</td><td class="small">${cur ? `${esc(cur.services.map(s => s.name).join(' + '))} · ${esc(cur.customer)} · ${statusPill(cur.status)}` : '—'}</td><td class="num">${wk}</td></tr>`; }).join('')}
     </tbody></table></div></div>
-    <div class="panel"><div class="panel-h"><h3>All staff bookings</h3><div class="seg">${fb('active', 'In progress')}${fb('done', 'Completed')}${fb('cancelled', 'Cancelled')}${fb('all', 'All')}</div></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>When</th><th>Therapist</th><th>Customer</th><th>Service</th><th>Status</th><th class="num">Amount</th></tr></thead><tbody>
-      ${list.slice(0, 80).map(x => `<tr><td class="mono">${x.id}</td><td class="small">${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : fmtD(x.createdAt) + ' ' + fmtT(x.createdAt)}</td><td>${x.pid && prov(x.pid) ? esc(prov(x.pid).name) : '<span class="muted">—</span>'}</td><td>${esc(x.customer)}</td><td class="small">${esc(x.services.map(s => s.name).join(' + '))}</td><td>${statusPill(x.status)}${x.refund ? '<br><span class="tiny muted">refund ' + peso(x.refund.amount) + '</span>' : ''}</td><td class="num">${peso(x.gross)}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No bookings in this view.</div></td></tr>'}
+    <div class="panel"><div class="panel-h"><h3>All staff bookings</h3><div class="seg">${fb('active', 'In progress')}${fb('done', 'Completed')}${fb('cancelled', 'Cancelled')}${fb('all', 'All')}</div></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>When</th><th>Therapist</th><th>Customer</th><th>Service</th><th>Status</th><th class="num">Amount</th><th></th></tr></thead><tbody>
+      ${list.slice(0, 80).map(x => `<tr><td class="mono">${x.id}</td><td class="small">${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : fmtD(x.createdAt) + ' ' + fmtT(x.createdAt)}</td><td>${x.pid && prov(x.pid) ? esc(prov(x.pid).name) : '<span class="muted">—</span>'}</td><td>${esc(x.customer)}</td><td class="small">${esc(x.services.map(s => s.name).join(' + '))}</td><td>${statusPill(x.status)}${x.refund ? '<br><span class="tiny muted">refund ' + peso(x.refund.amount) + '</span>' : ''}</td><td class="num">${peso(x.gross)}</td><td>${bcCan(x) || (['departed', 'arrived'].includes(x.status) && x.cid) ? `<button class="btn secondary xs" data-act="bcOpen" data-arg="${x.id}">Manage</button>` : ''}${x.resched && x.resched.by === 'business' && x.resched.status === 'pending' ? '<br><span class="tiny muted">time change asked</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="8"><div class="empty">No bookings in this view.</div></td></tr>'}
     </tbody></table></div></div>`;
 }
 function bizProfile(b) {
@@ -3202,19 +3222,19 @@ function adminPane() {
   const apps = S.applications.filter(a => a.status === 'pending').length;
   const pendAll = apps + (S.bizApps || []).filter(a => a.status === 'pending' || a.status === 'info').length;
   const nav = (id, l, icn, n, cls = 'bad', dup) => !canArea(id) ? '' : `<button data-act="adminTab" data-arg="${id}" ${t === id && !dup ? 'aria-current="page"' : ''} class="${dup ? 'dup' : ''}">${ic(icn, 18)}<span class="grow">${l}</span>${n ? `<span class="pill ${cls}" style="height:20px">${n}</span>` : ''}</button>`;
-  const GROUP = { members: ['customers', 'providers', 'businesses', 'broadcast'], money: ['ar', 'ap', 'finance', 'promos'], rules: ['settings'], mgmt: ['me', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access'] };
+  const GROUP = { members: ['customers', 'providers', 'businesses', 'broadcast'], money: ['stats', 'ar', 'ap', 'finance', 'promos'], rules: ['settings'], mgmt: ['me', 'employees', 'attendance', 'payroll', 'hrdocs', 'expenses', 'revenue', 'ledger', 'access'] };
   const openG = S.admin.groups || (S.admin.groups = isPhone() ? { members: false, money: false, rules: false } : { members: true, money: true, rules: true });
   const grp = (id, label, inner) => { if (!inner.trim()) return ''; const open = openG[id] !== false || GROUP[id].includes(t); return `<div class="side-g"><button class="side-gh" data-act="admGroup" data-arg="${id}" aria-expanded="${open}"><span class="grow">${label}</span>${ic('chev', 14)}</button>${open ? `<div class="side-gb">${inner}</div>` : ''}</div>`; };
   const arDue = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt).length;
   const apDue = S.bookings.filter(b => payDue(b)).length + S.bookings.filter(b => b.refund && !b.refund.sentAt && !b.refund.hold).length;
-  const m = { desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, help: admHelp, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
+  const m = { stats: admStats, desk: admDesk, overview: admOverview, approvals: admApprovals, promos: admPromos, businesses: admBusinesses, ar: admAR, ap: admAP, live: admLive, late: admLate, jobs: admJobs, providers: admProviders, customers: admCustomers, waitlist: admWaitlist, guard: admGuard, help: admHelp, broadcast: admBroadcast, calls: admCalls, finance: admFinance, me: admMe, employees: admEmployees, attendance: admAttendance, payroll: admPayroll, hrdocs: admHrDocs, expenses: admExpenses, revenue: admRevenue, ledger: admLedger, access: admAccess, settings: admSettings, guide: () => `<div class="page-h"><div><h1>${GUIDE_UI[guideLang('admin')].page}</h1></div></div><div class="gd-page">${guideBody('admin')}</div>` }[t]();
   const mOut = canArea(t) ? m : admNoAccess(t);
   return `<div class="web" data-pane="admin"><aside class="side"><div class="org"><span class="brand-mark">${brandPic(ICON_T, ICON_D, '')}</span><div class="col"><b>Ticktap Operations</b><span class="tiny muted">Admin console</span></div></div>
     <div class="adm-me"><button class="adm-me-b" data-act="adminTab" data-arg="me">${empPhoto(U, 28)}<span class="col" style="min-width:0"><b class="small ellipsis">${esc(U.name)}</b><span class="tiny muted">Level ${U.level} · ${esc(U.adminId)}</span></span></button><button class="btn ghost xs" data-act="admLogout" title="Sign out">${ic('logout', 14)}</button></div>
     <span class="side-h">Monitor now</span>
     ${nav('desk', 'Ops desk · start here', 'bell', deskItems().filter(x => x.level === 'now' && x.n).length, 'bad')}${nav('overview', 'Overview', 'grid')}${nav('approvals', 'Approvals', 'shield', pendAll)}${nav('live', 'Live status', 'light')}${nav('late', 'Late alerts', 'alert', openLate)}${nav('calls', 'Calls to members', 'headset', (S.helpCalls || []).filter(r => r.dir === 'out' && r.state === 'ended' && ['missed', 'declined'].includes(r.why) && !r.handled).length)}${nav('help', 'Help desk', 'chat', tkWaiting().length)}${nav('jobs', 'Requests & jobs', 'list')}${nav('guard', 'Contact guard', 'shield', cgCases().filter(c => c.open && c.n >= 3).length)}${nav('guide', 'How to use', 'doc')}
     ${grp('members', '1 · Members', `${nav('customers', 'Customer members', 'user')}${nav('providers', 'Providers', 'users')}${nav('businesses', 'Business members', 'building')}${nav('waitlist', 'Waitlist demand', 'pin', wlList().filter(w => now() - w.at < 7 * DAY).length, 'accent')}${nav('broadcast', 'Messages', 'send')}${nav('approvals', 'Approvals', 'shield', pendAll, 'bad', true)}${nav('late', 'Late alerts', 'alert', openLate, 'bad', true)}`)}
-    ${grp('money', '2 · Revenue & payables', `${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
+    ${grp('money', '2 · Revenue & payables', `${nav('stats', 'Statistics', 'chart')}${nav('ar', 'Accounts receivable', 'wallet', arDue)}${nav('ap', 'Accounts payable', 'receipt', apDue, 'accent')}${nav('promos', 'Events & promotions', 'sparkle', S.providers.filter(promoOn).length, 'accent')}${nav('jobs', 'Requests & jobs', 'list', 0, 'bad', true)}`)}
     ${grp('rules', '3 · Rules & settings', `${nav('settings', 'Rules & settings', 'gear')}`)}
     ${grp('mgmt', '4 · Management', `${nav('me', 'My work page', 'user')}${nav('employees', 'Employees', 'users')}${nav('attendance', 'Attendance', 'clock')}${nav('payroll', 'Payroll & BIR', 'wallet', (S.payrolls || []).filter(r => r.status === 'approved').length, 'accent')}${nav('hrdocs', 'HR documents', 'doc', (S.hrReq || []).filter(r => r.status === 'pending').length, 'accent')}${nav('expenses', 'Expenses', 'receipt')}${nav('revenue', 'Revenue', 'chart')}${nav('ledger', 'Ledger', 'list')}${nav('access', 'Admin access & levels', 'shield')}`)}</aside><main class="main">${mOut}</main>${staffCallWin()}${toastsFor('admin', true)}</div>`;
 }
@@ -3370,7 +3390,7 @@ function admBusinesses() {
       <td class="num">${peso(gross)}<br><span class="tiny muted">fees ${peso(fee, 2)}</span></td>
       <td class="num">${peso(due, 2)}<br><span class="tiny muted">${({ weekly: 'weekly', biweekly: 'twice a month', monthly: 'monthly' })[b.cycle] || ''} · ${esc(b.bank || '')}</span></td>
       <td>${tc ? '<span class="pill good">Accepted</span>' : '<span class="pill warn">Not yet</span>'}</td>
-      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admBizOpen" data-arg="${b.id}">${open === b.id ? 'Hide staff' : 'Staff'}</button>${b.expelled ? '<span class="pill bad">Removed</span>' : `<button class="btn danger xs" data-act="admExpel" data-arg="business|${b.id}">Remove</button>`}</div></td></tr>
+      <td><div class="row" style="gap:6px;flex-wrap:wrap"><button class="btn secondary xs" data-act="admBizOpen" data-arg="${b.id}">${open === b.id ? 'Hide staff' : 'Staff'}</button>${b.expelled ? '<span class="pill bad">Removed</span>' : `${b.hold ? `<button class="btn primary xs" data-act="admBizRelease" data-arg="${b.id}">Release hold</button>` : `<button class="btn ghost xs" style="color:var(--bad)" data-act="admBizHold" data-arg="${b.id}">Hold</button>`}<button class="btn danger xs" data-act="admExpel" data-arg="business|${b.id}">Remove</button>`}</div>${b.hold ? `<span class="pill bad" style="margin-top:4px">On hold · ${fmtD(b.hold.at)}</span><br><span class="tiny muted">${esc(b.hold.reason)}</span>` : ''}</td></tr>
       ${open === b.id ? `<tr><td colspan="8" style="background:var(--surface-2)"><div class="tablewrap"><table><thead><tr><th>Staff</th><th>Login</th><th>Now</th><th class="num">Credits · fee</th><th class="num">Rating · jobs</th></tr></thead><tbody>${staff.map(p => { const a = S.accounts.find(x => x.link && x.link.pid === p.id); return `<tr><td><div class="row">${avatar(p.name, p.hue, 28)}<b class="small">${esc(p.name)}</b></div></td><td class="mono small">${esc(a ? a.loginId : '—')}${a && a.status !== 'active' ? ' · ' + a.status : ''}</td><td>${statusLine(p)}</td><td class="num">${p.credits} · ${tierRate(p)}%</td><td class="num">${p.rating} · ${p.count}</td></tr>`; }).join('') || '<tr><td colspan="5"><div class="empty">No staff yet.</div></td></tr>'}</tbody></table></div></td></tr>` : ''}`;
   }).join('');
   return `<div class="page-h"><div><h1>Business members</h1><p>Salons, spas and studios on Ticktap: documents, staff, this month's sales and what Ticktap owes each business.</p></div></div>
@@ -3612,6 +3632,8 @@ function deskItems() {
   const reqs = S.bookings.filter(b => ['requested', 'business_queue', 'offered'].includes(b.status));
   add({ id: 'requests', level: 'watch', tab: 'jobs', icon: 'bag', title: 'Requests waiting for an answer', n: reqs.length, detail: reqs.length ? reqs.filter(b => b.status === 'business_queue').length + ' waiting for a spa to assign' : 'None', how: 'If a spa has not assigned a therapist in 10 minutes, call the spa.' });
   const unpaid = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt);
+  const held = S.businesses.filter(z => z.hold && !z.expelled);
+  add({ id: 'bizhold', level: 'watch', tab: 'businesses', icon: 'building', title: 'Businesses on hold', n: held.length, detail: held.length ? held.map(z => z.name + ' · ' + age(t - z.hold.at)).slice(0, 3).join(', ') : 'None', how: 'Check whether the reason is fixed (documents, complaint, payment), then Release hold in Business members.' });
   add({ id: 'unpaid', level: 'watch', tab: 'ar', icon: 'wallet', title: 'Scheduled bookings not paid yet', n: unpaid.length, detail: unpaid.length ? 'Auto-cancel 1 h before start' : 'None', how: 'Reminders go out automatically; call the customer only if the booking is today.' });
   const green = S.providers.filter(p => p.active !== false && p.status === 'green').length;
   add({ id: 'standby', level: 'watch', tab: 'live', icon: 'light', title: 'Pros on stand-by now', n: green, warn: green === 0, detail: green ? green + ' ready for requests' : 'No one on stand-by', how: 'If no one is on stand-by during the day, message providers through Messages.' });
@@ -4016,10 +4038,11 @@ function admSettings() {
     ['points', 'sparkle', 'Customer points', `${ptEventAt(now()) ? ptEventAt(now()).mult + '× event now · ' + peso(PTS().per) + ' = ' + ptEventAt(now()).mult + ' points' : (PTS().on ? 'On · ' + peso(PTS().per) + ' = 1 point' : 'Paused')} · redeem from ${PTS().min} pts`],
     ['standby', 'clock', 'Requests, booking & stand-by', `Reply in ${st.respond} min · book ${st.bookAheadHours || 72} h ahead · ${st.weeklyTarget} h/week`],
     ['late', 'alert', 'Late alert routing', `Late after ${st.penaltyAfter} min · ${st.alertBiz ? 'business alerted' : 'business not alerted'}`],
-    ['wht', 'wallet', 'Withholding tax', `${st.whtRate}% on ${st.whtBase}% above ${peso(st.whtThreshold)}`]
+    ['wht', 'wallet', 'Withholding tax', `${st.whtRate}% on ${st.whtBase}% above ${peso(st.whtThreshold)}`],
+    ['cats', 'grid', 'Service categories', catSecSub()]
   ];
   const open = S.admin.setTab || null;
-  const BODY = { terms: () => `    <div class="panel"><div class="panel-h"><div class="col"><h3>Terms and Conditions · consent records</h3><span class="small muted">Current version ${TERMS.version} · effective ${TERMS.effective} · ${cons.filter(c => c.version === TERMS.version).length} acceptances stored</span></div><button class="btn secondary sm" data-act="termsOpen">Read terms</button></div>
+  const BODY = { cats: catAdmin, terms: () => `    <div class="panel"><div class="panel-h"><div class="col"><h3>Terms and Conditions · consent records</h3><span class="small muted">Current version ${TERMS.version} · effective ${TERMS.effective} · ${cons.filter(c => c.version === TERMS.version).length} acceptances stored</span></div><button class="btn secondary sm" data-act="termsOpen">Read terms</button></div>
       ${lp('consents', cons, consOpt).search ? `<div class="panel-b" style="padding-bottom:0">${lp('consents', cons, consOpt).search}</div>` : ''}<div class="tablewrap"><table><thead><tr><th>Accepted</th><th>Role</th><th>Name</th><th>Contact</th><th>Version</th><th>Method · device</th><th>Text fingerprint</th></tr></thead><tbody>
       ${lp('consents', cons, consOpt).rows.map(c => `<tr><td class="mono">${fmtD(c.at)} ${fmtT(c.at)}</td><td><span class="pill">${esc(c.role)}</span></td><td>${esc(c.name)}<br><span class="tiny muted mono">${esc(c.who)}</span></td><td class="small">${esc(c.contact || '—')}</td><td>v${esc(c.version)}</td><td class="small">${esc(c.method)}<br><span class="tiny muted">${esc(c.device)}</span></td><td class="tiny mono" title="${esc(c.hash)}">${esc(String(c.hash).slice(0, 18))}…</td></tr>`).join('') || '<tr><td colspan="7" class="muted">No records yet.</td></tr>'}
       </tbody></table></div>${lp('consents', cons, consOpt).foot}</div>`,
@@ -4107,6 +4130,8 @@ function missionModal() {
 function modal() {
   const m = S.modal; if (!m) { try { return actPop(); } catch (e) { console.warn('actPop', e); return ''; } }
   if (m.kind === 'mission') return missionModal();
+  if (m.kind === 'bizCtl') return bizCtlModal(m);
+  if (m.kind === 'bizHold') return bizHoldModal(m);
   if (m.kind === 'emailv') return S.ev ? evModal() : (S.modal = null, '');
   if (m.kind === 'alerts') return alertsNeeded() ? alertsGate(m.role, m.after) : (S.modal = null, '');
   if (m.kind === 'rate') { const b = bk(m.bid); const p = b && b.pid ? prov(b.pid) : null; if (!b || !p) return '';
@@ -4763,11 +4788,11 @@ const mid = d => dayTs(d) + 12 * HOUR;
 const MG_AREAS = [
   ['Monitor now', [['desk', 'Ops desk'], ['overview', 'Overview'], ['guard', 'Contact guard'], ['approvals', 'Approvals'], ['live', 'Live status'], ['late', 'Late alerts'], ['calls', 'Calls to members'], ['help', 'Help desk'], ['jobs', 'Requests & jobs']]],
   ['1 · Members', [['customers', 'Customer members'], ['providers', 'Providers'], ['businesses', 'Business members'], ['waitlist', 'Waitlist demand'], ['broadcast', 'Messages & notice board']]],
-  ['2 · Revenue & payables', [['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
+  ['2 · Revenue & payables', [['stats', 'Statistics'], ['ar', 'Accounts receivable'], ['ap', 'Accounts payable · 0619-E / 1601-EQ'], ['promos', 'Events & promotions']]],
   ['3 · Rules & settings', [['settings', 'Rules & settings']]],
   ['4 · Management', [['employees', 'Employees'], ['attendance', 'Attendance'], ['payroll', 'Payroll & BIR · 1601-C, 2316, alphalist'], ['hrdocs', 'HR documents · ID, COE'], ['expenses', 'Expenses'], ['revenue', 'Revenue'], ['ledger', 'Ledger · P&L and cash book'], ['access', 'Admin access & levels']]]
 ];
-const PERM_DEF = { desk: 3, overview: 3, approvals: 3, live: 3, late: 3, calls: 3, help: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
+const PERM_DEF = { desk: 3, overview: 3, approvals: 3, live: 3, late: 3, calls: 3, help: 3, jobs: 3, customers: 3, waitlist: 3, guard: 3, providers: 3, businesses: 2, broadcast: 2, stats: 2, ar: 2, ap: 2, promos: 2, settings: 1, employees: 2, attendance: 3, payroll: 1, hrdocs: 2, expenses: 2, revenue: 2, ledger: 2, access: 1 };
 const PERM_TXT = { 1: 'Level 1 only', 2: 'Levels 1–2', 3: 'All levels' };
 function permOf(a) { if (a === 'finance') a = 'ap'; if (a === 'me' || a === 'guide') return 3; if (a === 'access') return 1; const p = (S.settings.perm || {})[a]; return [1, 2, 3].includes(+p) ? +p : (PERM_DEF[a] || 3); }
 const emps = () => S.employees || [];
@@ -5942,11 +5967,11 @@ function applySession() {
   if (a.role !== 'business' && want === 'customer' && custOk(a)) {
     const r = (S.customers || {})[a.link.cid] || {}; const c = S.customer;
     Object.assign(c, { cid: a.link.cid, name: r.name || a.name, email: r.email || a.email, phone: r.phone || a.phone, addr: r.addr || c.addr || 'home', idOk: !!r.idOk, extraAddrs: r.addrs || c.extraAddrs || [] });
-    c.signedIn = true; S.role = 'customer'; S.cust.signup = null; a.lastMode = 'customer'; if (provOk(a) && prov(a.link.pid)) S.prov.id = a.link.pid;
+    c.signedIn = true; S.role = 'customer'; S.cust.signup = null; a.lastMode = 'customer'; S.guest = false; if (provOk(a) && prov(a.link.pid)) S.prov.id = a.link.pid;
   } else if (a.role === 'provider' || a.role === 'staff' || provOk(a)) { a.lastMode = 'provider'; S.role = 'provider'; if (a.link && a.link.pid && prov(a.link.pid)) S.prov.id = a.link.pid; }
   else if (a.role === 'business') { S.role = 'business'; if (a.link && a.link.bizId && biz(a.link.bizId)) S.biz.id = a.link.bizId; }
 }
-function needsAuth() { return isPhone() && !meAcct() && S.role !== 'admin'; }
+function needsAuth() { return isPhone() && !meAcct() && S.role !== 'admin' && !S.guest; }
 
 /* ---------- screens ---------- */
 function authShell(title, back, body, cta) {
@@ -5980,6 +6005,7 @@ function authStart() {
       <button class="st-btn st-g" data-act="authSocial" data-arg="Google"><span class="st-gl">${G}</span>Continue with Google</button>
       <button class="st-btn" data-act="authSocial" data-arg="Facebook">${FB}Continue with Facebook</button>
       <button class="st-btn" data-act="authWelcome">${MAIL}Continue with Email</button>
+      <button class="st-guest" data-act="guestBrowse">Look around first ${ic('chev', 16)}</button>
       <p class="st-who">For <b>customers</b>, <b>pros</b> and <b>spas &amp; salons</b>. You choose on the next step.</p>
       <button class="st-trouble" data-act="authTrouble" aria-expanded="${tr ? 'true' : 'false'}"><span style="display:inline-flex;transform:rotate(${tr ? -90 : 90}deg)">${ic('chev', 22)}</span>Trouble signing in?</button>
       ${tr ? `<div class="st-tr"><button class="btn secondary block" data-act="authGo" data-arg="login">Log in with my Login ID</button><button class="btn ghost block" data-act="authGo" data-arg="forgot">Forgot my password</button><button class="btn ghost block" data-act="authGo" data-arg="activate">Staff of a business? Activate your account</button></div>` : ''}
@@ -6258,6 +6284,7 @@ function render() {
   seedAccounts().forEach(sa => { if (!S.accounts.some(x => x.id === sa.id || (x.loginId || '').toLowerCase() === sa.loginId)) S.accounts.push(sa); });
   Object.values(S.customers || {}).forEach(r => { if (r && r.suspendedUntil && now() > r.suspendedUntil) { r.suspended = false; r.suspendedUntil = null; } });
   if (!Array.isArray(S.waitlist)) S.waitlist = []; if (!Array.isArray(S.opsLog)) S.opsLog = []; if (!Array.isArray(S.opsNotes)) S.opsNotes = []; if (!Array.isArray(S.tickets)) S.tickets = []; if (!S.settings.tkSeeded) { S.tickets = seedTickets().concat(S.tickets); S.settings.tkSeeded = true; } if (S.cust.help === true) S.cust.help = false; if (!S.settings.wlSeeded) { S.waitlist = seedWaitlist().concat(S.waitlist); S.settings.wlSeeded = true; }
+  if (!Array.isArray(S.catCfg)) S.catCfg = []; catsApply();
   if (!S.bizApps) S.bizApps = []; if (!Array.isArray(S.broadcasts)) S.broadcasts = []; if (!Array.isArray(S.notices)) S.notices = []; if (!Array.isArray(S.helpCalls)) S.helpCalls = []; if (!Array.isArray(S.mktLog)) S.mktLog = []; if (!S.noticeSeen) S.noticeSeen = {}; mgInit();
   if (!window.__pwReset) { window.__pwReset = true; S.pwShow = null; }
   if (ADMIN_URL) { ADMIN_URL = false; S.role = 'admin'; S.demoOpen = false; S.modal = null; }
@@ -6356,11 +6383,14 @@ function sendDueReminders(n) {
   return changed;
 }
 function sendRequest() {
+  if (isGuest()) { guestStop({ screen: 'book' }, 'Sign up to send your request', 'Your choice is kept. It takes a minute.'); return; }
   if (!needTerms('customer', S.customer.cid || 'me', S.customer.name, (S.customer.email || '') + ' · ' + (S.customer.phone || ''), { act: 'sendRequest' })) return;
   if (myCust().suspended) { toast('customer', 'Account on hold', 'Please contact Ticktap support to reactivate your account.'); return; }
   if (!needAlerts('customer', 'sendRequest')) return;
   if (!needEmail('sendRequest')) return;
   const c = S.cust, { src, svcs, gross, mins } = cartInfo(), isBiz = c.screenSrc === 'biz';
+  { const zc = isBiz ? src : src.biz && biz(src.biz), cl = zc && bhClosed(zc, c.when === 'later' ? c.slot : now()); if (cl) { toast('customer', zc.name + ' is closed that day', (cl.note || 'Closed') + ' · please pick another day.'); return; } }
+  if (isBiz ? bizHeld(src.id) : provHeld(src)) { toast('customer', 'Not taking bookings right now', 'You were not charged. Please choose another provider nearby.'); return; }
   const b = newBooking({ pid: isBiz ? null : src.id, bizId: isBiz ? src.id : (src.biz || null), services: svcs.map(s => ({ ...s })), gross, mins, status: isBiz ? 'business_queue' : 'requested', when: c.when, slotAt: c.when === 'later' ? c.slot : null, respondBy: now() + S.settings.respond * MIN });
   logB(b, 'Customer sent request (no charge)');
   if (isBiz) {
@@ -6671,7 +6701,7 @@ const A = {
   declineReq: id => { const b = bk(id), p = prov(b.pid); b.status = 'declined'; logB(b, `${p.name} tapped Not available`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} can't take this one`, 'You were not charged. See the nearest providers on stand-by.', b.id, 'bad'); toast('customer', `${p.name.split(' ')[0]} is not available`, 'You were not charged.'); }
     S.prov.screen = 'jobs'; },
-  acceptReq: id => { const b = bk(id), p = prov(b.pid); if (!needTerms('provider', p.id, p.name, p.phone || '', { act: 'acceptReq', arg: id })) return;
+  acceptReq: id => { const b = bk(id), p = prov(b.pid); if (provHeld(p)) { toast('provider', biz(p.biz).name + ' is on hold', 'New bookings are paused. Contact Ticktap support.'); return; } if (!needTerms('provider', p.id, p.name, p.phone || '', { act: 'acceptReq', arg: id })) return;
     b.status = 'offered'; b.eta = b.when === 'later' ? null : S.prov.eta; b.acceptedAt = now(); b.offerExpires = now() + S.settings.hold * MIN; if (b.when === 'later') { b.payDue = b.offerExpires; planReminders(b); }
     logB(b, b.when === 'later' ? `Accepted for ${fmtWhen(b.slotAt)}` : `Accepted · arrival ${b.eta} min after payment`);
     if (b.cid) { pushAlert('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'Confirmed for ' + fmtWhen(b.slotAt) + '. Pay within ' + S.settings.hold + ' minutes to keep it.' : `Can arrive in ${b.eta} min. Confirm and pay.`, b.id, 'good'); toast('customer', `${p.name.split(' ')[0]} accepted`, b.when === 'later' ? 'For ' + fmtWhen(b.slotAt) : `Can arrive in ${b.eta} min · confirm & pay`); }
@@ -7942,6 +7972,16 @@ function stepProg(b) {
   if (s === 'ended' || s === 'reviewed') return [5, -1];
   const d = { offered: 0, paid: 1, departed: 2 }[s] || 0; return [d, d];
 }
+
+/* Build 181: ONE progress bar for the customer from the request to the end (before, the request screen had its own five
+   steps with different names). Request · Paid · Departed · Arrived · In service · Ended; the provider's job keeps the last five. */
+const CUST_STEPS = ['Request', 'Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
+function custStepProg(b) {
+  if (b.status === 'requested' || b.status === 'business_queue') return [0, 0];
+  if (b.status === 'offered') return [1, 1];
+  const [d, n] = stepProg(b); return [d + 1, n < 0 ? -1 : n + 1];
+}
+const custStepsHtml = b => { const [d, n] = custStepProg(b); return `<ol class="steps steps6">${CUST_STEPS.map((s, i) => `<li class="${i < d ? 'done' : i === n ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>`; };
 /* ===== 26 · Phone back button (build 159) =====
    In a browser the phone's back button used to leave the page (or reload it), so a customer who pressed it right after
    "Send request" could leave Ticktap in the middle of a booking. Now back works inside the app: it closes a pop-up, then
@@ -8066,11 +8106,454 @@ Object.assign(A, {
   lpLess: k => { lpState(k).n = LP_N; },
   lpClear: k => { const st = lpState(k); st.q = ''; st.n = LP_N; },
 });
+/* ===== 29 · Guest browsing (build 181) =====
+   Audit item 2 (owner): a new visitor can look around before signing up. "Look around first" on the start screen opens
+   the customer Home, Explore, provider and business profiles and the booking form. Anything that needs an account
+   (sending a request, bookings, alerts, account, points, saved addresses) shows a short card with "Sign up or log in".
+   When the guest presses Send request, the chosen services, time and provider are kept; after sign-up they come back
+   to the same booking form with one tap left. */
+const GUEST_GATE = {
+  bookings: ['Your bookings', 'Sign up to see your requests and bookings here.', 'bookings'],
+  alerts: ['Your alerts', 'Sign up to get app alerts when a pro accepts, leaves and arrives.', 'alerts'],
+  account: ['Your account', 'Sign up to save addresses, payment, points and trusted contacts.', 'account'],
+  points: ['Ticktap points', 'Sign up to earn points on every completed booking.', 'account'],
+  request: ['Your request', 'Sign up to send requests.', 'bookings'], track: ['Your booking', 'Sign up to book.', 'bookings'], review: ['Rate your service', 'Sign up to book and rate.', 'bookings'],
+};
+const isGuest = () => !!S.guest && isPhone() && !meAcct();
+function guestGate(screen) {
+  const g = GUEST_GATE[screen] || GUEST_GATE.account;
+  return `<header class="appbar"><h2>${g[0]}</h2></header><div class="scroll" data-scroll="c-guest"><div class="card guest-gate" style="text-align:center;gap:12px;padding:26px 18px">
+    <span class="guest-ic" aria-hidden="true">${ic('user', 30)}</span><h3 style="font-size:18px">You are looking around as a guest</h3><p class="small muted">${g[1]}</p>
+    <button class="btn primary block" data-act="guestJoin">Sign up or log in</button><button class="btn ghost block" data-act="custTab" data-arg="home">Keep looking around</button>
+    <p class="tiny muted">Free to sign up. You pay only when a pro accepts your request.</p></div></div>`;
+}
+const guestBand = () => `<div class="card tight guest-band row" style="gap:10px;align-items:center">${ic('user', 20)}<div class="col grow"><b class="small">Looking around as a guest</b><span class="tiny muted">Prices and pros are real. Sign up when you are ready to book.</span></div><button class="btn primary xs" data-act="guestJoin">Sign up</button></div>`;
+function guestStop(resume, title, sub) {
+  S.guestResume = resume || null; S.guest = false; S.auth = { screen: 'start' };
+  toast('auth', title, sub);
+}
+/* Called by custPane once the new customer is signed in (sign-up screens set Home last): back to where the guest stopped. */
+function guestResume() {
+  const r = S.guestResume; S.guest = false; if (!r) return; S.guestResume = null;
+  if (r.screen === 'book' && S.cust.cart && S.cust.cart.length) { S.cust.screen = 'book'; toast('customer', 'Welcome to Ticktap', 'Your booking is kept. Tap Send request when ready.'); }
+}
+Object.assign(A, {
+  guestBrowse: () => { S.guest = true; S.auth = null; S.role = 'customer'; S.cust.signup = null; S.cust.screen = 'home'; S.cust.bid = null; },
+  guestJoin: () => guestStop(null, 'Welcome to Ticktap', 'Sign up in a minute with Google, Facebook or email.'),
+});
+const A_ADDR0 = A.addrSheet;
+A.addrSheet = (...x) => { if (isGuest()) { guestStop(null, 'Sign up to save your address', 'Until then, distances are from Makati.'); return; } return A_ADDR0(...x); };
+/* ===== 30 · Business booking control + admin business Hold (build 182) =====
+   Audit item 3 (owner).
+   Business: on Bookings & services every open staff booking has "Manage". The business can
+     · reassign it to another therapist who offers the same services (before the therapist leaves),
+     · ask the customer to move a scheduled booking to another time (the customer accepts or keeps the old time),
+     · send the customer an app message (contact details are blocked, as in chat).
+   Admin: Business members › Hold stops new bookings for the whole business (every staff listing is hidden, waiting
+     requests are declined free of charge); jobs already paid continue. The reason is logged and the business and staff get
+     an app alert. Release lifts it. Businesses on hold show on the Ops desk. */
+const BC_OPEN = ['requested', 'offered', 'paid'];
+const bizOfB = x => x.bizId || (x.pid && prov(x.pid) && prov(x.pid).biz) || null;
+const bizHeld = id => { const z = id && biz(id); return !!(z && z.hold); };
+const provHeld = p => !!(p && p.biz && bizHeld(p.biz));
+const bcCan = x => BC_OPEN.includes(x.status) && !x.departedAt;
+function bcStaffFor(z, x) {
+  const names = x.services.map(s => s.name);
+  return z.staff.map(id => prov(id)).filter(p => p && p.active !== false && p.id !== x.pid && p.status !== 'red'
+    && names.every(n => { const s = z.services.find(v => v.name === n); return !s || svcForStaff(s, p.id); }));
+}
+function bcReassign(x, pid, why) {
+  const z = biz(bizOfB(x)), p = prov(pid), old = x.pid ? prov(x.pid) : null; if (!z || !p || !bcCan(x)) return false;
+  (x.reassigned || (x.reassigned = [])).push({ from: x.pid || null, to: pid, at: now(), why: why || '' });
+  x.pid = pid;
+  if (x.status === 'paid') {
+    logB(x, `${z.name} reassigned the booking to ${p.name}${why ? ' · ' + why : ''} · same time`);
+    pushAlert('provider:' + pid, 'New job from ' + z.name, `${x.id} · ${x.services.map(s => s.name).join(' + ')} · ${x.when === 'later' ? fmtWhen(x.slotAt) : 'arrive by ' + fmtT(x.promisedAt)}. Already paid.`, x.id, 'good');
+    if (x.cid) pushAlert('customer', 'Your therapist changed', `${z.name} sent ${p.name} instead${old ? ' of ' + old.name.split(' ')[0] : ''}. Same time, same price.`, x.id);
+  } else {
+    x.status = 'requested'; x.respondBy = now() + S.settings.respond * MIN; x.eta = null; x.offerExpires = null; x.payDue = null;
+    logB(x, `${z.name} reassigned the request to ${p.name}${why ? ' · ' + why : ''}`);
+    notifyProviderOfRequest(x, p);
+    if (x.cid) pushAlert('customer', 'Therapist changed', `${z.name} passed your request to ${p.name}, who will send an arrival time. You have not been charged.`, x.id);
+  }
+  if (old) pushAlert('provider:' + old.id, 'Job moved to a colleague', `${z.name} gave ${x.id} to ${p.name}.`, x.id);
+  return true;
+}
+function bcAskTime(x, at) {
+  const z = biz(bizOfB(x)), t = now(); if (!z || !bcCan(x) || x.when !== 'later') return 'Only scheduled bookings can move.';
+  if (!(at > t + 2 * HOUR)) return 'Pick a time at least 2 hours from now.';
+  x.resched = { slotAt: at, at: t, by: 'business', status: 'pending', expires: Math.min(t + MR.reschedHours * HOUR, startOf(x) - HOUR), from: x.slotAt };
+  logB(x, `${z.name} asked the customer to move the booking to ${fmtWhen(at)}`);
+  if (x.cid) pushAlert('customer', z.name + ' asks for a new time', `${x.id}: ${fmtWhen(x.slotAt)} → ${fmtWhen(at)}. Accept or keep your time in the booking.`, x.id, 'bad');
+  return '';
+}
+const bcPending = x => { const r = x && x.resched; if (!r || r.by !== 'business' || r.status !== 'pending') return null; if (now() > r.expires) { r.status = 'expired'; logB(x, 'Time change not answered · the booking keeps ' + fmtWhen(x.slotAt)); return null; } return r; };
+function bcAnswer(x, yes) {
+  const r = bcPending(x); if (!r) return; const z = biz(bizOfB(x)); r.status = yes ? 'accepted' : 'declined'; r.answeredAt = now();
+  if (yes) { x.slotAt = r.slotAt; x.promisedAt = r.slotAt; x.reminders = []; planReminders(x); logB(x, 'Customer accepted the new time · ' + fmtWhen(r.slotAt)); }
+  else logB(x, 'Customer kept the original time · ' + fmtWhen(x.slotAt));
+  const msg = yes ? `${x.id} is now ${fmtWhen(r.slotAt)}.` : `${x.id} stays ${fmtWhen(x.slotAt)}.`;
+  if (z) pushAlert('business:' + z.id, yes ? 'Customer accepted the new time' : 'Customer kept the original time', msg, x.id, yes ? 'good' : 'bad');
+  if (x.pid) pushAlert('provider:' + x.pid, yes ? 'Booking moved' : 'Booking time unchanged', msg, x.id, yes ? 'good' : 'info');
+}
+/* customer card on the request and track screens */
+function bcCustCard(x) {
+  const r = bcPending(x); if (!r) return '';
+  const z = biz(bizOfB(x));
+  return `<div class="card bc-ask" style="gap:8px;border-color:var(--warn)"><b>${esc(z ? z.name : 'The business')} asks to move your booking</b>
+    <span class="small">${fmtWhen(r.from)} → <b>${fmtWhen(r.slotAt)}</b></span><span class="tiny muted">Answer by ${fmtWhen(r.expires)}. If you do not answer, your time stays the same.</span>
+    <div class="row" style="gap:8px"><button class="btn primary sm grow" data-act="bcCustAns" data-arg="${x.id}|1">Accept new time</button><button class="btn secondary sm grow" data-act="bcCustAns" data-arg="${x.id}|0">Keep my time</button></div></div>`;
+}
+/* the business pop-up */
+function bizCtlModal(m) {
+  const x = bk(m.id), z = x && biz(bizOfB(x)); if (!x || !z) { S.modal = null; return ''; }
+  const who = x.pid && prov(x.pid), staff = bcStaffFor(z, x), can = bcCan(x), r = x.resched && x.resched.by === 'business' ? x.resched : null;
+  const cg = cgCheck(m.msg || ''), msgOk = (m.msg || '').trim().length > 1 && cg.ok;
+  const sec = (t, inner) => `<div class="col" style="gap:8px;border-top:1px solid var(--line);padding-top:12px"><b class="small">${t}</b>${inner}</div>`;
+  return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Manage booking ${x.id}" style="width:min(560px,100%);gap:12px;display:flex;flex-direction:column;max-height:92vh;overflow:auto">
+    <div class="row between"><h2 style="font-size:18px">Manage ${x.id}</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
+    <p class="small">${esc(x.services.map(s => s.name).join(' + '))} · ${esc(x.customer)} · ${x.when === 'later' && x.slotAt ? fmtWhen(x.slotAt) : 'as soon as possible'} · ${statusPill(x.status)}<br><span class="muted">Therapist: ${who ? esc(who.name) : 'not assigned'}</span></p>
+    ${can ? '' : '<p class="small muted">The therapist has already left or the booking is closed. Only a message can be sent now.</p>'}
+    ${can ? sec('1 · Give it to another therapist', staff.length ? `<div class="col" style="gap:6px">${staff.map(p => `<label class="check"><input type="radio" name="bc-p" data-bind="modal.pid" value="${p.id}" ${m.pid === p.id ? 'checked' : ''}>${esc(p.name)} · ${statusLine(p)}</label>`).join('')}</div>
+      <input id="bc-why" class="input" data-bind="modal.why" value="${esc(m.why || '')}" placeholder="Reason for the record (optional), e.g. Joy is sick">
+      <span class="tiny muted">${x.status === 'paid' ? 'Paid booking: the time and price stay the same. The customer gets an app alert.' : 'The new therapist sends an arrival time. The customer has not paid yet.'}</span>
+      <button class="btn primary sm" data-act="bcReassign" ${m.pid ? '' : 'disabled'}>Reassign</button>` : '<span class="small muted">No other therapist on duty offers these services right now.</span>') : ''}
+    ${can && x.when === 'later' ? sec('2 · Ask the customer for another time', r && r.status === 'pending' ? `<span class="small">Waiting for the customer: ${fmtWhen(r.slotAt)} · answer by ${fmtWhen(r.expires)}</span>` : `${r ? `<span class="tiny muted">Last ask: ${fmtWhen(r.slotAt)} · ${esc(r.status)}</span>` : ''}<input id="bc-at" class="input" type="datetime-local" data-bind="modal.at" value="${esc(m.at || '')}">
+      <span class="tiny muted">The customer must accept. If they keep their time or do not answer, nothing changes.</span><button class="btn secondary sm" data-act="bcAskTime" ${m.at ? '' : 'disabled'}>Send to customer</button>`) : ''}
+    ${x.cid ? sec((can ? (x.when === 'later' ? '3' : '2') : '1') + ' · App message to the customer', `<textarea id="bc-msg" class="textarea" rows="3" data-guard="1" data-bind="modal.msg" placeholder="e.g. Our therapist is stuck in traffic, about 10 minutes late. Sorry!">${esc(m.msg || '')}</textarea>
+      ${cg.ok ? '' : '<span class="tiny" style="color:var(--bad)">Phone numbers, emails and social accounts cannot be sent. Keep talking in the app.</span>'}<button class="btn secondary sm" data-act="bcMsg" ${msgOk ? '' : 'disabled'}>Send in app</button>`) : ''}
+  </div></div>`;
+}
+/* admin Hold pop-up */
+const HOLD_REASONS = ['Documents expired or missing', 'Customer safety complaint under review', 'Unpaid amounts or chargebacks', 'Repeated late arrivals or no-shows', 'Owner asked for a pause', 'Other'];
+function bizHoldModal(m) {
+  const z = biz(m.id); if (!z) { S.modal = null; return ''; }
+  const live = S.bookings.filter(x => bizOfB(x) === z.id && ['paid', 'departed', 'arrived'].includes(x.status)).length;
+  const wait = S.bookings.filter(x => bizOfB(x) === z.id && ['requested', 'business_queue', 'offered'].includes(x.status)).length;
+  return `<div class="modal-bg" data-act="closeModal"><div class="modal" data-stop="1" role="dialog" aria-label="Hold business" style="width:min(520px,100%);gap:12px;display:flex;flex-direction:column">
+    <div class="row between"><h2 style="font-size:18px">Hold ${esc(z.name)}</h2><button class="iconbtn" data-act="closeModal" aria-label="Close">${ic('x', 20)}</button></div>
+    <p class="small muted">All ${z.staff.length} staff stop getting new bookings and disappear from search. ${live} paid job${live === 1 ? '' : 's'} in progress continue as normal. ${wait} waiting request${wait === 1 ? ' is' : 's are'} declined free of charge so the customer can book someone else. The business and staff get an app alert with the reason. You can release the hold at any time.</p>
+    <label class="field">Reason<select id="bh-reason" class="select" data-bind="modal.reason">${HOLD_REASONS.map(r => `<option ${m.reason === r ? 'selected' : ''}>${esc(r)}</option>`).join('')}</select></label>
+    <label class="field">Details for the record (shown to the business)<textarea id="bh-note" class="textarea" data-bind="modal.note" placeholder="What happened, what the business must do to be released">${esc(m.note || '')}</textarea></label>
+    <div class="row" style="gap:8px;justify-content:flex-end"><button class="btn ghost sm" data-act="closeModal">Cancel</button><button class="btn danger sm" data-act="admBizHoldDo" ${m.reason !== 'Other' || (m.note || '').trim() ? '' : 'disabled'}>Hold business</button></div></div></div>`;
+}
+function bizHoldSet(id, reason, note) {
+  const z = biz(id); if (!z) return; const u = admUser(), t = now();
+  z.hold = { at: t, reason, note: note || '', by: u ? u.name : 'Admin' }; (z.holdLog || (z.holdLog = [])).unshift({ at: t, act: 'hold', reason, note: note || '', by: z.hold.by });
+  S.bookings.filter(x => bizOfB(x) === id && ['requested', 'business_queue', 'offered'].includes(x.status)).forEach(x => {
+    x.status = 'declined'; logB(x, 'Business on hold · request declined, no charge');
+    if (x.cid) pushAlert('customer', z.name + ' is not taking bookings', 'You were not charged. See other providers nearby.', x.id, 'bad');
+  });
+  const why = reason + (note ? ' · ' + note : '');
+  pushAlert('business:' + id, 'Your business is on hold', `New bookings are paused: ${why}. Paid jobs continue. Contact Ticktap support to be released.`, null, 'bad');
+  z.staff.forEach(pid => pushAlert('provider:' + pid, z.name + ' is on hold', 'You will not get new bookings through ' + z.name + ' for now. Finish your paid jobs as normal.', null, 'bad'));
+  admLog('Held business ' + z.name + ' · ' + why);
+}
+function bizHoldLift(id) {
+  const z = biz(id); if (!z || !z.hold) return; const u = admUser();
+  (z.holdLog || (z.holdLog = [])).unshift({ at: now(), act: 'release', by: u ? u.name : 'Admin' }); z.hold = null;
+  pushAlert('business:' + id, 'Hold released', 'Your staff can get new bookings again.', null, 'good');
+  z.staff.forEach(pid => pushAlert('provider:' + pid, z.name + ' is open again', 'You can get new bookings again.', null, 'good'));
+  admLog('Released hold on business ' + z.name);
+}
+const bizHoldBanner = z => z && z.hold ? `<div class="panel" style="border-color:var(--bad);background:var(--bad-soft)"><div class="panel-b col" style="gap:4px"><b>Your business is on hold since ${fmtD(z.hold.at)}</b><span class="small">${esc(z.hold.reason)}${z.hold.note ? ' · ' + esc(z.hold.note) : ''}</span><span class="small muted">Customers cannot book your staff for now. Paid jobs continue as normal. Contact Ticktap support to be released.</span></div></div>` : '';
+Object.assign(A, {
+  bcOpen: id => { S.modal = { kind: 'bizCtl', id, pid: '', why: '', at: '', msg: '' }; },
+  bcReassign: () => { const m = S.modal, x = m && bk(m.id); if (!x || !m.pid) return; const p = prov(m.pid);
+    if (bcReassign(x, m.pid, (m.why || '').trim())) { S.modal = null; toast('business', 'Reassigned to ' + p.name, x.id + ' · they got an app alert.'); } },
+  bcAskTime: () => { const m = S.modal, x = m && bk(m.id); if (!x) return; const at = new Date(m.at).getTime(), err = bcAskTime(x, at);
+    if (err) { toast('business', 'Time not sent', err); return; } S.modal = null; toast('business', 'Sent to the customer', 'They accept or keep their time. You get an alert.'); },
+  bcMsg: () => { const m = S.modal, x = m && bk(m.id), z = x && biz(bizOfB(x)); const t = (m && m.msg || '').trim(); if (!x || !z || t.length < 2 || !cgCheck(t).ok) return;
+    (x.bizMsgs || (x.bizMsgs = [])).push({ at: now(), text: t }); logB(x, z.name + ' messaged the customer: ' + t);
+    pushAlert('customer', 'Message from ' + z.name, t, x.id); S.modal = null; toast('business', 'Message sent', 'The customer got it as an app alert.'); },
+  bcCustAns: arg => { const [id, y] = arg.split('|'); const x = bk(id); bcAnswer(x, y === '1'); toast('customer', y === '1' ? 'New time confirmed' : 'Your time stays the same', x.id); },
+  admBizHold: id => { S.modal = { kind: 'bizHold', id, reason: HOLD_REASONS[0], note: '' }; },
+  admBizHoldDo: () => { const m = S.modal; if (!m || m.kind !== 'bizHold') return; bizHoldSet(m.id, m.reason, (m.note || '').trim()); S.modal = null; toast('admin', 'Business on hold', biz(m.id).name + ' · new bookings paused'); },
+  admBizRelease: id => { bizHoldLift(id); toast('admin', 'Hold released', biz(id).name + ' can take bookings again'); },
+});
+/* ===== 31 · Service categories in Rules & settings (build 183) =====
+   Audit item 4 (owner): the six categories were fixed in code. Now Rules & settings › Service categories can
+   switch a category on or off (everywhere or only in some cities), rename it, change its search words and icon,
+   and add a new one. Settings live in S.catCfg (one record per category id, shared with every app).
+   A category switched off disappears from the customer Home, Explore and search in that city; providers keep it
+   on their profile, so switching it back on restores everything. */
+const CAT_BASE = CATS.map(c => Object.assign({}, c));
+const CAT_ICONS = ['scissors', 'sparkle', 'hand', 'wax', 'face', 'paw', 'drop', 'heart', 'sun', 'zap', 'user', 'home'];
+const catCfg = id => (S.catCfg || []).find(r => r.id === id) || null;
+function catsApply() {
+  const out = CAT_BASE.map(c => { const r = catCfg(c.id); return r ? Object.assign({}, c, { name: r.name || c.name, words: r.words != null ? r.words : c.words, icon: r.icon || c.icon }) : Object.assign({}, c); });
+  (S.catCfg || []).filter(r => r.custom && !CAT_BASE.some(c => c.id === r.id)).forEach(r => out.push({ id: r.id, name: r.name, icon: r.icon || 'sparkle', words: r.words || '', custom: true }));
+  CATS.length = 0; out.forEach(c => CATS.push(c));
+}
+const custCityNow = () => { try { return cityOf(addr()); } catch (e) { return ''; } };
+function catOn(id, city) { const r = catCfg(id); if (!r) return true; if (r.on === false) return false; return !(city && (r.offCities || []).includes(city)); }
+const catsVis = () => { const c = custCityNow(); return CATS.filter(k => catOn(k.id, c) && (!k.custom || S.providers.some(p => p.active !== false && (p.cats ? provCats(p) : [p.cat]).includes(k.id)) || S.businesses.some(b => !b.expelled && b.cat === k.id))); };
+/* a provider or business is listed when at least one of its categories is on in the customer's city */
+const catEntryOn = e => { const c = custCityNow(); const L = e.kind === 'b' ? [e.o.cat] : (e.o.cats ? provCats(e.o) : [e.o.cat]); return L.some(id => catOn(id, c)); };
+function catRec(id) { if (!Array.isArray(S.catCfg)) S.catCfg = []; let r = catCfg(id); if (!r) { const b = CATS.find(c => c.id === id) || {}; r = { id, name: b.name || id, words: b.words || '', icon: b.icon || 'sparkle', on: true, offCities: [] }; S.catCfg.push(r); } return r; }
+const catSecSub = () => { const off = CATS.filter(c => !catOn(c.id)).length, part = CATS.filter(c => catOn(c.id) && (catCfg(c.id) || {}).offCities && catCfg(c.id).offCities.length).length; return `${CATS.length} categories · ${CATS.length - off} on${part ? ' · ' + part + ' off in some cities' : ''}`; };
+function catAdmin() {
+  const f = S.admin.catNew || (S.admin.catNew = { name: '', icon: 'sparkle' }), ed = S.admin.catEd;
+  const count = id => S.providers.filter(p => p.active !== false && (p.cats ? provCats(p) : [p.cat]).includes(id)).length + S.businesses.filter(b => !b.expelled && b.cat === id).length;
+  const row = (c, i) => { const r = catCfg(c.id) || {}, on = r.on !== false, off = r.offCities || [], open = ed === c.id;
+    return `<tr><td>${CAT_IMG[c.id] ? catIcon(c.id, c.icon, 32) : `<span class="cat-ic">${ic(c.icon, 20)}</span>`}</td><td><b>${esc(c.name)}</b>${c.custom ? ' <span class="pill">New</span>' : ''}<br><span class="tiny muted mono">${esc(c.id)}</span></td>
+      <td class="small" style="max-width:260px">${esc(c.words || '—')}</td><td class="num">${count(c.id)}</td>
+      <td><button class="switch" role="switch" aria-checked="${on}" data-act="catToggle" data-arg="${c.id}" aria-label="${esc(c.name)} on"><span></span></button>${on && off.length ? `<br><span class="tiny muted">off in ${off.length} ${off.length === 1 ? 'city' : 'cities'}</span>` : ''}</td>
+      <td><button class="btn secondary xs" data-act="catEdit" data-arg="${c.id}">${open ? 'Close' : 'Edit'}</button></td></tr>
+      ${open ? `<tr><td colspan="6" style="background:var(--surface-2)"><div class="formgrid">
+        <label class="field">Name customers see<input id="cat-n-${i}" class="input" data-guard="1" data-bind="catCfg.${S.catCfg.indexOf(catRec(c.id))}.name" value="${esc(c.name)}"></label>
+        <label class="field">Search words (space between words)<input id="cat-w-${i}" class="input" data-bind="catCfg.${S.catCfg.indexOf(catRec(c.id))}.words" value="${esc(c.words || '')}" placeholder="e.g. lashes brows threading"></label></div>
+        <div class="col" style="gap:6px;margin-top:8px"><span class="small"><b>Icon</b>${CAT_IMG[c.id] ? ' <span class="tiny muted">(the picture tile is used on Home; this icon is used in lists)</span>' : ''}</span><div class="row" style="gap:6px;flex-wrap:wrap">${CAT_ICONS.map(n => `<button class="chip" data-act="catIcon" data-arg="${c.id}|${n}" aria-pressed="${c.icon === n}" aria-label="${n}">${ic(n, 18)}</button>`).join('')}</div></div>
+        <div class="col" style="gap:6px;margin-top:10px"><span class="small"><b>Cities</b> · tap a city to switch this category off there only</span><div class="row" style="gap:6px;flex-wrap:wrap">${CITIES.map(ct => `<button class="chip" data-act="catCity" data-arg="${c.id}|${esc(ct[0])}" aria-pressed="${on && !off.includes(ct[0])}">${esc(ct[0])}</button>`).join('')}</div></div></td></tr>` : ''}`; };
+  return `<div class="panel"><div class="panel-h"><div class="col"><h3>Service categories</h3><span class="small muted">Shown on the customer Home, Explore and search. Switching one off hides its pros in that area; their profiles and bookings stay.</span></div></div>
+    <div class="tablewrap"><table><thead><tr><th></th><th>Category</th><th>Search words</th><th class="num">Pros & spas</th><th>On</th><th></th></tr></thead><tbody>${CATS.map(row).join('')}</tbody></table></div>
+    <div class="panel-b col" style="gap:8px;border-top:1px solid var(--line)"><b class="small">Add a category</b><div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end">
+      <label class="field grow">Name<input id="cat-new" class="input" data-guard="1" data-bind="admin.catNew.name" value="${esc(f.name || '')}" placeholder="e.g. Lashes & brows"></label>
+      <button class="btn primary sm" data-act="catAdd" ${(f.name || '').trim().length > 1 ? '' : 'disabled'}>Add category</button></div>
+      <span class="tiny muted">A new category starts on. Pros can choose it when they apply or add a skill; it shows to customers once a pro offers it.</span></div></div>`;
+}
+Object.assign(A, {
+  catToggle: id => { const r = catRec(id); r.on = r.on === false; admLog(`Category ${r.name} switched ${r.on ? 'on' : 'off'}`); },
+  catEdit: id => { S.admin.catEd = S.admin.catEd === id ? null : id; catRec(id); },
+  catIcon: arg => { const [id, n] = arg.split('|'); catRec(id).icon = n; },
+  catCity: arg => { const [id, city] = arg.split('|'); const r = catRec(id); if (r.on === false) { r.on = true; r.offCities = CITIES.map(c => c[0]).filter(c => c !== city); } else { const L = r.offCities || (r.offCities = []); const i = L.indexOf(city); if (i >= 0) L.splice(i, 1); else L.push(city); }
+    admLog(`Category ${r.name}: ${r.offCities.includes(city) ? 'off' : 'on'} in ${city}`); },
+  catAdd: () => { const f = S.admin.catNew || {}, name = (f.name || '').trim(); if (name.length < 2) return; let id = name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 14) || 'cat'; while (CATS.some(c => c.id === id)) id += '2';
+    if (!Array.isArray(S.catCfg)) S.catCfg = []; S.catCfg.push({ id, name, words: name.toLowerCase(), icon: f.icon || 'sparkle', on: true, offCities: [], custom: true });
+    S.admin.catNew = { name: '', icon: 'sparkle' }; S.admin.catEd = id; admLog('Category added: ' + name); toast('admin', 'Category added', name + ' · set its icon and search words'); },
+});
+/* ===== 32 · Business › Customers (build 183) =====
+   Audit item 4 (owner): who books this business again and again. One row per customer: visits, last visit, total paid,
+   favourite service and therapist, loyalty progress (when the business runs "every N visits, the next one is free")
+   and a private note for the business. Contact details are never shown: name as booked, area only, no phone or email,
+   and notes block phone numbers, emails and social accounts like every other text field. */
+const BCU_DONE = ['ended', 'reviewed'];
+function bizCustRows(z) {
+  const by = {};
+  S.bookings.filter(x => (x.cid || x.customer) && bizOfB(x) === z.id).forEach(x => {
+    const key = x.cid || 'n_' + String(x.customer).replace(/\W+/g, '_');
+    const r = by[key] || (by[key] = { cid: key, real: !!x.cid, name: x.customer || 'Customer', visits: 0, total: 0, last: 0, first: Infinity, open: 0, cancelled: 0, svc: {}, who: {}, area: '' });
+    if (BCU_DONE.includes(x.status)) { r.visits++; r.total += x.refunded ? 0 : (x.gross || 0); const t = x.endedAt || x.createdAt; if (t > r.last) { r.last = t; r.area = areaOf(x.address); } r.first = Math.min(r.first, t);
+      x.services.forEach(s => { r.svc[s.name] = (r.svc[s.name] || 0) + 1; }); if (x.pid) r.who[x.pid] = (r.who[x.pid] || 0) + 1; }
+    else if (['requested', 'business_queue', 'offered', 'paid', 'departed', 'arrived'].includes(x.status)) r.open++;
+    else if (x.status === 'cancelled') r.cancelled++;
+  });
+  const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0];
+  return Object.values(by).map(r => { const s = top(r.svc), w = top(r.who); return Object.assign(r, { fav: s ? s[0] : '', favWho: w && prov(w[0]) ? prov(w[0]).name.split(' ')[0] : '', regular: r.visits >= (Number(z.regularAt) || 3) }); })
+    .sort((a, b) => (b.visits - a.visits) || (b.last - a.last));
+}
+function bizCustomers(z) {
+  if (!z.custNotes) z.custNotes = {};
+  const rows = bizCustRows(z), f = S.biz.cf || 'all', regAt = Number(z.regularAt) || 3, i = S.businesses.indexOf(z);
+  const list = rows.filter(r => f === 'all' || (f === 'regular' ? r.regular : f === 'new' ? r.visits <= 1 : r.last && now() - r.last > 60 * DAY));
+  const PG = lp('bizcust', list, { text: r => [r.name, r.area, r.fav, r.favWho].join(' '), ph: 'Search customer, area or service', unit: 'customers' });
+  const notes = z.custNotes || {}, loy = loyOn(z);
+  const fb = (id, l, n) => `<button data-act="bizCF" data-arg="${id}" aria-pressed="${f === id}">${l} · ${n}</button>`;
+  const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
+  const back = rows.filter(r => r.visits >= 2).length;
+  return `<div class="page-h"><div><h1>Customers</h1><p>Everyone who booked your business. Phone numbers, emails and exact addresses stay private; talk to customers through bookings (Manage › App message).</p></div></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">${tile('Customers', rows.length, 'booked at least once')}${tile('Came back', rows.length ? Math.round(back / rows.length * 100) + '%' : '—', back + ' booked 2 or more times')}${tile('Regulars', rows.filter(r => r.regular).length, regAt + '+ visits')}${tile('Average spend', peso(rows.reduce((a, r) => a + r.total, 0) / Math.max(1, rows.reduce((a, r) => a + r.visits, 0))), 'per visit')}</div>
+    <div class="panel"><div class="panel-h" style="flex-wrap:wrap"><div class="seg">${fb('all', 'All', rows.length)}${fb('regular', 'Regulars', rows.filter(r => r.regular).length)}${fb('new', 'New', rows.filter(r => r.visits <= 1).length)}${fb('away', 'Not seen 60 days', rows.filter(r => r.last && now() - r.last > 60 * DAY).length)}</div>${PG.search}
+      <label class="row small" style="gap:6px">Regular from<select id="bcu-reg" class="select" style="width:auto" data-bind="businesses.${i}.regularAt" data-type="num">${[2, 3, 4, 5, 6, 8, 10].map(n => `<option value="${n}" ${regAt === n ? 'selected' : ''}>${n} visits</option>`).join('')}</select></label></div>
+      <div class="tablewrap"><table><thead><tr><th>Customer</th><th class="num">Visits</th><th>Last visit</th><th class="num">Total paid</th><th>Usually books</th><th>${loy ? 'Loyalty' : 'Status'}</th><th>Private note</th></tr></thead><tbody>
+      ${PG.rows.map(r => { const L = loy && r.real ? loyStatus('b:' + z.id, r.cid) : null;
+        return `<tr><td><b>${esc(r.name)}</b>${r.regular ? ' <span class="pill good">Regular</span>' : ''}<br><span class="tiny muted">${esc(r.area || '—')}${r.open ? ' · ' + r.open + ' open booking' + (r.open === 1 ? '' : 's') : ''}${r.cancelled ? ' · ' + r.cancelled + ' cancelled' : ''}</span></td>
+        <td class="num">${r.visits}</td><td class="small">${r.last ? fmtD(r.last) : '—'}${r.last ? `<br><span class="tiny muted">${Math.round((now() - r.last) / DAY)} days ago</span>` : ''}</td><td class="num">${peso(r.total)}</td>
+        <td class="small">${esc(r.fav || '—')}${r.favWho ? `<br><span class="tiny muted">with ${esc(r.favWho)}</span>` : ''}</td>
+        <td class="small">${L ? `<div class="loy-bar" role="img" aria-label="${L.prog} of ${L.need} visits"><span style="width:${Math.round(L.prog / L.need * 100)}%"></span></div><span class="tiny muted">${L.prog} / ${L.need}${L.avail ? ' · ' + L.avail + ' free visit ready' : ''}</span>` : r.regular ? 'Regular' : r.visits ? (regAt - r.visits) + ' more to regular' : 'Booked, not yet served'}</td>
+        <td><textarea id="bcu-n-${esc(r.cid)}" class="textarea" rows="2" style="min-width:160px;font-size:13px" data-guard="1" data-bind="businesses.${i}.custNotes.${r.cid}" placeholder="e.g. prefers firm pressure">${esc(notes[r.cid] || '')}</textarea></td></tr>`; }).join('') || '<tr><td colspan="7"><div class="empty">No customers in this view yet.</div></td></tr>'}
+      </tbody></table></div>${PG.foot}</div>
+    ${loy ? '' : '<p class="small muted">Tip: run a loyalty event (every N visits, the next one is free) in Services & prices to see each customer\'s progress here.</p>'}`;
+}
+Object.assign(A, { bizCF: f => { S.biz.cf = f; } });
+/* ===== 33 · Business hours, closed days and staff roster (build 183) =====
+   Audit item 4 (owner): a business sets its opening hours, closed dates (holidays, renovation) and a roster for each
+   therapist. A customer can book a business therapist only when ALL apply: the business is open, it is not a closed
+   date, the therapist is rostered, and it is inside the therapist's own usual hours (the shorter one wins).
+   Independent pros keep the soft rule (outside usual hours is allowed; the pro can decline).
+   Now requests follow the green light; only a closed date blocks them. */
+const bhClosed = (z, t) => { const d = ymd(t); return (z.closedDates || []).find(x => x.d === d) || null; };
+const bhRoster = (z, pid) => (z.roster || {})[pid] || null;
+function bhStaffOk(p, t) {
+  const z = p && p.biz && biz(p.biz); if (!inUsual(p.avail || defAvail(), t)) return false; if (!z) return true;
+  const r = bhRoster(z, p.id); return inUsual(z.avail || defAvail(), t) && !bhClosed(z, t) && (!r || inUsual(r, t));
+}
+const bhBizOk = (z, t) => inUsual(z.avail || defAvail(), t) && !bhClosed(z, t) && z.staff.some(id => { const p = prov(id); return p && p.active !== false && bhStaffOk(p, t); });
+/* The hours object the booking calendar uses. hard = times outside are disabled. */
+function bhAvail(src) {
+  if (src && src.staff) { const nx = (src.closedDates || []).filter(x => x.d >= ymd(now())).slice(0, 2);
+    return Object.assign({}, src.avail || defAvail(), { hard: true, ok: t => bhBizOk(src, t), txt: availText(src.avail || defAvail()) + (nx.length ? ' · closed ' + nx.map(x => fmtD(dayTs(x.d))).join(', ') : ''), lab: src.name + ' hours' }); }
+  if (src && src.biz && biz(src.biz)) { const z = biz(src.biz), r = bhRoster(z, src.id);
+    return Object.assign({}, src.avail || defAvail(), { hard: true, ok: t => bhStaffOk(src, t), txt: (r ? 'rostered ' + availText(r) : availText(src.avail || defAvail())) + ' · ' + z.name + ' open ' + availText(z.avail || defAvail()), lab: src.name.split(' ')[0] + "'s hours" }); }
+  return src && src.services ? availOf(src) : null;
+}
+const bhOk = (av, t) => av.ok ? av.ok(t) : inUsual(av, t);
+const bhDayOk = (av, t0) => { for (let m = 0; m < 1440; m += 30) if (bhOk(av, t0 + m * MIN)) return true; return false; };
+function bizHours(z) {
+  const i = S.businesses.indexOf(z), f = S.biz.cd || (S.biz.cd = { d: '', note: '' }), y = new Date(now()).getFullYear();
+  if (!z.avail) z.avail = defAvail(); if (!Array.isArray(z.closedDates)) z.closedDates = []; if (!z.roster) z.roster = {};
+  const up = z.closedDates.filter(x => x.d >= ymd(now())).sort((a, b) => a.d < b.d ? -1 : 1), hol = holsYear(y).concat(holsYear(y + 1)).filter(h => h.d >= ymd(now()) && h.t !== 'working').slice(0, 12);
+  const staff = z.staff.map(id => prov(id)).filter(Boolean);
+  return `<div class="page-h"><div><h1>Hours & roster</h1><p>Customers can book your therapists only when your business is open, not on a closed date, and inside both the roster and the therapist's own usual hours. The shorter time always wins.</p></div></div>
+    <div class="split"><div class="panel"><div class="panel-h"><h3>Opening hours</h3></div><div class="panel-b">${availEditor('businesses.' + i + '.avail', z.avail, 'bh-av')}</div></div>
+    <div class="panel"><div class="panel-h"><h3>Closed dates & holidays</h3></div><div class="panel-b col" style="gap:10px">
+      ${up.length ? `<div class="col" style="gap:6px">${up.map(x => `<div class="row between" style="gap:8px"><span class="small"><b>${fmtD(dayTs(x.d))}</b> · ${esc(x.note || 'Closed')}</span><button class="btn ghost xs" data-act="bhDelDay" data-arg="${x.d}">Remove</button></div>`).join('')}</div>` : '<span class="small muted">No closed dates coming up.</span>'}
+      <div class="row" style="gap:8px;flex-wrap:wrap;align-items:flex-end"><label class="field">Date<input id="bh-d" class="input" type="date" data-bind="biz.cd.d" value="${esc(f.d || '')}" min="${ymd(now())}"></label>
+        <label class="field grow">Shown to customers<input id="bh-note" class="input" data-guard="1" data-bind="biz.cd.note" value="${esc(f.note || '')}" placeholder="e.g. Christmas Day · staff outing"></label><button class="btn primary sm" data-act="bhAddDay" ${f.d ? '' : 'disabled'}>Add</button></div>
+      <details><summary class="small" style="cursor:pointer"><b>Philippine holidays</b> · tap to close on that day</summary><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:8px">${hol.map(h => `<button class="chip" data-act="bhHol" data-arg="${h.d}|${esc(h.n)}" aria-pressed="${!!bhClosed(z, dayTs(h.d))}">${fmtD(dayTs(h.d))} · ${esc(h.n)}</button>`).join('')}</div></details></div></div></div>
+    <div class="panel"><div class="panel-h"><div class="col"><h3>Staff roster</h3><span class="small muted">Without a roster, a therapist follows their own usual hours inside your opening hours.</span></div></div>
+      <div class="tablewrap"><table><thead><tr><th>Therapist</th><th>Own usual hours</th><th>Roster</th><th>Bookable</th></tr></thead><tbody>
+      ${staff.map(p => { const r = bhRoster(z, p.id), open = S.biz.rosterEd === p.id;
+        return `<tr><td><div class="row">${avatar(p.name, p.hue, 30)}<b class="small">${esc(p.name)}</b></div></td><td class="small">${availText(p.avail || defAvail())}</td>
+          <td class="small">${r ? availText(r) : '<span class="muted">Not set</span>'}<div class="row" style="gap:6px;margin-top:4px"><button class="btn secondary xs" data-act="bhRosterEd" data-arg="${p.id}">${open ? 'Done' : r ? 'Change' : 'Set roster'}</button>${r ? `<button class="btn ghost xs" data-act="bhRosterClr" data-arg="${p.id}">Clear</button>` : ''}</div></td>
+          <td class="small">${bhWeekText(p)}</td></tr>${open && r ? `<tr><td colspan="4" style="background:var(--surface-2)">${availEditor('businesses.' + i + '.roster.' + p.id, r, 'bh-r-' + p.id)}</td></tr>` : ''}`; }).join('') || '<tr><td colspan="4"><div class="empty">No staff yet.</div></td></tr>'}
+      </tbody></table></div></div>`;
+}
+/* how many hours a therapist can be booked in the next 7 days (30-minute steps) */
+function bhWeekText(p) { const t0 = dayStart(now()); let n = 0; for (let k = 0; k < 7 * 48; k++) if (bhStaffOk(p, t0 + k * 30 * MIN)) n++; return n ? (n / 2) + ' h in the next 7 days' : '<span style="color:var(--bad)">Not bookable this week</span>'; }
+Object.assign(A, {
+  bhAddDay: () => { const z = biz(S.biz.id), f = S.biz.cd || {}; if (!f.d || !cgCheck(f.note || '').ok) return; if (!Array.isArray(z.closedDates)) z.closedDates = [];
+    if (!z.closedDates.some(x => x.d === f.d)) z.closedDates.push({ d: f.d, note: (f.note || '').trim() || 'Closed' }); S.biz.cd = { d: '', note: '' }; toast('business', 'Closed date added', fmtD(dayTs(f.d)) + ' · no bookings that day'); },
+  bhDelDay: d => { const z = biz(S.biz.id); z.closedDates = (z.closedDates || []).filter(x => x.d !== d); },
+  bhHol: arg => { const [d, n] = arg.split('|'); const z = biz(S.biz.id); if (!Array.isArray(z.closedDates)) z.closedDates = []; const k = z.closedDates.findIndex(x => x.d === d); if (k >= 0) z.closedDates.splice(k, 1); else z.closedDates.push({ d, note: n }); },
+  bhRosterEd: pid => { const z = biz(S.biz.id); if (!z.roster) z.roster = {}; if (S.biz.rosterEd === pid) { S.biz.rosterEd = null; return; } if (!z.roster[pid]) { const a = prov(pid).avail || defAvail(); z.roster[pid] = { days: a.days.slice(), from: a.from, to: a.to }; } S.biz.rosterEd = pid; },
+  bhRosterClr: pid => { const z = biz(S.biz.id); if (z.roster) delete z.roster[pid]; if (S.biz.rosterEd === pid) S.biz.rosterEd = null; },
+});
+/* ===== 34 · Statistics (admin) and Sales report (business) (build 184) =====
+   Audit item 5 (owner).
+   Admin › Statistics: bookings by day / week / month, request → paid conversion, cancellation, no-show and refund rates,
+     average rating, new sign-ups, revenue by category and by city. Every table exports to CSV.
+   Business › Sales report: one day, week or month (step back through earlier periods), totals, by staff and by service,
+     CSV and PDF (the browser's Save as PDF). */
+const ST_DONE = ['ended', 'reviewed'];
+const stPaid = b => !!b.paidAt || ['paid', 'departed', 'arrived', 'ended', 'reviewed'].includes(b.status);
+const stCat = b => (b.pid && prov(b.pid) && prov(b.pid).cat) || (bizOfB(b) && biz(bizOfB(b)) && biz(bizOfB(b)).cat) || 'other';
+const stCity = b => { try { return b.lat ? cityOf(b) : 'Unknown'; } catch (e) { return 'Unknown'; } };
+const stEnd = b => b.endedAt || b.createdAt;
+const stPct = (a, b) => b ? Math.round(a / b * 1000) / 10 + '%' : '—';
+function stBuckets(g, back) {
+  const out = [], n = now(); back = back || 0;
+  if (g === 'day') { const d0 = dayStart(n) - back * 14 * DAY; for (let i = 13; i >= 0; i--) { const s = d0 - i * DAY; out.push({ s, e: s + DAY, label: fmtD(s) }); } }
+  else if (g === 'week') { const w0 = weekStartOf(n) - back * 12 * 7 * DAY; for (let i = 11; i >= 0; i--) { const s = w0 - i * 7 * DAY; out.push({ s, e: s + 7 * DAY, label: 'Wk ' + fmtD(s) }); } }
+  else { const d = new Date(n); for (let i = 11; i >= 0; i--) { const s = new Date(d.getFullYear(), d.getMonth() - i - back * 12, 1).getTime(), e = new Date(d.getFullYear(), d.getMonth() - i - back * 12 + 1, 1).getTime(); out.push({ s, e, label: new Date(s).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) }); } }
+  return out;
+}
+function stRow(list, s, e) {
+  const req = list.filter(b => b.createdAt >= s && b.createdAt < e), done = list.filter(b => ST_DONE.includes(b.status) && stEnd(b) >= s && stEnd(b) < e);
+  const rev = done.filter(b => b.review && b.review.stars);
+  return { req: req.length, paid: req.filter(stPaid).length, cancel: req.filter(b => b.status === 'cancelled').length, noshow: req.filter(b => b.nsClaim).length, refund: req.filter(b => b.refund).length,
+    done: done.length, gross: done.reduce((a, b) => a + (b.refunded ? 0 : b.gross || 0), 0), fee: done.reduce((a, b) => a + ((b.ledger && b.ledger.fee) || 0), 0),
+    stars: rev.reduce((a, b) => a + b.review.stars, 0), nrev: rev.length, signup: (S.accounts || []).filter(a => a.createdAt >= s && a.createdAt < e && a.role !== 'staff').length };
+}
+function stCsv(name, rows) {
+  const csv = rows.map(r => r.map(v => { const s = String(v == null ? '' : v); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }).join(',')).join('\n');
+  if (window.BALIK_PREVIEW) { toast(S.role === 'business' ? 'business' : 'admin', 'Downloads work on the live site', 'Open Ticktap in your browser to save the CSV.'); return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv' })); a.download = name + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+/* one-series bar chart; hover shows the exact value; the table below is the full data view */
+function stBars(bk, key, fmt, label) {
+  const vals = bk.map(b => b.r[key]), max = Math.max(1, ...vals), W = 640, H = 150, bw = W / bk.length;
+  return `<figure class="st-chart"><figcaption class="small"><b>${label}</b></figcaption><svg viewBox="0 0 ${W} ${H + 22}" role="img" aria-label="${esc(label)}" preserveAspectRatio="none" style="width:100%;height:auto">
+    <line x1="0" x2="${W}" y1="${H}" y2="${H}" class="st-base"/>
+    ${bk.map((b, i) => { const h = Math.round(b.r[key] / max * (H - 8)), x = i * bw + 2; return `<g class="st-bar"><rect x="${i * bw}" y="0" width="${bw}" height="${H}" fill="transparent"/><path d="M${x} ${H}V${H - h + (h > 4 ? 4 : 0)}${h > 4 ? `q0 -4 4 -4h${bw - 12}q4 0 4 4` : `h${bw - 4}`}V${H}Z" class="st-fill"/><title>${esc(b.label)}: ${fmt(b.r[key])}</title>${i % Math.ceil(bk.length / 7) === 0 ? `<text x="${i * bw + bw / 2}" y="${H + 16}" text-anchor="middle" class="st-ax">${esc(b.label)}</text>` : ''}</g>`; }).join('')}
+  </svg></figure>`;
+}
+function admStats() {
+  const g = S.admin.stG || 'day', back = S.admin.stBack || 0, bk = stBuckets(g, back), s0 = bk[0].s, e0 = bk[bk.length - 1].e, L = S.bookings;
+  bk.forEach(b => { b.r = stRow(L, b.s, b.e); });
+  const T = stRow(L, s0, e0), nAll = T.req;
+  const group = f => { const m = {}; L.filter(b => ST_DONE.includes(b.status) && stEnd(b) >= s0 && stEnd(b) < e0).forEach(b => { const k = f(b), r = m[k] || (m[k] = { k, n: 0, gross: 0, fee: 0 }); r.n++; r.gross += b.refunded ? 0 : b.gross || 0; r.fee += (b.ledger && b.ledger.fee) || 0; }); return Object.values(m).sort((a, b) => b.gross - a.gross); };
+  const byCat = group(b => catName(stCat(b)) || 'Other'), byCity = group(stCity);
+  const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
+  const gb = (id, l) => `<button data-act="stG" data-arg="${id}" aria-pressed="${g === id}">${l}</button>`;
+  const rng = fmtD(s0) + ' – ' + fmtD(e0 - 1);
+  const splitT = (title, rows, csv) => `<div class="panel"><div class="panel-h"><h3>${title}</h3><button class="btn ghost xs" data-act="stCsv" data-arg="${csv}">${ic('doc', 14)} CSV</button></div><div class="tablewrap"><table><thead><tr><th>${title.split(' by ')[1] || ''}</th><th class="num">Completed</th><th class="num">Sales</th><th class="num">Share</th><th class="num">Platform fees</th></tr></thead><tbody>
+    ${rows.map(r => `<tr><td>${esc(r.k)}</td><td class="num">${r.n}</td><td class="num">${peso(r.gross)}</td><td class="num">${stPct(r.gross, T.gross)}</td><td class="num">${peso(r.fee, 2)}</td></tr>`).join('') || '<tr><td colspan="5"><div class="empty">No completed bookings in this range.</div></td></tr>'}</tbody></table></div></div>`;
+  return `<div class="page-h"><div><h1>Statistics</h1><p>How Ticktap is doing: bookings, conversion, cancellations, ratings, sign-ups and sales. Rates use the requests created in the range.</p></div></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><div class="seg">${gb('day', 'Daily')}${gb('week', 'Weekly')}${gb('month', 'Monthly')}</div>
+      <button class="btn ghost xs" data-act="stBack" data-arg="1" aria-label="Earlier">${ic('back', 14)} Earlier</button><b class="small">${rng}</b><button class="btn ghost xs" data-act="stBack" data-arg="-1" ${back ? '' : 'disabled'}>Later</button>
+      <span class="grow"></span><button class="btn secondary xs" data-act="stCsv" data-arg="trend">${ic('doc', 14)} Export CSV</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+      ${tile('Requests', nAll, T.paid + ' paid')}${tile('Request → paid', stPct(T.paid, nAll), 'conversion')}${tile('Cancelled', stPct(T.cancel, nAll), T.cancel + ' bookings')}${tile('No-show reports', stPct(T.noshow, nAll), T.noshow + ' reports')}
+      ${tile('Refunds', stPct(T.refund, nAll), T.refund + ' bookings')}${tile('Average rating', T.nrev ? (T.stars / T.nrev).toFixed(2) + ' ★' : '—', T.nrev + ' reviews')}${tile('New sign-ups', T.signup, 'customers, pros, businesses')}${tile('Sales', peso(T.gross), 'fees ' + peso(T.fee))}</div>
+    <div class="split"><div class="panel"><div class="panel-b">${stBars(bk, 'req', v => v + ' requests', 'Requests')}</div></div><div class="panel"><div class="panel-b">${stBars(bk, 'gross', v => peso(v), 'Sales (completed)')}</div></div></div>
+    <div class="panel"><div class="panel-h"><h3>By ${g === 'day' ? 'day' : g === 'week' ? 'week' : 'month'}</h3></div><div class="tablewrap"><table><thead><tr><th>Period</th><th class="num">Requests</th><th class="num">Paid</th><th class="num">Conversion</th><th class="num">Cancelled</th><th class="num">No-show</th><th class="num">Refunds</th><th class="num">Completed</th><th class="num">Sales</th><th class="num">Rating</th><th class="num">Sign-ups</th></tr></thead><tbody>
+      ${bk.slice().reverse().map(b => { const r = b.r; return `<tr><td>${esc(b.label)}</td><td class="num">${r.req}</td><td class="num">${r.paid}</td><td class="num">${stPct(r.paid, r.req)}</td><td class="num">${r.cancel}</td><td class="num">${r.noshow}</td><td class="num">${r.refund}</td><td class="num">${r.done}</td><td class="num">${peso(r.gross)}</td><td class="num">${r.nrev ? (r.stars / r.nrev).toFixed(1) : '—'}</td><td class="num">${r.signup}</td></tr>`; }).join('')}</tbody></table></div></div>
+    <div class="split">${splitT('Sales by category', byCat, 'cat')}${splitT('Sales by city', byCity, 'city')}</div>`;
+}
+function stExport(kind) {
+  const g = S.admin.stG || 'day', bk = stBuckets(g, S.admin.stBack || 0), s0 = bk[0].s, e0 = bk[bk.length - 1].e, tag = ymd(s0) + '_' + ymd(e0 - 1);
+  if (kind === 'trend') { bk.forEach(b => { b.r = stRow(S.bookings, b.s, b.e); }); return stCsv('Ticktap_stats_' + g + '_' + tag, [['Period start', 'Requests', 'Paid', 'Conversion %', 'Cancelled', 'No-show reports', 'Refunds', 'Completed', 'Sales PHP', 'Platform fees PHP', 'Reviews', 'Average rating', 'New sign-ups']].concat(bk.map(b => { const r = b.r; return [ymd(b.s), r.req, r.paid, r.req ? (r.paid / r.req * 100).toFixed(1) : '', r.cancel, r.noshow, r.refund, r.done, r.gross, r.fee.toFixed(2), r.nrev, r.nrev ? (r.stars / r.nrev).toFixed(2) : '', r.signup]; }))); }
+  const f = kind === 'cat' ? b => catName(stCat(b)) || 'Other' : stCity, m = {};
+  S.bookings.filter(b => ST_DONE.includes(b.status) && stEnd(b) >= s0 && stEnd(b) < e0).forEach(b => { const k = f(b), r = m[k] || (m[k] = [k, 0, 0, 0]); r[1]++; r[2] += b.refunded ? 0 : b.gross || 0; r[3] += (b.ledger && b.ledger.fee) || 0; });
+  stCsv('Ticktap_sales_by_' + kind + '_' + tag, [[kind === 'cat' ? 'Category' : 'City', 'Completed', 'Sales PHP', 'Platform fees PHP']].concat(Object.values(m).map(r => [r[0], r[1], r[2], r[3].toFixed(2)])));
+}
+
+/* ---------- business sales report ---------- */
+function bsRange(z) {
+  const g = S.biz.srG || 'week', k = S.biz.srBack || 0, n = now(); let s, e, label;
+  if (g === 'day') { s = dayStart(n) - k * DAY; e = s + DAY; label = new Date(s).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }); }
+  else if (g === 'week') { s = weekStartOf(n) - k * 7 * DAY; e = s + 7 * DAY; label = fmtD(s) + ' – ' + fmtD(e - 1); }
+  else { const d = new Date(n); s = new Date(d.getFullYear(), d.getMonth() - k, 1).getTime(); e = new Date(d.getFullYear(), d.getMonth() - k + 1, 1).getTime(); label = new Date(s).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); }
+  return { g, k, s, e, label };
+}
+function bsData(z) {
+  const R = bsRange(z), mine = S.bookings.filter(x => bizOfB(x) === z.id), done = mine.filter(x => ST_DONE.includes(x.status) && stEnd(x) >= R.s && stEnd(x) < R.e);
+  const staff = {}, svc = {};
+  done.forEach(x => { const gross = x.refunded ? 0 : x.gross || 0, fee = (x.ledger && x.ledger.fee) || 0, net = x.ledger ? x.ledger.net : gross - fee;
+    const p = x.pid && prov(x.pid), a = staff[x.pid] || (staff[x.pid] = { k: p ? p.name : 'Unassigned', n: 0, gross: 0, fee: 0, net: 0, stars: 0, nrev: 0, mins: 0 });
+    a.n++; a.gross += gross; a.fee += fee; a.net += net; a.mins += x.mins || 0; if (x.review && x.review.stars) { a.stars += x.review.stars; a.nrev++; }
+    const sum = x.services.reduce((q, s) => q + (s.price || 0), 0) || 1;
+    x.services.forEach(s => { const r = svc[s.name] || (svc[s.name] = { k: s.name, n: 0, gross: 0 }); r.n++; r.gross += gross * (s.price || 0) / sum; }); });
+  const created = mine.filter(x => x.createdAt >= R.s && x.createdAt < R.e);
+  return { R, done, staff: Object.values(staff).sort((a, b) => b.gross - a.gross), svc: Object.values(svc).sort((a, b) => b.gross - a.gross),
+    T: { n: done.length, gross: done.reduce((a, x) => a + (x.refunded ? 0 : x.gross || 0), 0), fee: done.reduce((a, x) => a + ((x.ledger && x.ledger.fee) || 0), 0), net: done.reduce((a, x) => a + (x.ledger ? x.ledger.net : 0), 0), cancel: created.filter(x => x.status === 'cancelled').length, req: created.length } };
+}
+function bsTables(D, forPrint) {
+  const T = D.T;
+  return `<table class="${forPrint ? '' : ''}"><thead><tr><th>By staff</th><th class="num">Services</th><th class="num">Hours</th><th class="num">Sales</th><th class="num">Ticktap fee</th><th class="num">Net to business</th><th class="num">Rating</th></tr></thead><tbody>
+    ${D.staff.map(a => `<tr><td>${esc(a.k)}</td><td class="num">${a.n}</td><td class="num">${(a.mins / 60).toFixed(1)}</td><td class="num">${peso(a.gross)}</td><td class="num">${peso(a.fee, 2)}</td><td class="num">${peso(a.net, 2)}</td><td class="num">${a.nrev ? (a.stars / a.nrev).toFixed(1) + ' ★' : '—'}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No completed services in this period.</div></td></tr>'}
+    </tbody><tfoot><tr><td><b>Total</b></td><td class="num"><b>${T.n}</b></td><td></td><td class="num"><b>${peso(T.gross)}</b></td><td class="num"><b>${peso(T.fee, 2)}</b></td><td class="num"><b>${peso(T.net, 2)}</b></td><td></td></tr></tfoot></table>
+    <table style="margin-top:14px"><thead><tr><th>By service</th><th class="num">Times booked</th><th class="num">Sales</th><th class="num">Share</th></tr></thead><tbody>
+    ${D.svc.map(r => `<tr><td>${esc(r.k)}</td><td class="num">${r.n}</td><td class="num">${peso(r.gross)}</td><td class="num">${stPct(r.gross, T.gross)}</td></tr>`).join('') || '<tr><td colspan="4"><div class="empty">—</div></td></tr>'}</tbody></table>`;
+}
+function bizSales(z) {
+  const D = bsData(z), R = D.R, T = D.T;
+  const gb = (id, l) => `<button data-act="bsG" data-arg="${id}" aria-pressed="${R.g === id}">${l}</button>`;
+  const tile = (l, v, sub) => `<div class="card tight" style="gap:2px"><span class="eyebrow">${l}</span><b class="num" style="font-size:24px">${v}</b><span class="tiny muted">${sub}</span></div>`;
+  return `<div class="page-h"><div><h1>Sales report</h1><p>Completed services by therapist and by service. Sales are what customers paid; the net is what Ticktap pays out to you after its fee (see Settlement for payout dates).</p></div></div>
+    <div class="row" style="gap:8px;flex-wrap:wrap;align-items:center"><div class="seg">${gb('day', 'Day')}${gb('week', 'Week')}${gb('month', 'Month')}</div>
+      <button class="btn ghost xs" data-act="bsBack" data-arg="1">${ic('back', 14)} Earlier</button><b class="small">${R.label}</b><button class="btn ghost xs" data-act="bsBack" data-arg="-1" ${R.k ? '' : 'disabled'}>Later</button>
+      <span class="grow"></span><button class="btn secondary xs" data-act="bsCsv">${ic('doc', 14)} CSV</button><button class="btn secondary xs" data-act="bsPdf">${ic('doc', 14)} PDF</button></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">${tile('Services done', T.n, R.label)}${tile('Sales', peso(T.gross), 'paid by customers')}${tile('Ticktap fee', peso(T.fee, 2), stPct(T.fee, T.gross) + ' of sales')}${tile('Net to you', peso(T.net, 2), 'before payout')}${tile('Cancelled', T.cancel, 'of ' + T.req + ' requests')}</div>
+    <div class="panel"><div class="tablewrap">${bsTables(D)}</div></div>`;
+}
+function bsExportCsv() {
+  const z = biz(S.biz.id), D = bsData(z), R = D.R, tag = ymd(R.s) + (R.g === 'day' ? '' : '_' + ymd(R.e - 1));
+  const rows = [[z.name + ' · Sales report · ' + R.label], [], ['By staff', 'Services', 'Hours', 'Sales PHP', 'Ticktap fee PHP', 'Net PHP', 'Average rating']]
+    .concat(D.staff.map(a => [a.k, a.n, (a.mins / 60).toFixed(1), a.gross, a.fee.toFixed(2), a.net.toFixed(2), a.nrev ? (a.stars / a.nrev).toFixed(2) : '']))
+    .concat([['Total', D.T.n, '', D.T.gross, D.T.fee.toFixed(2), D.T.net.toFixed(2), ''], [], ['By service', 'Times booked', 'Sales PHP']]).concat(D.svc.map(r => [r.k, r.n, r.gross.toFixed(2)]))
+    .concat([[], ['Booking', 'Ended', 'Therapist', 'Services', 'Sales PHP', 'Fee PHP', 'Net PHP']]).concat(D.done.map(x => [x.id, new Date(stEnd(x)).toISOString().slice(0, 16).replace('T', ' '), x.pid && prov(x.pid) ? prov(x.pid).name : '', x.services.map(s => s.name).join(' + '), x.refunded ? 0 : x.gross, ((x.ledger && x.ledger.fee) || 0).toFixed(2), x.ledger ? x.ledger.net.toFixed(2) : '']));
+  stCsv(z.name.replace(/\W+/g, '_') + '_sales_' + tag, rows);
+}
+function bsPrint() {
+  if (window.BALIK_PREVIEW) { toast('business', 'PDF works on the live site', 'Open Ticktap in your browser and choose Save as PDF.'); return; }
+  const z = biz(S.biz.id), D = bsData(z);
+  let el = document.getElementById('printArea'); if (!el) { el = document.createElement('div'); el.id = 'printArea'; document.body.appendChild(el); }
+  el.innerHTML = `<div class="bs-print"><h2>${esc(z.name)} · Sales report</h2><p>${esc(D.R.label)} · prepared ${new Date().toLocaleString('en-US')} from Ticktap records</p>${bsTables(D, true)}<p class="qap-note">Sales = amounts paid by customers for completed services. Net = sales minus the Ticktap fee, paid out on your settlement cycle.</p></div>`;
+  document.body.classList.add('printing');
+  const done = () => { document.body.classList.remove('printing'); window.removeEventListener('afterprint', done); };
+  window.addEventListener('afterprint', done); setTimeout(() => { try { window.print(); } catch (e) { done(); } setTimeout(done, 60000); }, 300);
+}
+Object.assign(A, {
+  stG: g => { S.admin.stG = g; S.admin.stBack = 0; }, stBack: d => { S.admin.stBack = Math.max(0, (S.admin.stBack || 0) + Number(d)); }, stCsv: k => stExport(k),
+  bsG: g => { S.biz.srG = g; S.biz.srBack = 0; }, bsBack: d => { S.biz.srBack = Math.max(0, (S.biz.srBack || 0) + Number(d)); }, bsCsv: () => bsExportCsv(), bsPdf: () => bsPrint(),
+});
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
 // without one it still syncs between tabs on the same device (BroadcastChannel + localStorage).
-const SHARED_LIST = ['tickets', 'opsLog', 'opsNotes', 'waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'admLog'];
+const SHARED_LIST = ['tickets', 'opsLog', 'opsNotes', 'waitlist', 'providers', 'businesses', 'bookings', 'alerts', 'sms', 'applications', 'consents', 'accounts', 'bizApps', 'broadcasts', 'notices', 'helpCalls', 'mktLog', 'employees', 'attendance', 'payrolls', 'expenses', 'incomes', 'hrReq', 'hrDocs', 'catCfg', 'admLog'];
 const SHARED_MAP = ['customers'];
 const SHARED_ONE = ['settings', 'fin'];
 const DEVICE = (() => { try { let d = localStorage.getItem('balik-device'); if (!d) { d = 'd' + Math.random().toString(36).slice(2, 9); localStorage.setItem('balik-device', d); } return d; } catch (e) { return 'd' + Math.random().toString(36).slice(2, 9); } })();
@@ -8214,7 +8697,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 180;
+const BUILD = 184;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
