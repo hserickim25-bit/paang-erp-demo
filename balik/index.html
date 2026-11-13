@@ -1756,8 +1756,7 @@ function calendar(c, av, d0) {
   }
   return `<div class="cal">
     <div class="row" style="gap:6px"><button type="button" class="iconbtn" data-act="calMonth" data-arg="-1" aria-label="Previous month">${ic('chev', 18)}</button>
-      <select id="cal-y" class="select" style="height:38px;flex:1;min-width:84px;padding:0 26px 0 10px;font-size:15px" data-act-change="calPick" data-which="y">${years.map(v => `<option value="${v}" ${v === y ? 'selected' : ''}>${v}</option>`).join('')}</select>
-      <select id="cal-m" class="select" style="height:38px;flex:1.4;min-width:0;padding:0 26px 0 10px;font-size:15px" data-act-change="calPick" data-which="m">${months.map((v, i) => `<option value="${i}" ${i === mo ? 'selected' : ''}>${v}</option>`).join('')}</select>
+      <b class="grow" style="text-align:center;font-size:16px">${months[mo]} ${y}</b>   <!-- build 180: plain month title; the two drop-downs were cut off on phones and only 72 h can be booked -->
       <button type="button" class="iconbtn" data-act="calMonth" data-arg="1" aria-label="Next month">${ic('chev', 18)}</button><button type="button" class="btn ghost xs" data-act="calToday">Today</button></div>
     <div class="cal-g">${DAYS3.map(d => `<span class="cal-h">${d.slice(0, 2)}</span>`).join('')}${cells.join('')}</div>
     ${open ? '' : `<span class="small" style="color:var(--warn)">No bookable days in this month. Bookings open ${bookWindowH()} hours ahead.</span>`}
@@ -1855,13 +1854,13 @@ function custTrack() {
   const st = ['Paid', 'Departed', 'Arrived', 'In service', 'Ended'];
   const [doneN, nowN] = stepProg(b);
   const late = b.late && !b.arrivedAt;
-  const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: b.startPending ? `${esc(first)} has arrived` : 'Service in progress', ended: 'Service ended', reviewed: 'Completed' }[b.status];
+  const head = { paid: `${esc(first)} is getting ready`, departed: `${esc(first)} is on the way`, arrived: b.startPending ? `${esc(first)} has arrived` : 'Service in progress', ended: 'Service ended', reviewed: 'Completed', cancelled: 'Booking cancelled' }[b.status] || 'Booking';
   const pT = b.when === 'later' ? fmtWhen(b.promisedAt) : fmtT(b.promisedAt);
-  const sub = { paid: `Paid ${fmtT(b.paidAt)} · ${b.when === 'later' ? 'booked for' : 'arrives by'} ${pT}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: b.startPending ? `Arrived ${fmtT(b.arrivedAt)} · your service starts when ${esc(p.name.split(' ')[0])} taps Start` : `Started ${fmtT(b.startedAt || b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}` }[b.status];
+  const sub = { paid: `Paid ${fmtT(b.paidAt)} · ${b.when === 'later' ? 'booked for' : 'arrives by'} ${pT}`, departed: `Departed ${fmtT(b.departedAt)} · arrives by ${fmtT(b.promisedAt)}`, arrived: b.startPending ? `Arrived ${fmtT(b.arrivedAt)} · your service starts when ${esc(p.name.split(' ')[0])} taps Start` : `Started ${fmtT(b.startedAt || b.arrivedAt)} · ends about ${fmtT(b.endAt)}`, ended: `Ended ${fmtT(b.endedAt)}`, reviewed: `Ended ${fmtT(b.endedAt)}`, cancelled: `Cancelled ${b.cancelledAt ? fmtWhen(b.cancelledAt) : ''}${({ customer: ' by you', provider: ' by the provider', noshow: ' · missed booking', ticktap: ' by Ticktap', unpaid: ' · not paid in time' })[b.cancelledBy] || ''}` }[b.status] || '';   /* build 180: a cancelled booking said "undefined" */
   return `${bar('Booking ' + b.id, 'toBookings', `<button class="btn ghost xs" data-act="custHelp">Help</button>`)}
     <div class="scroll" data-scroll="c-track">
       <div class="col" style="gap:4px"><h2 style="font-size:22px">${head}</h2><span class="small muted">${sub}</span></div>
-      <ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === nowN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>${custDock('track')}
+      ${b.status === 'cancelled' ? '' : `<ol class="steps">${st.map((s, i) => `<li class="${i < doneN ? 'done' : i === nowN ? 'now' : ''}"><span></span>${s}</li>`).join('')}</ol>`}${custDock('track')}
       ${late ? `<div class="card tight" style="background:var(--warn-soft);border-color:transparent"><div class="row" style="align-items:flex-start;color:var(--warn)">${ic('clock', 18)}<p class="small"><b>${esc(first)} is running late.</b> Our team has been alerted and is following up.${b.late.replies.length ? ' New arrival: about ' + fmtT(b.promisedAt + b.late.replies.reduce((a, x) => a + x, 0) * MIN) + '.' : ''}</p></div></div>` : ''}
       ${(() => { const B = {
         rem: b.reminders && b.reminders.length && ['paid'].includes(b.status) ? remindersCard(b) : '',
@@ -2090,7 +2089,7 @@ function provJobs() {
       <span class="small muted">${b.when === 'later' ? 'At ' + fmtWhen(b.slotAt) : 'As soon as possible'} · ${fmtKm(haversine(me, b))} from your base · ${peso(b.gross)}</span>
       <span class="btn primary sm" style="align-self:flex-start">Respond ${ic('chev', 16)}</span></button>`).join('')}
     ${active ? `<button class="card" data-act="openJob" data-arg="${active.id}" style="text-align:left"><div class="row between"><span class="eyebrow">Current job</span>${statusPill(active.status)}</div><b>${esc(active.services.map(s => s.name).join(' + '))}</b><span class="small muted">${esc(active.address)}</span></button>` : ''}
-    ${!reqs.length && !active ? `<div class="card" style="align-items:center;text-align:center;padding:22px"><span class="dot ${statusOf(me).cls}" style="width:14px;height:14px"></span><b>${me.status === 'green' ? "You're on stand-by" : me.status === 'yellow' ? 'Away until ' + fmtT(me.backAt) : 'Off today'}</b><span class="small muted">${me.status === 'green' ? 'New requests arrive here and by SMS.' : 'Switch to stand-by to get requests.'}</span></div>` : ''}
+    ${!reqs.length && !active ? `<div class="card" style="align-items:center;text-align:center;padding:22px"><span class="dot ${statusOf(me).cls}" style="width:14px;height:14px"></span><b>${me.status === 'green' ? "You're on stand-by" : me.status === 'yellow' ? 'Away until ' + fmtT(me.backAt) : 'Off today'}</b><span class="small muted">${me.status === 'green' ? 'New requests arrive here as an app alert (by SMS only if you do not answer in 60 seconds).' : 'Switch to stand-by to get requests.'}</span></div>` : ''}
     <div class="card" style="background:linear-gradient(135deg,#12355B,#1E4A7C);color:#fff;border-color:transparent">
       <div class="row between"><span class="eyebrow" style="color:inherit;opacity:.7">Household goal · ${new Date(n).toLocaleString('en-US', { month: 'long' })}</span><button class="btn xs" data-act="provTab" data-arg="account" style="background:transparent;color:inherit;border-color:rgba(255,255,255,.35)">Edit</button></div>
       <div class="row" style="align-items:baseline;gap:8px"><span class="num" data-fit style="font-size:30px;font-weight:600">${peso(goalBase)}</span><span class="small" style="opacity:.7">of ${peso(me.goal)}</span></div>
@@ -8215,7 +8214,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 179;
+const BUILD = 180;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
