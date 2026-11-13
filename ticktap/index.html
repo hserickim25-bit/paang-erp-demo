@@ -3415,12 +3415,14 @@ function admAR() {
     <div class="kpis"><div class="kpi accent"><span class="l">Collected from customers · ${P.label}</span><span class="v">${peso(sum(month, b => b.gross))}</span></div>
       <div class="kpi"><span class="l">Platform fees earned · ${P.label}</span><span class="v">${peso(sum(earned, b => b.ledger.fee), 2)}</span></div>
       <div class="kpi"><span class="l">Held for jobs in progress</span><span class="v">${peso(sum(held, b => b.gross))}</span></div>
-      <div class="kpi"><span class="l">Waiting for customer payment</span><span class="v">${peso(sum(unpaid, b => b.gross))}</span></div></div>
+      <div class="kpi"><span class="l">Waiting for customer payment</span><span class="v">${peso(sum(unpaid, b => b.gross))}</span></div>
+      <div class="kpi"><span class="l">Deductions to recover · ${ardOpen().length}</span><span class="v">${peso(sum(ardOpen(), b => -b.ledger.net), 2)}</span></div></div>
     <div class="split"><div class="wide panel"><div class="panel-h"><h3>Waiting for payment · ${unpaid.length}</h3>${PU.search}<span class="small muted">Customers pay within ${S.settings.hold} minutes of the provider accepting; unpaid offers cancel automatically</span></div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Customer</th><th>Provider</th><th>Service time</th><th>Pay by</th><th class="num">Amount</th></tr></thead><tbody>
       ${PU.rows.map(b => `<tr><td class="mono">${b.id}</td><td>${esc(b.customer)}</td><td>${esc(prov(b.pid) ? prov(b.pid).name : '')}</td><td class="small">${b.slotAt ? fmtWhen(b.slotAt) : 'Now'}</td><td class="small" style="color:${b.offerExpires - n < 3 * HOUR ? 'var(--bad)' : 'inherit'}">${b.offerExpires ? fmtWhen(b.offerExpires) : '—'}</td><td class="num">${peso(b.gross)}</td></tr>`).join('') || '<tr><td colspan="6"><div class="empty">No payments waiting.</div></td></tr>'}
     </tbody></table></div>${PU.foot}</div>
     <div class="narrow panel"><div class="panel-h"><h3>By payment method · ${P.label}</h3></div><div class="list">${Object.entries(byM).map(([m, v]) => `<div class="li"><b class="grow small">${esc(m)}</b><b class="num">${peso(v)}</b></div>`).join('') || '<div class="empty">No payments yet.</div>'}</div>
       <div class="panel-b"><span class="tiny muted">GCash and Maya settle to Ticktap's account the next day; cards settle in 2–5 days, depending on the payment partner.</span></div></div></div>
+    ${ardPanel()}
     ${admStaffFees(earned)}
     <div class="panel"><div class="panel-h"><h3>Collections · ${P.label}</h3>${PM.search}</div><div class="tablewrap"><table><thead><tr><th>Booking</th><th>Paid</th><th>Customer</th><th>Method</th><th class="num">Amount</th><th class="num">Platform fee</th><th>Status</th></tr></thead><tbody>
       ${PM.rows.map(b => `<tr><td class="mono">${b.id}</td><td class="mono small">${fmtD(b.paidAt || b.endedAt || b.createdAt)}</td><td>${esc(b.customer)}</td><td class="small">${esc(b.payMethod || 'GCash')}</td><td class="num">${peso(b.gross, 2)}</td><td class="num">${b.ledger ? peso(b.ledger.fee, 2) + ' <span class="tiny muted">' + b.ledger.rate + '%</span>' : '<span class="tiny muted">when service ends</span>'}</td><td>${statusPill(b.status)}</td></tr>`).join('') || '<tr><td colspan="7"><div class="empty">No collections this month.</div></td></tr>'}
@@ -3635,6 +3637,8 @@ function deskItems() {
   add({ id: 'requests', level: 'watch', tab: 'jobs', icon: 'bag', title: 'Requests waiting for an answer', n: reqs.length, detail: reqs.length ? reqs.filter(b => b.status === 'business_queue').length + ' waiting for a spa to assign' : 'None', how: 'If a spa has not assigned a therapist in 10 minutes, call the spa.' });
   const unpaid = S.bookings.filter(b => b.status === 'offered' && b.when === 'later' && !b.paidAt);
   const held = S.businesses.filter(z => z.hold && !z.expelled);
+  const ardOld = ardOpen().filter(b => t - b.ledger.at > ARD_STALE && ardDue(b) < -b.ledger.net);
+  add({ id: 'ardstale', level: 'watch', tab: 'ar', icon: 'wallet', title: 'Deductions not recovered for 30 days', n: ardOld.length, detail: ardOld.length ? peso(ardOld.reduce((a, b) => a - b.ledger.net, 0), 2) + ' · ' + ardOld.map(b => ardWho(b).name).slice(0, 3).join(', ') : 'None', how: 'The payee has had no payout large enough to net it. Ask them to settle by GCash, or decide to write it off, and note it on the booking.' });
   add({ id: 'bizhold', level: 'watch', tab: 'businesses', icon: 'building', title: 'Businesses on hold', n: held.length, detail: held.length ? held.map(z => z.name + ' · ' + age(t - z.hold.at)).slice(0, 3).join(', ') : 'None', how: 'Check whether the reason is fixed (documents, complaint, payment), then Release hold in Business members.' });
   add({ id: 'unpaid', level: 'watch', tab: 'ar', icon: 'wallet', title: 'Scheduled bookings not paid yet', n: unpaid.length, detail: unpaid.length ? 'Auto-cancel 1 h before start' : 'None', how: 'Reminders go out automatically; call the customer only if the booking is today.' });
   const green = S.providers.filter(p => p.active !== false && p.status === 'green').length;
@@ -8611,6 +8615,38 @@ Object.assign(A, {
   stG: g => { S.admin.stG = g; S.admin.stBack = 0; }, stBack: d => { S.admin.stBack = Math.max(0, (S.admin.stBack || 0) + Number(d)); }, stCsv: k => stExport(k),
   bsG: g => { S.biz.srG = g; S.biz.srBack = 0; }, bsBack: d => { S.biz.srBack = Math.max(0, (S.biz.srBack || 0) + Number(d)); }, bsCsv: () => bsExportCsv(), bsPdf: () => bsPrint(),
 });
+/* ===== 35 · Accounts receivable › Deductions to recover (build 187) =====
+   Owner 2026-11-13: every penalty Ticktap takes back from a payout — the 5% payment fee charged to an individual provider
+   (no-show, cancel after payment) or to a business (customer refused its therapist change) — is listed in Accounts
+   receivable. Open ones make up the "to recover" total and are netted into the payee's next payout. When that payout is
+   marked paid (ledger.paidAt), the line leaves the total and moves to "Recovered", kept as the record with the payout
+   date and reference. A deduction larger than what the payee is owed carries over; after 30 days it goes on the Ops desk. */
+const ARD_STALE = 30 * DAY;
+const ardAll = () => S.bookings.filter(b => b.ledger && b.ledger.kind === 'debit');
+const ardOpen = () => ardAll().filter(b => !b.ledger.paidAt);
+const ardWho = b => b.ledger.payee === 'business' || b.bizId ? { type: 'Business', name: (biz(b.bizId) || {}).name || b.ledger.payeeName || '—' } : { type: 'Individual', name: (prov(b.pid) || {}).name || b.ledger.payeeName || '—' };
+/* what the payee is owed right now (before this deduction) */
+const ardDue = b => S.bookings.filter(x => payDue(x) && payKey(x) === payKey(b) && x.ledger.kind !== 'debit').reduce((a, x) => a + x.ledger.net, 0);
+function ardPanel() {
+  const t = now(), open = ardOpen().sort((a, b) => a.ledger.at - b.ledger.at), done = ardAll().filter(b => b.ledger.paidAt).sort((a, b) => b.ledger.paidAt - a.ledger.paidAt);
+  const tot = open.reduce((a, b) => a - b.ledger.net, 0), f = S.admin.ardF || 'all';
+  const shown = open.filter(b => f === 'all' || ardWho(b).type.toLowerCase().startsWith(f));
+  const PD = lp('ardDone', done, { text: b => [b.id, ardWho(b).name, b.ledger.note, b.ledger.paidRef].join(' '), ph: 'Booking, payee, reason or payout ref', unit: 'recovered' });
+  const fb = (id, l, n) => `<button data-act="ardF" data-arg="${id}" aria-pressed="${f === id}">${l} · ${n}</button>`;
+  const row = b => { const w = ardWho(b), due = ardDue(b), amt = -b.ledger.net, carry = due < amt, age = t - b.ledger.at;
+    return `<tr><td class="mono">${b.id}</td><td class="mono small">${fmtD(b.ledger.at)}</td><td><span class="pill">${w.type}</span><br><b class="small">${esc(w.name)}</b></td><td class="small" style="max-width:420px">${esc(b.ledger.note)}</td><td class="num"><b>${peso(amt, 2)}</b></td>
+      <td class="small">${carry ? `<span class="pill warn">Carries over</span><br><span class="tiny muted">owed ${peso(due, 2)} now${age > ARD_STALE ? ' · ' + Math.round(age / DAY) + ' days' : ''}</span>` : '<span class="pill">Next payout</span><br><span class="tiny muted">netted when the payout is marked paid</span>'}</td></tr>`; };
+  return `<div class="panel" id="ar-ded"><div class="panel-h" style="flex-wrap:wrap"><div class="col"><h3>Deductions to recover · ${open.length} · ${peso(tot, 2)}</h3><span class="small muted">Payment fees (${MR.faultPct}%) charged to providers and businesses. Each is taken from the payee's next payout; the reason is on their statement.</span></div>
+      <div class="seg">${fb('all', 'All', open.length)}${fb('ind', 'Individual', open.filter(b => ardWho(b).type === 'Individual').length)}${fb('bus', 'Business', open.filter(b => ardWho(b).type === 'Business').length)}</div></div>
+    <div class="tablewrap"><table><thead><tr><th>Booking</th><th>Charged</th><th>Payee</th><th>Reason</th><th class="num">Amount</th><th>Recovery</th></tr></thead><tbody>
+      ${shown.map(row).join('') || '<tr><td colspan="6"><div class="empty">Nothing to recover.</div></td></tr>'}</tbody>
+      ${shown.length ? `<tfoot><tr><td colspan="4"><b>Total to recover</b></td><td class="num"><b>${peso(shown.reduce((a, b) => a - b.ledger.net, 0), 2)}</b></td><td></td></tr></tfoot>` : ''}</table></div>
+    <details class="ard-done" ${S.admin.ardOpen ? 'open' : ''}><summary class="small" data-act="ardOpen" style="cursor:pointer;display:list-item;padding:12px 16px"><b>Recovered · settled ${done.length}</b> · ${peso(done.reduce((a, b) => a - b.ledger.net, 0), 2)} · not in the total above</summary>
+      ${PD.search ? `<div class="panel-b" style="padding-top:0">${PD.search}</div>` : ''}<div class="tablewrap"><table><thead><tr><th>Booking</th><th>Charged</th><th>Payee</th><th>Reason</th><th class="num">Amount</th><th>Settled</th></tr></thead><tbody>
+      ${PD.rows.map(b => { const w = ardWho(b); return `<tr><td class="mono">${b.id}</td><td class="mono small">${fmtD(b.ledger.at)}</td><td><span class="pill">${w.type}</span><br><b class="small">${esc(w.name)}</b></td><td class="small" style="max-width:420px">${esc(b.ledger.note)}</td><td class="num">${peso(-b.ledger.net, 2)}</td><td class="small"><span class="pill good">Settled ${fmtD(b.ledger.paidAt)}</span>${b.ledger.paidRef ? `<br><span class="tiny muted">payout ref ${esc(b.ledger.paidRef)}</span>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="6"><div class="empty">None settled yet.</div></td></tr>'}
+      </tbody></table></div>${PD.foot}</details></div>`;
+}
+Object.assign(A, { ardF: f => { S.admin.ardF = f; }, ardOpen: () => { S.admin.ardOpen = !S.admin.ardOpen; } });
 /* =============== Clock / automation =============== */
 /* =============== Live sync: customer, provider, business and admin on different devices =============== */
 // Shared data lives in one "room". With a Firebase config it syncs across devices in real time;
@@ -8759,7 +8795,7 @@ function isLeader() {
   const t = srvNow(), alive = Object.entries(SYNC.presence || {}).filter(([, v]) => t - presTs(v) < 30000).map(([d]) => d).concat([DEVICE]).sort();
   return alive[0] === DEVICE;
 }
-const BUILD = 186;
+const BUILD = 187;
 function liveLine() {
   const bad = liveBroken(), live = SYNC.mode === 'live' && !bad, n = devicesOnline();
   const prev = !!window.BALIK_PREVIEW && !live;
